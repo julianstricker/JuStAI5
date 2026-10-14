@@ -43,9 +43,15 @@ class AcousticRoom:
 
     def speaker_emit(self, t_emit: float, pcm: Int16Array, voiced: bool = True) -> None:
         self._speaker.add(t_emit, pcm)
-        if voiced and pcm.any():
-            start = t_emit + self.p.echo_delay_s
-            end = start + pcm.size / SR
+        if not voiced:
+            return
+        frame = SR // 50  # the device's speaker activity is judged per 20 ms
+        for i in range(0, pcm.size, frame):
+            chunk = pcm[i : i + frame].astype(np.float64)
+            if chunk.size == 0 or np.sqrt(np.mean(chunk**2)) < 100:
+                continue
+            start = t_emit + i / SR + self.p.echo_delay_s
+            end = start + chunk.size / SR
             if self._voiced and start - self._voiced[-1][1] < 0.05:
                 self._voiced[-1] = (self._voiced[-1][0], end)
             else:

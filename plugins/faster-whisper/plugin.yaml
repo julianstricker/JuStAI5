@@ -1,0 +1,39 @@
+id: faster-whisper
+name: faster-whisper (lokale Spracherkennung)
+version: 1.0.0
+description: Lokale Speech-to-Text mit Whisper (CTranslate2). Mehrsprachig mit automatischer Spracherkennung.
+author: JuStAI5
+license: MIT
+types: [stt]
+trust: builtin
+entrypoint: plugin:FasterWhisperPlugin
+default_enabled: true
+provides: ["stt:faster-whisper"]
+permissions: [ai.provide]
+config_schema:
+  type: object
+  properties:
+    model:
+      type: string
+      default: small
+      description: tiny, base, small, medium, large-v3, large-v3-turbo oder Pfad
+    device:
+      type: string
+      default: auto
+      enum: [auto, cpu, cuda]
+    compute_type:
+      type: string
+      default: int8
+    download_root:
+      type: string
+      default: ""
+      description: Leer = $JUSTAI_MODELS_DIR/whisper
+    beam_size:
+      type: integer
+      default: 1
+      minimum: 1
+      maximum: 5
+  additionalProperties: false
+requirements:
+  memory_mb: 1200
+  gpu: optional

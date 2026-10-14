@@ -1,0 +1,38 @@
+id: openai-compat
+name: OpenAI-kompatible Endpunkte
+version: 1.0.0
+description: >-
+  LLMs über die OpenAI-kompatible Chat-API: OpenAI, Ollama, vLLM, llama.cpp-Server,
+  LM Studio, OpenRouter u. a. Jeder Endpunkt wird als eigener Provider "oai:<id>"
+  registriert und als lokal oder Cloud gekennzeichnet.
+author: JuStAI5
+license: MIT
+types: [ai_provider, stt, tts]
+trust: builtin
+entrypoint: plugin:OpenAICompatPlugin
+default_enabled: true
+provides: ["llm:oai:*", "stt:oai:*", "tts:oai:*"]
+permissions: [ai.provide]
+secret_fields: [api_keys]
+config_schema:
+  type: object
+  properties:
+    endpoints:
+      type: array
+      default:
+        - {id: ollama, name: Ollama (Host), base_url: "http://host.docker.internal:11434/v1", locality: local}
+      items:
+        type: object
+        required: [id, base_url, locality]
+        properties:
+          id: {type: string, pattern: "^[a-z0-9_-]+$"}
+          name: {type: string}
+          base_url: {type: string}
+          locality: {type: string, enum: [local, cloud]}
+          stt: {type: boolean, default: false}
+          tts: {type: boolean, default: false}
+          supports_tools: {type: boolean, default: true}
+    api_keys:
+      type: string
+      description: 'JSON-Objekt {"<endpoint-id>": "<api key>"} (verschlüsselt gespeichert)'
+  additionalProperties: false

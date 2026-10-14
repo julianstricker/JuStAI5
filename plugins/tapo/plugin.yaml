@@ -1,0 +1,18 @@
+id: tapo
+name: TP-Link Tapo Kameras
+version: 1.0.0
+description: >-
+  Tapo-Kameras (C100, C200, C210, C410 u. a.). Video und Zwei-Wege-Audio über das
+  Tapo-Protokoll (go2rtc), alternativ RTSP. PTZ, Presets und Privatsphäre-Modus über
+  die lokale Tapo-API (Cloud-Passwort) oder ONVIF (Kamerakonto). Fähigkeiten werden
+  zur Laufzeit ermittelt.
+author: JuStAI5
+license: MIT
+types: [device, ptz, discovery]
+trust: builtin
+entrypoint: plugin:TapoPlugin
+default_enabled: true
+provides: ["device_driver:tapo", "discovery:tapo"]
+permissions: [devices.provide, network.lan, network.discovery]
+requirements:
+  binaries: []

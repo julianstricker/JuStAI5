@@ -10,7 +10,7 @@ from collections.abc import AsyncIterator
 from enum import StrEnum
 from typing import Any, Protocol, runtime_checkable
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from justai_sdk.audio import AudioChunk
 
@@ -39,6 +39,9 @@ class ToolCall(BaseModel):
     id: str
     name: str  # tool name as exposed to the model (llm_name)
     arguments: dict[str, Any] = Field(default_factory=dict)
+    # Opaque provider data that must be sent back with the call (e.g. Gemini
+    # thought signatures). Providers own its format.
+    provider_data: dict[str, Any] = Field(default_factory=dict)
 
 
 class ChatMessage(BaseModel):
@@ -132,7 +135,7 @@ class RealtimeEventKind(StrEnum):
 
 
 class RealtimeEvent(BaseModel):
-    model_config = {"arbitrary_types_allowed": True}
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     kind: RealtimeEventKind
     audio: AudioChunk | None = None

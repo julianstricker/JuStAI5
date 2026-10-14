@@ -82,8 +82,8 @@ class OpenWakeWordProvider:
 
 class OpenWakeWordPlugin(Plugin):
     async def setup(self) -> None:
-        models_dir = Path(os.environ.get("JUSTAI_OWW_MODELS_DIR")
-                          or self.ctx.config.get("models_dir") or "/models/openwakeword")
+        root = os.environ.get("JUSTAI_MODELS_DIR", "/models")
+        models_dir = Path(self.ctx.config.get("models_dir") or f"{root}/openwakeword")
         self.provider = OpenWakeWordProvider(models_dir)
         self.ctx.register_provider("wakeword", self.provider)
 

@@ -1,0 +1,29 @@
+id: gemini
+name: Google Gemini
+version: 1.0.0
+description: Gemini-Modelle als LLM (Text, Bilder, Tools) und als native Echtzeit-Sprachmodelle (Live API). Cloud-Dienst.
+author: JuStAI5
+license: MIT
+types: [ai_provider, realtime_ai]
+trust: builtin
+entrypoint: plugin:GeminiPlugin
+default_enabled: true
+provides: ["llm:gemini", "realtime:gemini"]
+permissions: [ai.provide]
+secret_fields: [api_key]
+config_schema:
+  type: object
+  properties:
+    api_key:
+      type: string
+      description: Gemini API key (https://aistudio.google.com). Alternativ Umgebungsvariable GOOGLE_API_KEY.
+    default_voice:
+      type: string
+      default: Kore
+      description: Stimme für die Live API (z. B. Kore, Puck, Charon, Aoede)
+    vad_silence_ms:
+      type: integer
+      default: 700
+      minimum: 300
+      maximum: 3000
+  additionalProperties: false

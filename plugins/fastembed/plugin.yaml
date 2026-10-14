@@ -1,0 +1,23 @@
+id: fastembed
+name: fastembed (lokale Embeddings)
+version: 1.0.0
+description: Mehrsprachige Text-Embeddings lokal (ONNX) für das Langzeitgedächtnis.
+author: JuStAI5
+license: Apache-2.0 (fastembed)
+types: [embedding]
+trust: builtin
+entrypoint: plugin:FastEmbedPlugin
+default_enabled: true
+provides: ["embedding:fastembed"]
+permissions: [ai.provide]
+config_schema:
+  type: object
+  properties:
+    model:
+      type: string
+      default: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+    cache_dir:
+      type: string
+      default: ""
+      description: Leer = $JUSTAI_MODELS_DIR/fastembed
+  additionalProperties: false

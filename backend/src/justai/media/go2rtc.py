@@ -75,6 +75,37 @@ class Go2rtcClient:
         data: dict[str, Any] = r.json()
         return data
 
+    async def probe_medias(self, name: str, timeout_s: float = 15.0) -> list[str]:
+        """Connect the producer (via a temporary consumer) and return its media list,
+        e.g. ``["video, recvonly, H264", "audio, recvonly, PCMA/8000",
+        "audio, sendonly, PCMA/8000"]``. The producer only exists while consumed."""
+        import asyncio
+        import contextlib
+
+        async def consume() -> None:
+            async with self._http.stream("GET", "/api/stream.mp4", params={"src": name},
+                                         timeout=timeout_s + 5) as r:
+                async for _ in r.aiter_raw():
+                    pass
+
+        consumer = asyncio.create_task(consume())
+        try:
+            deadline = asyncio.get_running_loop().time() + timeout_s
+            while asyncio.get_running_loop().time() < deadline:
+                await asyncio.sleep(0.5)
+                info = await self.stream_info(name)
+                medias = [m for p in (info or {}).get("producers") or []
+                          for m in p.get("medias") or [] if isinstance(m, str)]
+                if medias:
+                    return medias
+                if consumer.done():
+                    break
+            return []
+        finally:
+            consumer.cancel()
+            with contextlib.suppress(BaseException):
+                await consumer
+
     async def snapshot(self, name: str, width: int | None = None) -> bytes:
         params: dict[str, Any] = {"src": name}
         if width:

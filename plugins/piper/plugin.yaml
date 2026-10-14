@@ -1,0 +1,25 @@
+id: piper
+name: Piper (lokale Sprachausgabe)
+version: 1.0.0
+description: Schnelle lokale Text-to-Speech mit Piper-Stimmen (Deutsch, Italienisch, Englisch u. v. m.).
+author: JuStAI5
+license: MIT (Plugin), Piper GPL-3.0
+types: [tts]
+trust: builtin
+entrypoint: plugin:PiperPlugin
+default_enabled: true
+provides: ["tts:piper"]
+permissions: [ai.provide]
+config_schema:
+  type: object
+  properties:
+    voices_dir:
+      type: string
+      default: ""
+      description: Leer = $JUSTAI_MODELS_DIR/piper
+    length_scale:
+      type: number
+      default: 1.0
+      minimum: 0.5
+      maximum: 2.0
+  additionalProperties: false

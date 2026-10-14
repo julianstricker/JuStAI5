@@ -43,12 +43,19 @@ class DeviceRuntime:
     stream: str | None = None  # go2rtc main stream name
     sub_stream: str | None = None
     ready: asyncio.Event = field(default_factory=asyncio.Event)
+    # Media capabilities measured on the real go2rtc stream override driver claims.
+    measured: dict[str, bool] = field(default_factory=dict)
 
     @property
     def capabilities(self) -> set[str]:
-        if self.handle is not None:
-            return self.handle.capabilities
-        return set(self.probe.capabilities) if self.probe else set()
+        caps = set(self.handle.capabilities) if self.handle is not None else (
+            set(self.probe.capabilities) if self.probe else set())
+        for cap, present in self.measured.items():
+            if present:
+                caps.add(cap)
+            else:
+                caps.discard(cap)
+        return caps
 
     def has(self, capability: str) -> bool:
         return capability in self.capabilities
@@ -192,8 +199,9 @@ class DeviceManager:
             if media.sub_sources:
                 runtime.sub_stream = stream_name(device.id, sub=True)
                 await self.go2rtc.set_stream(runtime.sub_stream, media.sub_sources)
+            runtime.measured = await self._measure_media(runtime.stream)
         await self.devices.set_status(device.id, status="online", detail=None,
-                                      capabilities=sorted(handle.capabilities),
+                                      capabilities=sorted(runtime.capabilities),
                                       info=probe.info.model_dump(exclude_none=True), seen=True)
         await self._set_status(runtime, "online", "; ".join(probe.warnings) or None, persist=False)
         runtime.ready.set()
@@ -211,6 +219,21 @@ class DeviceManager:
             await self._teardown(runtime)
             if runtime.status == "online":
                 await self._set_status(runtime, "offline", "connection lost")
+
+    async def _measure_media(self, stream: str) -> dict[str, bool]:
+        """Connect the go2rtc producer once and read which tracks the device really has."""
+        try:
+            medias = await self.go2rtc.probe_medias(stream)
+        except Exception as exc:
+            log.info("media check failed", stream=stream, error=str(exc))
+            medias = []
+        if not medias:
+            return {}  # unknown -> keep the driver's claims
+        return {
+            Capability.VIDEO_INPUT: any(m.startswith("video, recvonly") for m in medias),
+            Capability.AUDIO_INPUT: any(m.startswith("audio, recvonly") for m in medias),
+            Capability.AUDIO_OUTPUT: any(m.startswith("audio, sendonly") for m in medias),
+        }
 
     async def _teardown(self, runtime: DeviceRuntime) -> None:
         handle, runtime.handle = runtime.handle, None

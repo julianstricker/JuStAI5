@@ -15,7 +15,7 @@ config_schema:
   properties:
     models_dir:
       type: string
-      default: /models/openwakeword
+      default: ""
       description: Verzeichnis mit melspectrogram.onnx, embedding_model.onnx und Wakeword-Modellen
   additionalProperties: false
 requirements:

@@ -536,3 +536,24 @@ class Presentation(Base):
     updated_at: Mapped[datetime | None] = _ts()
     closed_at: Mapped[datetime | None] = _ts()
     expires_at: Mapped[datetime | None] = _ts()
+
+
+# ------------------------------------------------------------------- AI usage
+
+
+class AIUsage(Base):
+    """Daily aggregated usage/cost per provider, model and role."""
+
+    __tablename__ = "ai_usage"
+
+    day: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
+    provider: Mapped[str] = mapped_column(String(64), primary_key=True)
+    model: Mapped[str] = mapped_column(String(128), primary_key=True)
+    role: Mapped[str] = mapped_column(String(32), primary_key=True)
+    requests: Mapped[int] = mapped_column(Integer, default=0)
+    failures: Mapped[int] = mapped_column(Integer, default=0)
+    input_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    audio_seconds: Mapped[float] = mapped_column(Float, default=0.0)
+    cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
+    latency_ms_total: Mapped[int] = mapped_column(Integer, default=0)

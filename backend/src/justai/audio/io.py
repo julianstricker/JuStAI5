@@ -173,22 +173,34 @@ class DeviceSinkAdapter:
         return None
 
 
+@dataclass
+class TalkbackStats:
+    connections: int = 0
+    connected: bool = False
+    bytes_pulled: int = 0
+    dropped_frames: int = 0
+    last_pull: float = 0.0
+
+
 class TalkbackRoutes:
     """Registry of live WAV streams that go2rtc pulls from the core."""
 
     def __init__(self) -> None:
         self._streams: dict[str, asyncio.Queue[bytes | None]] = {}
+        self.stats: dict[str, TalkbackStats] = {}
 
     def create(self) -> tuple[str, asyncio.Queue[bytes | None]]:
         token = secrets.token_urlsafe(24)
         q: asyncio.Queue[bytes | None] = asyncio.Queue(maxsize=50)
         self._streams[token] = q
+        self.stats[token] = TalkbackStats()
         return token, q
 
     def get(self, token: str) -> asyncio.Queue[bytes | None] | None:
         return self._streams.get(token)
 
     def remove(self, token: str) -> None:
+        self.stats.pop(token, None)
         q = self._streams.pop(token, None)
         if q is not None:
             with contextlib.suppress(asyncio.QueueFull):
@@ -222,14 +234,19 @@ class Go2rtcTalkbackSink:
         self.latency_hint_s = latency_hint_s
         self._token: str | None = None
         self._queue: asyncio.Queue[bytes | None] | None = None
-        self.connected = False
+        self._opened_at = 0.0
 
     async def open(self) -> None:
         if self._token is not None:
             return
         self._token, self._queue = self.routes.create()
+        self._opened_at = time.monotonic()
         url = f"{self.core_url}/internal/talkback/{self._token}.wav"
         await self.go2rtc.play_live(self.stream, url)
+
+    @property
+    def stats(self) -> TalkbackStats | None:
+        return self.routes.stats.get(self._token) if self._token else None
 
     async def write(self, pcm: Int16Array) -> None:
         if self._queue is None:
@@ -238,6 +255,14 @@ class Go2rtcTalkbackSink:
         if self._queue.full():  # consumer (go2rtc) is not pulling: drop oldest
             with contextlib.suppress(asyncio.QueueEmpty):
                 self._queue.get_nowait()
+            st = self.stats
+            if st is not None:
+                st.dropped_frames += 1
+                # go2rtc stopped pulling (e.g. camera reconnected): re-establish the stream.
+                if time.monotonic() - max(st.last_pull, self._opened_at) > 3.0:
+                    log.warning("talkback stream stalled, reconnecting", stream=self.stream)
+                    await self.flush()
+                    return
         self._queue.put_nowait(data)
 
     async def flush(self) -> None:

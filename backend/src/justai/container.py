@@ -108,11 +108,16 @@ class Container:
 
         # plugins
         from justai.plugins.backend import CoreServicesBackend
+        from justai.plugins.sandbox_host import SandboxClient
 
+        sandbox_token = os.environ.get("JUSTAI_SANDBOX_TOKEN") or (
+            settings.sandbox_token_file.read_text().strip()
+            if settings.sandbox_token_file.exists() else None)
+        self.sandbox = SandboxClient(self, settings.sandbox_url, sandbox_token) if sandbox_token else None
         self.plugins = PluginManager(
             self.db, self.bus, self.secrets, self.providers, self.tools, self.components,
             CoreServicesBackend(self), builtin_dir=settings.builtin_plugins_dir,
-            install_dir=settings.data_dir / "plugins", sandbox=None)
+            install_dir=settings.data_dir / "plugins", sandbox=self.sandbox)
         self.extensions: dict[str, Any] = {}
         self._tasks: list[asyncio.Task[None]] = []
 

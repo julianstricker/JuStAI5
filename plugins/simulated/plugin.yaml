@@ -1,0 +1,16 @@
+id: simulated
+name: Simulierte Geräte
+version: 1.0.0
+description: >-
+  Virtuelle Kameras, Mikrofone und Lautsprecher für Tests und Demos ohne Hardware:
+  akustischer Raum mit Echo des eigenen Lautsprechers (Verzögerung, Hall, optional
+  Mikrofon-Ducking wie bei Tapo-Kameras), einspielbare Benutzersprache, Kamerabilder
+  aus Bilddateien und virtuelles PTZ über einem Panoramabild.
+author: JuStAI5
+license: MIT
+types: [device, tool]
+trust: builtin
+entrypoint: plugin:SimulatedPlugin
+default_enabled: true
+provides: ["device_driver:simulated", "tool:simulator.say"]
+permissions: [devices.provide, tools.provide]

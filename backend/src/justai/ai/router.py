@@ -72,6 +72,7 @@ class DataFlags:
     personal: bool = False
     images: bool = False
     audio: bool = False
+    local_only: bool = False  # e.g. camera images of a room that forbids cloud media
 
 
 @dataclass
@@ -143,6 +144,8 @@ class AIRouter:
     def _cloud_block_reason(self, s: AISettings, locality: RoleLocality, flags: DataFlags) -> str | None:
         if locality == RoleLocality.LOCAL_ONLY:
             return "role is restricted to local processing"
+        if flags.local_only:
+            return "data must stay local (room policy)"
         p = s.privacy
         if not p.cloud_allowed:
             return "cloud AI is disabled"

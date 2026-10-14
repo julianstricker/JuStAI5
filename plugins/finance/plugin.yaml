@@ -1,0 +1,25 @@
+id: finance
+name: Börsenkurse
+version: 1.0.0
+description: >-
+  Aktien-, ETF-, Index- und Krypto-Kurse sowie Kursverläufe. Datenquelle: die
+  inoffizielle Yahoo-Finance-Chart-Schnittstelle (ohne Schlüssel, ohne Garantie,
+  leicht verzögert). Nicht für Handelsentscheidungen geeignet.
+author: JuStAI5
+license: MIT
+types: [tool, integration]
+entrypoint: plugin:FinancePlugin
+trust: trusted
+runtime: in_process
+default_enabled: true
+provides: ["tool:finance.quotes", "tool:finance.chart"]
+permissions: [tools.provide, network.http]
+network_allowlist: [query1.finance.yahoo.com, query2.finance.yahoo.com]
+config_schema:
+  type: object
+  properties:
+    default_symbols:
+      type: array
+      default: ["^GSPC", "^NDX", "^GDAXI", "FTSEMIB.MI", "EURUSD=X", "BTC-EUR"]
+      description: Werte für allgemeine Fragen nach "den Börsen"
+  additionalProperties: false

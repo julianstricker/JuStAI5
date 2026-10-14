@@ -86,7 +86,10 @@ def default_ai_settings(has_google_key: bool = False) -> AISettings:
             locality=Locality.LOCAL_ONLY),
     }
     if has_google_key:
-        llm = [ModelRef(provider="gemini", model="gemini-3.8-flash")]
+        # Flash-Lite is served from a separate capacity pool: a useful fallback when
+        # the primary model is overloaded (HTTP 503).
+        llm = [ModelRef(provider="gemini", model="gemini-3.8-flash"),
+               ModelRef(provider="gemini", model="gemini-flash-lite-latest")]
         for role in (ModelRole.CONVERSATION, ModelRole.REASONING, ModelRole.VISION,
                      ModelRole.MEMORY, ModelRole.TOOL_GENERATION, ModelRole.BACKGROUND):
             roles[role] = RoleConfig(chain=list(llm))

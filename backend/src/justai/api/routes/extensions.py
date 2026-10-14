@@ -8,7 +8,7 @@ from fastapi import APIRouter
 def routers() -> list[APIRouter]:
     out: list[APIRouter] = []
     for module_name in ("memory", "vision", "identity", "automation", "display", "discovery",
-                        "ptz", "devtools"):
+                        "ptz", "devtools", "settings", "gateway"):
         try:
             module = __import__(f"justai.api.routes.ext_{module_name}", fromlist=["router"])
         except ModuleNotFoundError as exc:
@@ -16,4 +16,7 @@ def routers() -> list[APIRouter]:
                 continue
             raise
         out.append(module.router)
+        extra = getattr(module, "admin_router", None)
+        if extra is not None:
+            out.append(extra)
     return out

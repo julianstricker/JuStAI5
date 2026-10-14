@@ -1,0 +1,15 @@
+id: onvif
+name: ONVIF- und RTSP-Kameras, mDNS-Suche
+version: 1.0.0
+description: >-
+  Generische IP-Kameras über ONVIF (Stream-URIs, PTZ, Presets) oder eine direkte
+  RTSP-URL. Gerätesuche per WS-Discovery (Unicast-Probe in autorisierten Bereichen)
+  und mDNS (Chromecast/Google TV, AirPlay, Home Assistant).
+author: JuStAI5
+license: MIT
+types: [device, discovery, ptz]
+trust: builtin
+entrypoint: plugin:OnvifPlugin
+default_enabled: true
+provides: ["device_driver:onvif", "device_driver:rtsp", "discovery:onvif", "discovery:mdns"]
+permissions: [devices.provide, network.lan, network.discovery]

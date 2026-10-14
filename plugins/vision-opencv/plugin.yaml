@@ -1,0 +1,38 @@
+id: vision-opencv
+name: Lokale Bildanalyse (OpenCV)
+version: 1.0.0
+description: >-
+  Objekterkennung mit YOLOX (80 COCO-Klassen, u. a. Person, Hund, Katze, Auto),
+  Gesichtserkennung mit YuNet und Gesichtsmerkmale mit SFace. Läuft lokal auf der CPU
+  (ONNX Runtime / OpenCV). Modelle aus dem OpenCV Model Zoo (Apache-2.0/MIT).
+author: JuStAI5
+license: MIT (Plugin); Modelle Apache-2.0 / MIT
+types: [vision, recognition]
+trust: builtin
+entrypoint: plugin:VisionOpenCVPlugin
+default_enabled: true
+provides: ["object_detector:yolox", "face_analyzer:opencv-sface"]
+permissions: [ai.provide]
+config_schema:
+  type: object
+  properties:
+    models_dir:
+      type: string
+      default: ""
+      description: Leer = $JUSTAI_MODELS_DIR/vision
+    threads:
+      type: integer
+      default: 2
+      minimum: 1
+      maximum: 16
+    face_match_threshold:
+      type: number
+      default: 0.40
+      description: Kosinus-Ähnlichkeit ab der eine Übereinstimmung plausibel ist (SFace-Empfehlung 0.363)
+    face_strong_threshold:
+      type: number
+      default: 0.52
+  additionalProperties: false
+requirements:
+  memory_mb: 400
+  gpu: optional

@@ -1,0 +1,90 @@
+[project]
+name = "justai-core"
+version = "0.1.0"
+description = "JuStAI5 core: turns ordinary cameras, microphones, speakers and screens into an AI assistant"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "justai-sdk",
+    # web / api
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "python-multipart>=0.0.12",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "jsonschema>=4.23",
+    "httpx>=0.27",
+    "websockets>=13",
+    # persistence
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30",
+    "alembic>=1.14",
+    "pgvector>=0.3.6",
+    # security / ops
+    "argon2-cffi>=23.1",
+    "pyjwt>=2.9",
+    "cryptography>=43",
+    "structlog>=24.4",
+    "prometheus-client>=0.21",
+    "psutil>=6.1",
+    "pyyaml>=6.0",
+    # signal processing
+    "numpy>=2.0",
+    "scipy>=1.14",
+    "soxr>=0.5",
+    "onnxruntime>=1.20",
+    "livekit>=1.0",  # WebRTC audio processing module (AEC3, NS, HPF)
+    "opencv-python-headless>=4.10",
+    "pillow>=11",
+    # builtin plugin runtimes
+    "openwakeword==0.6.0",
+    "faster-whisper>=1.1",
+    "piper-tts>=1.3",
+    "fastembed>=0.5",
+    "google-genai>=1.50",
+    "openai>=2.0",
+    "anthropic>=0.50",
+    "pytapo>=3.3",
+    "onvif-zeep-async>=4.0",
+    "zeroconf>=0.136",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-timeout>=2.3",
+    "mypy>=1.13",
+    "ruff>=0.8",
+    "types-pyyaml",
+    "types-jsonschema",
+    "types-psutil",
+]
+
+[tool.uv.sources]
+justai-sdk = { workspace = true }
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/justai"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+timeout = 120
+markers = [
+    "db: needs a PostgreSQL database (JUSTAI_TEST_DATABASE_URL)",
+    "models: needs downloaded ML models (slow)",
+    "hardware: needs real devices on the network",
+]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+ignore_missing_imports = true
+warn_unused_ignores = false
+exclude = ["migrations/"]

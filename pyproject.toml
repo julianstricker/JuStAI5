@@ -1,0 +1,25 @@
+[project]
+name = "justai5-workspace"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+
+[tool.uv]
+package = false
+environments = ["sys_platform == 'linux'"]
+# openWakeWord pins tflite-runtime on Linux, which has no wheels for Python 3.12.
+# We only use its ONNX inference path, so the dependency is disabled.
+override-dependencies = ["tflite-runtime; sys_platform == 'never'"]
+
+[tool.uv.workspace]
+members = ["backend", "sdk/python", "sandbox"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "ASYNC", "RUF", "PT"]
+ignore = ["RUF001", "RUF002", "RUF003", "B008", "ASYNC109"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["B011", "PT011"]

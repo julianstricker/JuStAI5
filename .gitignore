@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+frontend/dist/
+*.tsbuildinfo
+
+# Local configuration and secrets
+.env
+.env.local
+secrets/
+*.key
+
+# Runtime data (bind mounts in dev)
+data/
+backups/
+models-cache/
+
+# Editors
+.idea/
+.vscode/
+*.swp
+.DS_Store

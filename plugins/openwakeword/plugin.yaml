@@ -1,0 +1,22 @@
+id: openwakeword
+name: openWakeWord
+version: 1.0.0
+description: Lokale Wakeword-Erkennung mit openWakeWord (ONNX). Läuft vollständig offline.
+author: JuStAI5
+license: Apache-2.0 (openWakeWord)
+types: [wakeword]
+trust: builtin
+entrypoint: plugin:OpenWakeWordPlugin
+default_enabled: true
+provides: ["wakeword:openwakeword"]
+permissions: [ai.provide]
+config_schema:
+  type: object
+  properties:
+    models_dir:
+      type: string
+      default: /models/openwakeword
+      description: Verzeichnis mit melspectrogram.onnx, embedding_model.onnx und Wakeword-Modellen
+  additionalProperties: false
+requirements:
+  memory_mb: 150

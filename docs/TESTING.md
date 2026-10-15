@@ -8,7 +8,7 @@ und **nicht getestet**.
 
 | Suite | Ort | Braucht | Ergebnis |
 | --- | --- | --- | --- |
-| Unit | `backend/tests/unit` | nichts | 97 bestanden |
+| Unit | `backend/tests/unit` | nichts | 98 bestanden |
 | Audio mit echten Modellen | `backend/tests/audio` | Modelle (`JUSTAI_TEST_MODELS_DIR`) | 5 bestanden |
 | Datenbank | `backend/tests/db` | PostgreSQL + pgvector (`JUSTAI_TEST_DATABASE_URL`) | 2 bestanden |
 | End-to-End | `backend/tests/e2e` | laufende Instanz (`JUSTAI_E2E_URL`, `JUSTAI_E2E_PASSWORD`), Gemini | 5 bestanden |
@@ -70,7 +70,7 @@ Legende: ✅ nachgewiesen · 🟡 teilweise (was fehlt, steht dabei) · ⏳ offe
 | 17 | Plugin-Installation | ✅ | Live: Zip hochgeladen → als `untrusted` in der Sandbox → Start ohne Rechte abgelehnt → Recht gewährt → aktiv, Tool erscheint, der Assistent nutzt es → deaktiviert → Tool verschwindet. |
 | 18 | Tool-Entwicklung | ✅ | Live: „Kalenderwoche und Wochentag zu einem Datum“ → Spezifikation, Code, Tests → statische Prüfung → Tests in der Sandbox (2 bestanden) → Sicherheitsreview → Freigabe → der Assistent beantwortet „KW von 24.12.2026?“ korrekt mit dem neuen Tool → Deaktivierung. |
 | 19 | Neustart | ✅ | `docker compose down` + `up`: Räume, Geräte, Endpoints, Plugins (aktiv), Personen, Erinnerungen, Automationen, KI- und Systemeinstellungen identisch. Zusätzlich Backup in ein getrenntes Projekt wiederhergestellt. |
-| 20 | Fehlerbehandlung | ✅ | Live: die C410 ist meist offline, die C200 arbeitet unbeeinflusst. Ein fehlschlagendes Plugin (fehlende Rechte) wird `failed` markiert, alles andere läuft weiter. Gemini-Überlastung: Fallback statt Ausfall. Unit: Bus-Fehlerisolation, hängende Provider. |
+| 20 | Fehlerbehandlung | ✅ | Live: die C410 ist meist offline, die C200 arbeitet unbeeinflusst. Neustart des Medienservers: Kameras nach 2 s wieder verfügbar. Ein fehlschlagendes Plugin (fehlende Rechte) wird `failed` markiert, alles andere läuft weiter. Gemini-Überlastung: Fallback statt Ausfall. Unit: Bus-Fehlerisolation, hängende Provider. |
 
 ### Was nur der Benutzer machen kann (offene Punkte)
 
@@ -101,6 +101,7 @@ Unit-Tests abgedeckt hatten:
 | Zeitzone der Einstellungen wurde von Automationen ignoriert; Schalter ohne Funktion in den Einstellungen | verdrahtet bzw. entfernt |
 | Kein Schutz gegen Passwort-Raten, keine Security-Header | Drosselung, CSP u. a. |
 | Discovery schlug für Tapo den ONVIF-Treiber vor (ohne Lautsprecher) | herstellerspezifischer Treiber hat Vorrang |
+| Nach einem Neustart von go2rtc blieben alle Kameras unerreichbar (Streams nur im Speicher) | Watchdog stellt Streams wieder her; live: 2 s |
 
 ## Nicht automatisiert getestet
 

@@ -178,6 +178,7 @@ class Container:
         await self.plugins.start()
         await self.topology.refresh()
         await self.devices.start()
+        self.supervisor.start("go2rtc-streams", self.go2rtc.keep_streams)
         await self.audio.start()
         for ext in self.extensions.values():
             start = getattr(ext, "start", None)

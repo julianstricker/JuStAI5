@@ -8,6 +8,7 @@ go2rtc and are never written to its config file.
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 import httpx
@@ -29,6 +30,10 @@ class Go2rtcClient:
         self.base_url = base_url.rstrip("/")
         self.rtsp_url = rtsp_url.rstrip("/")
         self._http = httpx.AsyncClient(base_url=self.base_url, timeout=10.0)
+        # Streams this core registered. go2rtc keeps them only in memory, so after a
+        # go2rtc restart they are gone; ``keep_streams`` restores them.
+        self._desired: dict[str, str] = {}
+        self.restored = 0
 
     async def close(self) -> None:
         await self._http.aclose()
@@ -62,12 +67,35 @@ class Go2rtcClient:
             raise Unavailable(f"go2rtc unreachable: {exc}") from exc
         if r.status_code >= 400:
             raise Unavailable(f"go2rtc rejected stream {name}: {redact_text(r.text)[:200]}")
+        self._desired[name] = sources[0]
 
     async def delete_stream(self, name: str) -> None:
+        self._desired.pop(name, None)
         try:
             await self._http.delete("/api/streams", params={"src": name})
         except httpx.HTTPError as exc:
             log.warning("go2rtc delete failed", stream=name, error=str(exc))
+
+    async def ensure_streams(self) -> list[str]:
+        """Re-register streams that go2rtc lost (e.g. after a restart). Returns their names."""
+        missing = sorted(set(self._desired) - set(await self.streams()))
+        for name in missing:
+            src = self._desired.get(name)
+            if src is not None:
+                await self.set_stream(name, [src])
+        if missing:
+            self.restored += len(missing)
+            log.warning("go2rtc lost streams, restored", streams=missing)
+        return missing
+
+    async def keep_streams(self, interval_s: float = 5.0) -> None:
+        """Watchdog loop (run under the supervisor)."""
+        while True:
+            await asyncio.sleep(interval_s)
+            try:
+                await self.ensure_streams()
+            except (httpx.HTTPError, Unavailable) as exc:
+                log.debug("go2rtc not reachable for stream check", error=str(exc))
 
     async def streams(self) -> dict[str, Any]:
         r = await self._http.get("/api/streams")
@@ -86,7 +114,6 @@ class Go2rtcClient:
         """Connect the producer (via a temporary consumer) and return its media list,
         e.g. ``["video, recvonly, H264", "audio, recvonly, PCMA/8000",
         "audio, sendonly, PCMA/8000"]``. The producer only exists while consumed."""
-        import asyncio
         import contextlib
 
         async def consume() -> None:

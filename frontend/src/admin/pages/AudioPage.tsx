@@ -1,4 +1,16 @@
-import { Badge, Button, Card, Group, NumberInput, Progress, SimpleGrid, Stack, Table, Text, Title } from "@mantine/core";
+import {
+  Badge,
+  Button,
+  Card,
+  Group,
+  NumberInput,
+  Progress,
+  SimpleGrid,
+  Stack,
+  Table,
+  Text,
+  Title,
+} from "@mantine/core";
 import { IconDownload } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
@@ -23,12 +35,26 @@ interface SpeakerTelemetry {
   underruns: number;
   latency_s: number;
   utterance: string | null;
-  talkback?: { connected: boolean; connections: number; bytes_pulled: number; dropped_frames: number };
+  talkback?: {
+    connected: boolean;
+    connections: number;
+    bytes_pulled: number;
+    dropped_frames: number;
+  };
 }
 
-const toPct = (db: number) => Math.max(0, Math.min(100, ((db + 90) / 90) * 100));
+const toPct = (db: number) =>
+  Math.max(0, Math.min(100, ((db + 90) / 90) * 100));
 
-function Meter({ label, value, color }: { label: string; value: number; color?: string }) {
+function Meter({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: number;
+  color?: string;
+}) {
   return (
     <Stack gap={2}>
       <Group justify="space-between">
@@ -42,14 +68,25 @@ function Meter({ label, value, color }: { label: string; value: number; color?: 
   );
 }
 
-function EndpointCard({ ep, rt }: { ep: Endpoint; rt?: EndpointRuntime }) {
+function EndpointCard({
+  ep,
+  rt,
+  devices,
+}: {
+  ep: Endpoint;
+  rt?: EndpointRuntime;
+  devices: Device[];
+}) {
   const isAdmin = useIsAdmin();
   const [seconds, setSeconds] = useState(10);
   const [recording, setRecording] = useState(false);
   const record = async () => {
     setRecording(true);
     try {
-      const blob = await api.post<Blob>(`/api/endpoints/${ep.id}/diagnostic-recording`, { seconds });
+      const blob = await api.post<Blob>(
+        `/api/endpoints/${ep.id}/diagnostic-recording`,
+        { seconds },
+      );
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -63,14 +100,18 @@ function EndpointCard({ ep, rt }: { ep: Endpoint; rt?: EndpointRuntime }) {
     }
   };
   const r = rt ?? ep.runtime;
-  const hasMic = ep.devices.some((d) => d.role === "mic");
-  if (!hasMic) {
+  const micRef = ep.devices.find((d) => d.role === "mic");
+  const mic = micRef
+    ? devices.find((d) => d.id === micRef.device_id)
+    : undefined;
+  if (!micRef || (mic && !mic.enabled)) {
     return (
       <Card withBorder>
         <Title order={5}>{ep.name}</Title>
         <Text size="sm" c="dimmed" mt="xs">
-          Kein Mikrofon zugeordnet – das Gerät wurde gelöscht oder nie zugewiesen. Unter „Räume“ ein Mikrofon zuordnen oder den
-          Endpoint löschen.
+          {!micRef
+            ? "Kein Mikrofon zugeordnet – das Gerät wurde gelöscht oder nie zugewiesen. Unter „Räume“ ein Mikrofon zuordnen oder den Endpoint löschen."
+            : `Mikrofon „${mic?.name}“ ist deaktiviert – dieser Endpoint hört gerade nicht zu.`}
         </Text>
       </Card>
     );
@@ -83,7 +124,9 @@ function EndpointCard({ ep, rt }: { ep: Endpoint; rt?: EndpointRuntime }) {
           {r?.gated && <Badge color="orange">Eingang gesperrt</Badge>}
           {r?.echo_window && <Badge color="violet">Echofenster</Badge>}
           {r?.speech && <Badge color="green">Sprache</Badge>}
-          <Badge variant="outline">{r?.duplex === "full" ? "Vollduplex" : "Halbduplex"}</Badge>
+          <Badge variant="outline">
+            {r?.duplex === "full" ? "Vollduplex" : "Halbduplex"}
+          </Badge>
         </Group>
       </Group>
       {r ? (
@@ -96,7 +139,9 @@ function EndpointCard({ ep, rt }: { ep: Endpoint; rt?: EndpointRuntime }) {
               <Progress value={r.vad * 100} color="green" />
             </Stack>
             <Stack gap={2}>
-              <Text size="xs">Wakeword {(r.wake_score * 100).toFixed(0)} %</Text>
+              <Text size="xs">
+                Wakeword {(r.wake_score * 100).toFixed(0)} %
+              </Text>
               <Progress value={r.wake_score * 100} color="grape" />
             </Stack>
           </Group>
@@ -109,12 +154,17 @@ function EndpointCard({ ep, rt }: { ep: Endpoint; rt?: EndpointRuntime }) {
               <Table.Tr>
                 <Table.Td>Gemessene Echo-Verzögerung</Table.Td>
                 <Table.Td>
-                  {r.delay_estimate_s !== null ? `${r.delay_estimate_s.toFixed(2)} s` : "–"} (Konfidenz {r.delay_confidence.toFixed(0)})
+                  {r.delay_estimate_s !== null
+                    ? `${r.delay_estimate_s.toFixed(2)} s`
+                    : "–"}{" "}
+                  (Konfidenz {r.delay_confidence.toFixed(0)})
                 </Table.Td>
               </Table.Tr>
               <Table.Tr>
                 <Table.Td>Echodämpfung (ERLE)</Table.Td>
-                <Table.Td>{r.erle_db !== null ? `${r.erle_db.toFixed(1)} dB` : "–"}</Table.Td>
+                <Table.Td>
+                  {r.erle_db !== null ? `${r.erle_db.toFixed(1)} dB` : "–"}
+                </Table.Td>
               </Table.Tr>
               <Table.Tr>
                 <Table.Td>Duplex-Begründung</Table.Td>
@@ -134,8 +184,22 @@ function EndpointCard({ ep, rt }: { ep: Endpoint; rt?: EndpointRuntime }) {
           </Table>
           {isAdmin && (
             <Group>
-              <NumberInput size="xs" w={90} min={1} max={30} value={seconds} onChange={(v) => setSeconds(Number(v))} suffix=" s" />
-              <Button size="xs" variant="light" leftSection={<IconDownload size={14} />} loading={recording} onClick={record}>
+              <NumberInput
+                size="xs"
+                w={90}
+                min={1}
+                max={30}
+                value={seconds}
+                onChange={(v) => setSeconds(Number(v))}
+                suffix=" s"
+              />
+              <Button
+                size="xs"
+                variant="light"
+                leftSection={<IconDownload size={14} />}
+                loading={recording}
+                onClick={record}
+              >
                 Diagnoseaufnahme
               </Button>
               <Text size="xs" c="dimmed">
@@ -145,26 +209,49 @@ function EndpointCard({ ep, rt }: { ep: Endpoint; rt?: EndpointRuntime }) {
           )}
         </Stack>
       ) : (
-        <Text c="dimmed">Kein Audio aktiv (Mikrofon offline oder Endpoint inaktiv).</Text>
+        <Text c="dimmed">
+          Kein Audio aktiv (Mikrofon offline oder Endpoint inaktiv).
+        </Text>
       )}
     </Card>
   );
 }
 
 export function AudioPage() {
-  const endpoints = useQuery({ queryKey: ["endpoints"], queryFn: () => api.get<Endpoint[]>("/api/endpoints"), refetchInterval: 10000 });
-  const devices = useQuery({ queryKey: ["devices"], queryFn: () => api.get<Device[]>("/api/devices") });
+  const endpoints = useQuery({
+    queryKey: ["endpoints"],
+    queryFn: () => api.get<Endpoint[]>("/api/endpoints"),
+    refetchInterval: 10000,
+  });
+  const devices = useQuery({
+    queryKey: ["devices"],
+    queryFn: () => api.get<Device[]>("/api/devices"),
+  });
   const eps = useTelemetry<EndpointRuntime>("audio.endpoint.");
   const mics = useTelemetry<MicTelemetry>("audio.mic.");
   const speakers = useTelemetry<SpeakerTelemetry>("audio.speaker.");
-  const events = useLiveEvents(40, (e) => e.type.startsWith("audio.") || e.type === "conversation.barge_in");
-  const name = (id: string) => devices.data?.find((d) => d.id === id)?.name ?? id;
+  const events = useLiveEvents(
+    40,
+    (e) => e.type.startsWith("audio.") || e.type === "conversation.barge_in",
+  );
+  const name = (id: string) =>
+    devices.data?.find((d) => d.id === id)?.name ?? id;
 
   return (
     <Stack>
-      <PageHeader title="Audio" description="Live-Diagnose: Pegel, Sprachaktivität, Wakeword, Echo-Sperre und Audioausgabe" />
+      <PageHeader
+        title="Audio"
+        description="Live-Diagnose: Pegel, Sprachaktivität, Wakeword, Echo-Sperre und Audioausgabe"
+      />
       <SimpleGrid cols={{ base: 1, lg: 2 }}>
-        {endpoints.data?.map((ep) => <EndpointCard key={ep.id} ep={ep} rt={eps[ep.id]} />)}
+        {endpoints.data?.map((ep) => (
+          <EndpointCard
+            key={ep.id}
+            ep={ep}
+            rt={eps[ep.id]}
+            devices={devices.data ?? []}
+          />
+        ))}
       </SimpleGrid>
       <SimpleGrid cols={{ base: 1, lg: 2 }}>
         <Card withBorder>
@@ -188,7 +275,9 @@ export function AudioPage() {
                   <Table.Td>{m.level_db.toFixed(1)} dBFS</Table.Td>
                   <Table.Td>{m.chunks}</Table.Td>
                   <Table.Td>{m.overruns}</Table.Td>
-                  <Table.Td>{m.stale_s !== null ? `vor ${m.stale_s.toFixed(1)} s` : "–"}</Table.Td>
+                  <Table.Td>
+                    {m.stale_s !== null ? `vor ${m.stale_s.toFixed(1)} s` : "–"}
+                  </Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>
@@ -211,7 +300,13 @@ export function AudioPage() {
               {Object.entries(speakers).map(([id, s]) => (
                 <Table.Tr key={id}>
                   <Table.Td>{name(id)}</Table.Td>
-                  <Table.Td>{s.playing ? <Badge color="violet">spielt</Badge> : "bereit"}</Table.Td>
+                  <Table.Td>
+                    {s.playing ? (
+                      <Badge color="violet">spielt</Badge>
+                    ) : (
+                      "bereit"
+                    )}
+                  </Table.Td>
                   <Table.Td>{s.latency_s.toFixed(1)} s</Table.Td>
                   <Table.Td>
                     {s.talkback

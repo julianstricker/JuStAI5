@@ -7,9 +7,17 @@ import { useEffect, useRef, useState } from "react";
 
 const MAX_LAG_S = 2.5;
 
-export function LiveVideo({ src, rounded = 8 }: { src: string; rounded?: number }) {
+export function LiveVideo({
+  src,
+  rounded = 8,
+}: {
+  src: string;
+  rounded?: number;
+}) {
   const ref = useRef<HTMLVideoElement>(null);
-  const [state, setState] = useState<"connecting" | "playing" | "error">("connecting");
+  const [state, setState] = useState<"connecting" | "playing" | "error">(
+    "connecting",
+  );
 
   useEffect(() => {
     const v = ref.current;
@@ -24,10 +32,25 @@ export function LiveVideo({ src, rounded = 8 }: { src: string; rounded?: number 
     const keepLive = () => {
       if (!v.buffered.length) return;
       const end = v.buffered.end(v.buffered.length - 1);
-      if (end - v.currentTime > MAX_LAG_S) v.currentTime = Math.max(0, end - 0.5);
+      if (end - v.currentTime > MAX_LAG_S)
+        v.currentTime = Math.max(0, end - 0.5);
+    };
+    let retryTimer: number | undefined;
+    let lastTime = -1;
+    let stalledFor = 0;
+    const restart = () => {
+      // Reconnect (camera restarting, network hiccup): fresh request after a short pause.
+      window.clearTimeout(retryTimer);
+      retryTimer = window.setTimeout(() => {
+        v.src = `${src}${src.includes("?") ? "&" : "?"}r=${Date.now()}`;
+        play();
+      }, 3000);
     };
     const onPlaying = () => setState("playing");
-    const onError = () => setState("error");
+    const onError = () => {
+      setState("error");
+      restart();
+    };
     v.addEventListener("loadeddata", play);
     v.addEventListener("canplay", play);
     v.addEventListener("playing", onPlaying);
@@ -36,9 +59,17 @@ export function LiveVideo({ src, rounded = 8 }: { src: string; rounded?: number 
     const timer = window.setInterval(() => {
       keepLive();
       if (v.paused && v.readyState >= 2) play();
+      // No progress for 10 s: the stream died without an error event.
+      stalledFor = v.currentTime === lastTime ? stalledFor + 1 : 0;
+      lastTime = v.currentTime;
+      if (stalledFor === 10) {
+        setState("connecting");
+        restart();
+      }
     }, 1000);
     return () => {
       window.clearInterval(timer);
+      window.clearTimeout(retryTimer);
       v.removeEventListener("loadeddata", play);
       v.removeEventListener("canplay", play);
       v.removeEventListener("playing", onPlaying);
@@ -50,8 +81,21 @@ export function LiveVideo({ src, rounded = 8 }: { src: string; rounded?: number 
   }, [src]);
 
   return (
-    <div style={{ position: "relative", width: "100%", background: "#000", borderRadius: rounded, minHeight: 120 }}>
-      <video ref={ref} muted playsInline style={{ width: "100%", display: "block", borderRadius: rounded }} />
+    <div
+      style={{
+        position: "relative",
+        width: "100%",
+        background: "#000",
+        borderRadius: rounded,
+        minHeight: 120,
+      }}
+    >
+      <video
+        ref={ref}
+        muted
+        playsInline
+        style={{ width: "100%", display: "block", borderRadius: rounded }}
+      />
       {state !== "playing" && (
         <div
           style={{
@@ -64,7 +108,9 @@ export function LiveVideo({ src, rounded = 8 }: { src: string; rounded?: number 
             fontSize: 14,
           }}
         >
-          {state === "error" ? "Livebild nicht verfügbar" : "Verbinde mit Kamera …"}
+          {state === "error"
+            ? "Livebild nicht verfügbar – neuer Versuch …"
+            : "Verbinde mit Kamera …"}
         </div>
       )}
     </div>

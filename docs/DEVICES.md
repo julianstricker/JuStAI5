@@ -88,10 +88,23 @@ Abschaltbar mit `JUSTAI_ENABLE_SIMULATED_DEVICES=false`.
 
 Wird beim Koppeln eines Display-Clients angelegt ([DISPLAYS.md](DISPLAYS.md)).
 
+## Deaktivieren statt Löschen
+
+Im Geräte-Dialog oben rechts: Schalter **Aktiviert**. Ein deaktiviertes Gerät
+behält Konfiguration, Zugangsdaten, Raum- und Endpoint-Zuordnung, aber JuStAI5
+baut keine Verbindung auf: kein Stream in go2rtc, kein Mikrofon, keine Bildanalyse,
+keine Ausgabe dorthin. Endpoints zeigen das Gerät als „(deaktiviert)“, die
+Audio-Diagnose meldet, dass der Endpoint nicht zuhört. Nach dem Aktivieren ist das
+Gerät nach wenigen Sekunden wieder online (C200 getestet: ~6 s).
+
+Löschen entfernt dagegen auch Zugangsdaten und Zuordnungen. Endpoints, deren Geräte
+gelöscht wurden, bleiben bestehen und sind unter *Räume* mit „keine Geräte“
+markiert.
+
 ## Status und Wiederverbindung
 
 Der `DeviceManager` hält pro Gerät eine Laufzeit (Handle, Fähigkeiten, Status
-`online`/`offline`/`no_driver`). Fällt ein Gerät aus, wird mit Backoff neu
+`online`/`connecting`/`offline`/`disabled`/`no_driver`). Fällt ein Gerät aus, wird mit Backoff neu
 verbunden; Statuswechsel erzeugen `device.status.changed`. Der Talkback-Pfad
 verbindet sich automatisch neu. Endpoints mit fehlenden Geräten melden ihren
 Zustand in der UI, statt auf andere Räume auszuweichen.

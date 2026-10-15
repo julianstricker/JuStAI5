@@ -89,13 +89,12 @@ async def update_device(device_id: str, body: DevicePatch, p: Admin, c: C) -> di
     current = await c.device_records.get(device_id)
     if body.config is not None:
         _validate_config(c, current.driver_id, body.config, partial=True)
-    device = await c.device_records.update(device_id, body,
-                                           _driver_secret_fields(c, current.driver_id))
+    await c.device_records.update(device_id, body, _driver_secret_fields(c, current.driver_id))
     await c.audit.record(p.actor, "device.update", device_id,
                          fields=sorted(body.model_dump(exclude_none=True)))
     await c.devices.reload(device_id)
     await c.refresh_topology()
-    return await _device(c, device)
+    return await _device(c, await c.device_records.get(device_id))  # status changed by reload
 
 
 @router.delete("/{device_id}")

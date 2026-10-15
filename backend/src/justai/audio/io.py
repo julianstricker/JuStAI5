@@ -229,6 +229,8 @@ class Go2rtcTalkbackSink:
     """
 
     continuous = True
+    CHECK_INTERVAL_S = 1.0
+    DELIVERY_TIMEOUT_S = 6.0
 
     def __init__(self, go2rtc: Go2rtcClient, stream: str, routes: TalkbackRoutes,
                  core_url: str, latency_hint_s: float = 2.0, settle_s: float = 1.5) -> None:
@@ -244,6 +246,13 @@ class Go2rtcTalkbackSink:
         self._token: str | None = None
         self._queue: asyncio.Queue[bytes | None] | None = None
         self._opened_at = 0.0
+        # Delivery check: go2rtc may keep pulling our stream while the route to the camera
+        # is gone (after a camera reconnect) - audio would vanish silently.
+        self._monitor: asyncio.Task[None] | None = None
+        self._delivering = False
+        self._restart_requested = False
+        self._failed_restarts = 0
+        self._next_restart = 0.0
 
     async def open(self) -> None:
         if self._token is not None:
@@ -251,7 +260,38 @@ class Go2rtcTalkbackSink:
         self._token, self._queue = self.routes.create()
         self._opened_at = time.monotonic()
         url = f"{self.core_url}/internal/talkback/{self._token}.wav"
+        self._delivering = False
         await self.go2rtc.play_live(self.stream, url)
+        if self._monitor is None or self._monitor.done():
+            self._monitor = asyncio.create_task(self._watch_delivery(), name=f"talkback-watch:{self.stream}")
+
+    async def _watch_delivery(self) -> None:
+        last: int | None = None
+        last_change = time.monotonic()
+        while True:
+            await asyncio.sleep(self.CHECK_INTERVAL_S)
+            if self._token is None:
+                continue
+            try:
+                sent = await self.go2rtc.backchannel_bytes(self.stream)
+            except Exception:
+                sent = None
+            now = time.monotonic()
+            if sent is not None and last is not None and sent > last:
+                last_change = now
+                if not self._delivering:
+                    log.info("talkback delivering to device", stream=self.stream)
+                self._delivering = True
+                self._failed_restarts = 0
+            elif now - max(last_change, self._opened_at) > self.DELIVERY_TIMEOUT_S:
+                self._delivering = False
+                if now >= self._next_restart and not self._restart_requested:
+                    log.warning("talkback not reaching the device, rebuilding the route",
+                                stream=self.stream, route=sent is not None)
+                    self._restart_requested = True
+                    self._failed_restarts += 1
+                    self._next_restart = now + min(60.0, self.DELIVERY_TIMEOUT_S * 2 ** self._failed_restarts)
+            last = sent
 
     @property
     def stats(self) -> TalkbackStats | None:
@@ -260,10 +300,13 @@ class Go2rtcTalkbackSink:
     @property
     def ready(self) -> bool:
         st = self.stats
-        return bool(st and st.connected and st.first_pull
+        return bool(st and st.connected and st.first_pull and self._delivering
                     and time.monotonic() - st.first_pull >= self.settle_s)
 
     async def write(self, pcm: Int16Array) -> None:
+        if self._restart_requested:
+            self._restart_requested = False
+            await self.flush()
         if self._queue is None:
             return
         data = pcm.astype("<i2").tobytes()
@@ -286,11 +329,21 @@ class Go2rtcTalkbackSink:
         await self.open()
 
     async def close(self) -> None:
+        self._delivering = False
         if self._token is not None:
             self.routes.remove(self._token)
             self._token, self._queue = None, None
             with contextlib.suppress(Exception):
                 await self.go2rtc.stop_playback(self.stream)
+
+    async def shutdown(self) -> None:
+        """Final close (device removed): also stops the delivery check."""
+        if self._monitor is not None:
+            self._monitor.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._monitor
+            self._monitor = None
+        await self.close()
 
 
 FrameObserver = Callable[[float, Int16Array, bool], None]
@@ -399,7 +452,8 @@ class SpeakerChannel:
             with contextlib.suppress(asyncio.CancelledError):
                 await self._task
         await self.clear()
-        await self.sink.close()
+        shutdown = getattr(self.sink, "shutdown", None)
+        await (shutdown() if shutdown is not None else self.sink.close())
         self._open = False
 
     def _complete(self, u: _Utterance) -> None:

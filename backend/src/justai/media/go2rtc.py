@@ -158,6 +158,14 @@ class Go2rtcClient:
         if r.status_code >= 400:
             raise Unavailable(f"go2rtc talkback failed: {redact_text(r.text)[:200]}")
 
+    async def backchannel_bytes(self, name: str) -> int | None:
+        """Bytes go2rtc has sent to the device speaker of this stream (None: no route)."""
+        info = await self.stream_info(name)
+        senders = [s for p in (info or {}).get("producers") or [] for s in p.get("senders") or []]
+        if not senders:
+            return None
+        return sum(int(s.get("bytes") or 0) for s in senders)
+
     async def stop_playback(self, name: str) -> None:
         """Remove the talkback producer (flushes go2rtc-side buffers)."""
         await self._http.post("/api/streams", params={"dst": name, "src": ""})

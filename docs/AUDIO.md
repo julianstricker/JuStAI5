@@ -38,6 +38,14 @@ die erste Ausgabe danach (z. B. der erste Testton) ging verloren. Für Akku-Kame
 lässt sich das Schließen per Geräte-Einstellung `speaker_idle_close_s` wieder
 aktivieren.
 
+**Zustellung prüfen statt annehmen:** go2rtc holt den Audiostrom auch dann weiter ab,
+wenn die Verbindung zum Kameralautsprecher verloren ging (z. B. nach einem
+Kamera-Reconnect). Das Audio verschwand dann lautlos. Der Core fragt deshalb jede
+Sekunde bei go2rtc ab, ob tatsächlich Bytes an die Kamera gehen. Erst dann gibt er
+Sprache frei, und nach 6 s ohne Zustellung baut er die Strecke neu auf (bei
+offline-Kamera mit wachsendem Abstand bis 60 s). Live geprüft: Nach „Neu verbinden“
+der C200 war die Strecke nach ~15 s wieder da (8 KB/s an die Kamera, stabil).
+
 **Talkback zu Kameras:** Der Core stellt pro Lautsprecher einen Live-WAV-Stream
 bereit (`/internal/talkback/<token>.wav`, Token zufällig, nur im internen Netz).
 go2rtc zieht ihn als Quelle in den Backchannel der Kamera

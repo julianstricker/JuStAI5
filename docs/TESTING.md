@@ -110,6 +110,8 @@ Unit-Tests abgedeckt hatten:
 | Kein Schutz gegen Passwort-Raten, keine Security-Header | Drosselung, CSP u. a. |
 | Discovery schlug für Tapo den ONVIF-Treiber vor (ohne Lautsprecher) | herstellerspezifischer Treiber hat Vorrang |
 | Nach einem Neustart von go2rtc blieben alle Kameras unerreichbar (Streams nur im Speicher) | Watchdog stellt Streams wieder her; live: 2 s |
+| Erste Ausgabe nach einer Pause unhörbar (Kanal nach 2 min geschlossen, Neuaufbau zu langsam) | Kanal bleibt offen, Sprache wartet auf Bereitschaft |
+| Ton blieb nach Kamera-Reconnect dauerhaft stumm (go2rtc holte ab, lieferte aber nicht an die Kamera) | Zustellungsprüfung an go2rtc, automatischer Neuaufbau |
 
 ## Bekannte Instabilität
 

@@ -111,6 +111,15 @@ Unit-Tests abgedeckt hatten:
 | Discovery schlug für Tapo den ONVIF-Treiber vor (ohne Lautsprecher) | herstellerspezifischer Treiber hat Vorrang |
 | Nach einem Neustart von go2rtc blieben alle Kameras unerreichbar (Streams nur im Speicher) | Watchdog stellt Streams wieder her; live: 2 s |
 
+## Bekannte Instabilität
+
+Die beiden Full-Duplex-Tests in `backend/tests/audio` sind nicht deterministisch,
+weil Piper die Testsprache bei jedem Lauf leicht anders erzeugt. Im Mittel schlägt
+etwa einer von drei bis sechs Läufen fehl: mal wird eine echte Unterbrechung zu spät
+erkannt, mal (seltener seit der Toleranz um die geschätzte Echoverzögerung) Echo als
+Unterbrechung gewertet. Half Duplex, der Modus der C200, ist davon nicht betroffen.
+Offen: reproduzierbare Testsprache und eine Abstimmung über viele Varianten.
+
 ## Nicht automatisiert getestet
 
 * Konsolidierung des Gedächtnisses (Zusammenführen, Widersprüche)

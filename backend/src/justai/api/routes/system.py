@@ -239,7 +239,7 @@ async def talkback(token: str, c: C) -> StreamingResponse:
     async def body() -> AsyncIterator[bytes]:
         stats.connections += 1
         stats.connected = True
-        stats.last_pull = time.monotonic()
+        stats.last_pull = stats.first_pull = time.monotonic()
         try:
             yield wav_stream_header(16000)
             while True:

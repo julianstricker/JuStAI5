@@ -265,8 +265,11 @@ class EndpointAudioProcessor:
             return True
         if not self.audio.barge_in:
             return False
-        delay = self._delay.delay_s or self.latency_s
-        ref_db = self.reference.energy_db(t - delay, FRAME_10MS)
+        measured = self._delay.delay_s
+        delay = measured or self.latency_s
+        # Until the delay is measured it is only a guess: compare with the loudest reference
+        # frame around it (the frame-exact value made speech onsets look like barge-in).
+        ref_db = self.reference.peak_energy_db(t - delay, FRAME_10MS, 0.04 if measured else 0.15)
         coupling = self._coupling_db if self._coupling_db is not None else 0.0
         excess = raw_db - max(ref_db + coupling, self.stats.noise_floor_db)
         qualifies = excess >= 8.0 and (vad >= 0.5 or excess >= 14.0)

@@ -317,11 +317,17 @@ class AudioEngine:
                 sink: Any = DeviceSinkAdapter(custom_sink, latency or DEFAULT_LOCAL_LATENCY_S)
             elif media is not None and media.backchannel and runtime.stream:
                 sink = Go2rtcTalkbackSink(self.go2rtc, runtime.stream, self.talkback, self.core_url,
-                                          latency or DEFAULT_NETWORK_LATENCY_S)
+                                          latency or DEFAULT_NETWORK_LATENCY_S,
+                                          settle_s=float(str(runtime.settings.get("talkback_settle_s", 1.5))))
             else:
                 sink = None
             if sink is not None:
-                self.speakers[device_id] = SpeakerChannel(device_id, sink)
+                idle = runtime.settings.get("speaker_idle_close_s")
+                speaker = SpeakerChannel(device_id, sink, float(str(idle)) if idle is not None else None)
+                self.speakers[device_id] = speaker
+                if sink.continuous and idle is None:
+                    # Open the camera backchannel now, so the first output is not cut off.
+                    spawn(speaker.warm_up(), name=f"speaker-warmup:{device_id}")
         await self._rewire()
 
     # --------------------------------------------------------------- endpoints

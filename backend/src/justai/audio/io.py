@@ -136,6 +136,10 @@ class OutputSink(Protocol):
     continuous: bool  # needs a continuous stream (silence when idle)
     latency_hint_s: float
 
+    @property
+    def ready(self) -> bool:
+        """False while the device path is still being set up: voiced audio is held back."""
+
     async def open(self) -> None: ...
 
     async def write(self, pcm: Int16Array) -> None: ...
@@ -149,6 +153,7 @@ class DeviceSinkAdapter:
     """Adapter for plugin-provided speakers (SDK ``AudioSink``)."""
 
     continuous = False
+    ready = True
 
     def __init__(self, sink: AudioSink, latency_hint_s: float = 0.2) -> None:
         self.sink = sink
@@ -180,6 +185,7 @@ class TalkbackStats:
     bytes_pulled: int = 0
     dropped_frames: int = 0
     last_pull: float = 0.0
+    first_pull: float = 0.0  # when go2rtc started pulling the current stream
 
 
 class TalkbackRoutes:
@@ -225,8 +231,11 @@ class Go2rtcTalkbackSink:
     continuous = True
 
     def __init__(self, go2rtc: Go2rtcClient, stream: str, routes: TalkbackRoutes,
-                 core_url: str, latency_hint_s: float = 2.0) -> None:
+                 core_url: str, latency_hint_s: float = 2.0, settle_s: float = 1.5) -> None:
         self.go2rtc = go2rtc
+        # go2rtc first starts ffmpeg, then attaches the camera backchannel: audio sent in
+        # this phase is lost (the first test tone after a pause was never audible).
+        self.settle_s = settle_s
         self.stream = stream
         self.routes = routes
         self.core_url = core_url.rstrip("/")
@@ -247,6 +256,12 @@ class Go2rtcTalkbackSink:
     @property
     def stats(self) -> TalkbackStats | None:
         return self.routes.stats.get(self._token) if self._token else None
+
+    @property
+    def ready(self) -> bool:
+        st = self.stats
+        return bool(st and st.connected and st.first_pull
+                    and time.monotonic() - st.first_pull >= self.settle_s)
 
     async def write(self, pcm: Int16Array) -> None:
         if self._queue is None:
@@ -293,17 +308,21 @@ class SpeakerChannel:
     """Real-time paced playout with emission timestamps."""
 
     FRAME = SR // 50  # 20 ms
-    IDLE_CLOSE_S = 120.0
 
-    def __init__(self, device_id: str, sink: OutputSink) -> None:
+    def __init__(self, device_id: str, sink: OutputSink, idle_close_s: float | None = None) -> None:
         self.device_id = device_id
         self.sink = sink
+        # None: keep a continuous sink open while the device is online. Re-opening a camera
+        # backchannel takes seconds, so closing it made the start of the next output inaudible.
+        # Battery devices can set a timeout (device setting speaker_idle_close_s).
+        self.idle_close_s = idle_close_s
         self._queue: list[tuple[str, Int16Array]] = []
         self._utterances: dict[str, _Utterance] = {}
         self._observers: dict[str, FrameObserver] = {}
         self._task: asyncio.Task[None] | None = None
         self._wake = asyncio.Event()
         self._open = False
+        self._opened_at = 0.0
         self._last_voiced = 0.0
         self.emitted_frames = 0
         self.underruns = 0
@@ -333,6 +352,7 @@ class SpeakerChannel:
         if not self._open:
             await self.sink.open()
             self._open = True
+            self._opened_at = time.monotonic()
         if self._task is None or self._task.done():
             self._task = asyncio.create_task(self._pacer(), name=f"speaker:{self.device_id}")
 
@@ -399,7 +419,8 @@ class SpeakerChannel:
                 await self._wake.wait()
                 next_t = time.monotonic()
                 continue
-            if not self._queue and now - self._last_voiced > self.IDLE_CLOSE_S:
+            if not self._queue and self.idle_close_s is not None \
+                    and now - max(self._last_voiced, self._opened_at) > self.idle_close_s:
                 await self.sink.close()
                 self._open = False
                 self._task = None
@@ -409,7 +430,7 @@ class SpeakerChannel:
             elif now - next_t > 0.2:  # event loop stalled: do not burst, resync
                 self.underruns += 1
                 next_t = now
-            if self._queue:
+            if self._queue and self.sink.ready:
                 uid, frame = self._queue.pop(0)
                 voiced = True
                 self.current_utterance = uid

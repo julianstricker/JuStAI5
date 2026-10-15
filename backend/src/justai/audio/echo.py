@@ -108,6 +108,21 @@ class ReferenceBuffer:
         rms = float(np.sqrt(np.mean(ref**2))) if ref.size else 0.0
         return -120.0 if rms <= 0 else 20 * float(np.log10(rms / 32768))
 
+    def peak_energy_db(self, t_start: float, n: int, tolerance_s: float) -> float:
+        """Loudest n-sample frame within +-tolerance around t_start.
+
+        The echo arriving now may stem from any moment in that window when the delay is
+        uncertain; comparing against the loudest candidate avoids reading the echo of a
+        speech onset as the user talking over the assistant.
+        """
+        pad = int(tolerance_s * SR)
+        ref = self.get(t_start - pad / SR, n + 2 * pad).astype(np.float64)
+        if ref.size < n:
+            return -120.0
+        frames = ref[: ref.size // n * n].reshape(-1, n)
+        rms = float(np.sqrt((frames**2).mean(axis=1)).max())
+        return -120.0 if rms <= 0 else 20 * float(np.log10(rms / 32768))
+
 
 @dataclass
 class DelayEstimate:

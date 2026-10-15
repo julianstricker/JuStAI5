@@ -28,6 +28,16 @@ Antwort ─► Output Router ─► SpeakerChannel (Echtzeit-Pacing)
   ─► jedes ausgegebene Frame mit Ausgabezeitpunkt ─► ReferenceBuffer + PlaybackTracker
 ```
 
+**Kein abgeschnittener Anfang:** Der Kanal zum Kameralautsprecher wird geöffnet,
+sobald die Kamera online ist, und bleibt offen; in Ruhe wird Stille gesendet (ca.
+32 KB/s lokal, das Mikrofon der C200 bleibt dabei aktiv, live geprüft). Nach jedem
+(Wieder-)Aufbau hält der Core Sprache zurück, bis go2rtc tatsächlich abholt plus
+`talkback_settle_s` (Standard 1,5 s), statt sie in die noch nicht verbundene
+Leitung zu schicken. Vorher wurde der Kanal nach 2 Minuten Stille geschlossen, und
+die erste Ausgabe danach (z. B. der erste Testton) ging verloren. Für Akku-Kameras
+lässt sich das Schließen per Geräte-Einstellung `speaker_idle_close_s` wieder
+aktivieren.
+
 **Talkback zu Kameras:** Der Core stellt pro Lautsprecher einen Live-WAV-Stream
 bereit (`/internal/talkback/<token>.wav`, Token zufällig, nur im internen Netz).
 go2rtc zieht ihn als Quelle in den Backchannel der Kamera

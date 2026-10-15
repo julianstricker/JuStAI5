@@ -134,12 +134,16 @@ class PytapoPtz:
                 return p
         raise RuntimeError("preset was not saved")
 
+    async def delete_preset(self, preset_id: str) -> None:
+        await self._call(self._tapo.deletePreset, preset_id)
+
     async def go_home(self) -> None:
+        # The Tapo API has no home position: a preset named "home" serves as one.
         for p in await self.list_presets():
             if p.name.lower() in ("home", "start", "standard", "default"):
                 await self.goto_preset(p.id)
                 return
-        raise NotImplementedError("create a preset named 'home' in the Tapo app")
+        raise NotImplementedError("no preset named 'home'")
 
 
 class TapoHandle(BaseDeviceHandle):

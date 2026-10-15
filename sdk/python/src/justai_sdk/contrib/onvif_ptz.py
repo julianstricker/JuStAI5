@@ -118,6 +118,9 @@ class OnvifPtz:
         token = await self._ptz.SetPreset({"ProfileToken": self._token(), "PresetName": name})
         return PtzPreset(id=str(token), name=name)
 
+    async def delete_preset(self, preset_id: str) -> None:
+        await self._ptz.RemovePreset({"ProfileToken": self._token(), "PresetToken": preset_id})
+
     async def go_home(self) -> None:
         if self._caps.home:
             await self._ptz.GotoHomePosition({"ProfileToken": self._token()})

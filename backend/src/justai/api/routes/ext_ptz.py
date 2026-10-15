@@ -59,6 +59,13 @@ async def home(device_id: str, p: User, c: C) -> dict[str, bool]:
     return {"ok": True}
 
 
+@router.post("/{device_id}/home/set")
+async def set_home(device_id: str, p: User, c: C) -> dict[str, str]:
+    preset = await _svc(c, p).set_home(device_id)
+    await c.audit.record(p.actor, "ptz.set_home", device_id)
+    return preset.model_dump()  # type: ignore[no-any-return]
+
+
 @router.get("/{device_id}/presets")
 async def presets(device_id: str, p: User, c: C) -> list[dict[str, str]]:
     return [pr.model_dump() for pr in await _svc(c, p).presets(device_id)]

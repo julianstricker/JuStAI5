@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any
 from justai_sdk.events import Event, EventSource
 from justai_sdk.ports.ptz import PtzController, PtzPreset
 
-from justai.common.errors import NotFound, Unavailable
+from justai.common.errors import Conflict, NotFound, Unavailable
 from justai.logging import get_logger
 from justai.ptz.tracking import Command, TrackingParams, TrackingState, TrackingTarget, step
 from justai.vision.tracker import Track
@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
 log = get_logger(__name__)
 MANUAL_OVERRIDE_S = 20.0
+HOME_PRESET_NAMES = ("home", "start", "standard", "default")
 
 
 @dataclass
@@ -83,8 +84,30 @@ class PtzService:
         await self.controller(device_id).stop()
 
     async def home(self, device_id: str) -> None:
-        await self.controller(device_id).go_home()
+        ptz = self.controller(device_id)
+        try:
+            await ptz.go_home()
+        except NotImplementedError as exc:
+            # No native home and no "home" preset (e.g. Tapo): undo the movements JuStAI
+            # made since startup/last home; without any, ask the user to define one.
+            off = self._offset.get(device_id) or [0.0, 0.0]
+            if abs(off[0]) < 1e-3 and abs(off[1]) < 1e-3:
+                raise Conflict("Keine Home-Position gespeichert. Kamera ausrichten und "
+                               "„Als Home speichern“ wählen.") from exc
+            await ptz.move_relative(-off[0], -off[1])
         self._offset[device_id] = [0.0, 0.0]
+
+    async def set_home(self, device_id: str) -> PtzPreset:
+        """Save the current view as home (replaces an existing home preset)."""
+        ptz = self.controller(device_id)
+        delete = getattr(ptz, "delete_preset", None)
+        if delete is not None:
+            for preset in await ptz.list_presets():
+                if preset.name.lower() in HOME_PRESET_NAMES:
+                    await delete(preset.id)
+        preset = await ptz.save_preset("home")
+        self._offset[device_id] = [0.0, 0.0]
+        return preset
 
     async def presets(self, device_id: str) -> list[PtzPreset]:
         ptz = self.controller(device_id)

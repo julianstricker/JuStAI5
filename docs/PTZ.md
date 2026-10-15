@@ -19,6 +19,12 @@ schätzt dann die Position relativ zur Home-Position mit.
 | Admin-UI → *Geräte* → PTZ-Steuerkreuz, Presets | `POST /api/ptz/{id}/move|stop|home`, `/presets`, `/presets/{p}/goto` |
 | Assistent | Tools `ptz.move`, `ptz.home`, `ptz.goto_preset`, `ptz.follow`, `ptz.stop_follow`, `vision.search_area` |
 
+* **Home-Position**: Tapo-Kameras haben keine eingebaute Home-Position. *Als Home
+  speichern* im PTZ-Feld legt die aktuelle Ansicht als Kamera-Preset „home“ an
+  (ein vorhandenes wird ersetzt); *Home* fährt es an (live geprüft: zurück auf
+  < 1 Pixel). Ohne gespeicherte Home-Position macht *Home* die Bewegungen rückgängig,
+  die JuStAI5 seit dem Start ausgeführt hat (ungefähr, da Tapo nur relativ fährt);
+  gibt es keine, kommt ein Hinweis statt eines Fehlers.
 * **Manuelle Steuerung hat Vorrang**: Jeder manuelle Befehl pausiert ein laufendes
   Tracking für 20 s.
 * **Weiche Grenzen** pro Gerät (`ptz_limits`: `pan_min/max`, `tilt_min/max` in

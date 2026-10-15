@@ -50,7 +50,8 @@ class PtzService:
 
     def _limits(self, device_id: str) -> dict[str, float]:
         rt = self.c.devices.get(device_id)
-        return dict(((rt.settings if rt else {}) or {}).get("ptz_limits") or {})
+        raw: Any = ((rt.settings if rt else {}) or {}).get("ptz_limits") or {}
+        return {str(k): float(v) for k, v in dict(raw).items()}
 
     def _clamp(self, device_id: str, pan: float, tilt: float) -> tuple[float, float]:
         """Apply configured soft limits (in FOV units relative to home)."""
@@ -120,7 +121,7 @@ class PtzService:
             raise Unavailable("vision analysis is not active for this camera")
         await self.stop_tracking(device_id)
         rt = self.c.devices.get(device_id)
-        settings = ((rt.settings if rt else {}) or {}).get("ptz_tracking") or {}
+        settings: dict[str, Any] = dict(((rt.settings if rt else {}) or {}).get("ptz_tracking") or {})  # type: ignore[call-overload]
         state = TrackingState(target=target, params=params or TrackingParams(**settings))
         queue: asyncio.Queue[tuple[float, list[Track]]] = asyncio.Queue(maxsize=2)
 
@@ -149,9 +150,9 @@ class PtzService:
     async def _track_loop(self, session: TrackingSession) -> None:
         while True:
             try:
-                t, tracks = await asyncio.wait_for(session.queue.get(), timeout=2.0)
+                _, tracks = await asyncio.wait_for(session.queue.get(), timeout=2.0)
             except TimeoutError:
-                t, tracks = time.monotonic(), []
+                tracks = []
             session.state.paused_until = max(session.state.paused_until,
                                              self._manual_until.get(session.device_id, 0.0))
             command: Command | None = step(session.state, tracks, time.monotonic())

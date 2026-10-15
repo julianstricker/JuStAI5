@@ -4,7 +4,8 @@ import pytest
 from justai_sdk.events import Event
 from justai_sdk.ports.ai import ChatEvent, ChatEventKind, ChatMessage, ChatRequest, Locality, Role
 
-from justai.ai.config import AISettings, Locality as RoleLocality, ModelRef, ModelRole, RoleConfig
+from justai.ai.config import AISettings, ModelRef, ModelRole, RoleConfig
+from justai.ai.config import Locality as RoleLocality
 from justai.ai.router import AIRouter, DataFlags
 from justai.ai.usage import UsageTracker
 from justai.common.errors import PolicyViolation

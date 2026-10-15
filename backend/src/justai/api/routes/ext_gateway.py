@@ -38,7 +38,7 @@ async def gateway(plugin_id: str, request: Request, c: C) -> dict[str, Any]:
         raise Unauthorized()
     if c.auth.verify_scoped_token(header[7:], "plugin-gateway") != plugin_id:
         raise Unauthorized("token not valid for this plugin")
-    sandbox = c.plugins.sandbox
+    sandbox = c.sandbox
     if sandbox is None or plugin_id not in sandbox.granted:
         raise NotFound("plugin not running in the sandbox")
     body = await request.json()

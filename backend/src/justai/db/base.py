@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, ClassVar
 
 from sqlalchemy import DateTime, MetaData, func
 from sqlalchemy.dialects.postgresql import JSONB
@@ -20,7 +20,7 @@ NAMING_CONVENTION = {
 
 class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
-    type_annotation_map = {dict[str, Any]: JSONB, list[Any]: JSONB}
+    type_annotation_map: ClassVar[dict[Any, Any]] = {dict[str, Any]: JSONB, list[Any]: JSONB}
 
 
 class TimestampMixin:
@@ -34,5 +34,5 @@ class TimestampMixin:
 
 def jsonb(default: Any = None, nullable: bool = False) -> Any:
     """JSONB column with a Python-side default factory."""
-    factory = (lambda: {}) if default is None else (lambda: default.copy())  # noqa: E731
+    factory = (lambda: {}) if default is None else (lambda: default.copy())
     return mapped_column(JSONB, nullable=nullable, default=factory)

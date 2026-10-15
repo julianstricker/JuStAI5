@@ -61,7 +61,8 @@ class FinancePlugin(Plugin):
                         "price": price, "currency": meta.get("currency", ""),
                         "change": round(change, 4) if change is not None else None,
                         "change_pct": round(change / prev * 100, 2) if change is not None else None,
-                        "time": datetime.fromtimestamp(meta.get("regularMarketTime", 0), UTC).isoformat(timespec="minutes")})
+                        "time": datetime.fromtimestamp(meta.get("regularMarketTime", 0), UTC)
+                        .isoformat(timespec="minutes")})
         if not out:
             return ToolResult.failure("no_data", "; ".join(errors) or "keine Kurse")
         return ToolResult.success({"quotes": out, "errors": errors, "source": "Yahoo Finance (inoffiziell)"},

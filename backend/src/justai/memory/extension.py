@@ -22,7 +22,8 @@ class SearchParams(BaseModel):
 
 
 class RememberParams(BaseModel):
-    content: str = Field(description="Die Information als vollständiger Satz, z. B. 'Julian hat einen weißen XPENG bestellt'")
+    content: str = Field(description="Die Information als vollständiger Satz, "
+                                     "z. B. 'Julian hat einen weißen XPENG bestellt'")
     kind: str = Field("fact", description="fact | preference | episode | procedure")
     private: bool = Field(False, description="Nur für die sprechende Person sichtbar")
     subject: str | None = Field(None, description="Worum es geht, z. B. 'Julian'")

@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import time
+from collections.abc import AsyncIterator
 from datetime import datetime
 from typing import Any
 
@@ -235,7 +236,7 @@ async def talkback(token: str, c: C) -> StreamingResponse:
     if queue is None or stats is None:
         raise NotFound()
 
-    async def body():  # type: ignore[no-untyped-def]
+    async def body() -> AsyncIterator[bytes]:
         stats.connections += 1
         stats.connected = True
         stats.last_pull = time.monotonic()

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import builtins
 from dataclasses import dataclass
 
 from justai_sdk.events import Durability, EventPriority, Sensitivity
@@ -17,7 +18,7 @@ class EventTypeSpec:
     durable: bool = False
     priority: EventPriority = EventPriority.NORMAL
     sensitivity: Sensitivity = Sensitivity.NORMAL
-    payload_model: type[BaseModel] | None = None
+    payload_model: builtins.type[BaseModel] | None = None
     version: int = 1
     owner: str = "core"  # core | plugin:<id>
 

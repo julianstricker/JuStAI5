@@ -10,6 +10,7 @@ from justai_sdk.tools import NoParams, SideEffect, ToolContext, ToolDefinition, 
 from pydantic import BaseModel, Field
 
 from justai.common.errors import RoutingDenied
+from justai.common.tasks import spawn
 
 if TYPE_CHECKING:
     from justai.container import Container
@@ -54,7 +55,7 @@ def register(c: Container) -> None:
             await asyncio.sleep(4)  # let the goodbye be spoken first
             await session.end("assistant")
 
-        asyncio.create_task(later())
+        spawn(later())
         return ToolResult.success(message="Gespräch wird nach der Antwort beendet")
 
     reg.register(ToolDefinition(
@@ -75,7 +76,7 @@ def register(c: Container) -> None:
             return ToolResult.failure("routing_denied", exc.message)
         await c.audit.record("assistant", "output.announce", room.id, text=params.text[:200],
                              session=ctx.session_id)
-        asyncio.create_task(speech.say(params.text, decision, language=ctx.language))
+        spawn(speech.say(params.text, decision, language=ctx.language))
         return ToolResult.success({"room": room.name},
                                   message=f"Durchsage wird in {room.name} abgespielt")
 

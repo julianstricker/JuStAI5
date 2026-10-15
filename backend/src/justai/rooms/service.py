@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import builtins
 import re
 import unicodedata
 from typing import Any
@@ -52,7 +53,7 @@ class RoomService:
     def __init__(self, db: Database) -> None:
         self.db = db
 
-    async def list(self) -> list[Room]:
+    async def list(self) -> builtins.list[Room]:
         async with self.db.session() as s:
             return list((await s.scalars(select(Room).order_by(Room.name))).all())
 

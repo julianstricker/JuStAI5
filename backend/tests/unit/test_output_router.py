@@ -86,7 +86,7 @@ def test_cross_room_without_explicit_flag_is_denied(topo: FakeTopology) -> None:
 
 
 def test_cross_room_needs_permission(topo: FakeTopology) -> None:
-    with pytest.raises(RoutingDenied, match="output.cross_room"):
+    with pytest.raises(RoutingDenied, match=r"output\.cross_room"):
         OutputRouter(topo).route(
             OutputRequest(OutputKind.AUDIO, origin_endpoint_id="ep-living", target_room_id="kitchen",
                           explicit_cross_room=True)

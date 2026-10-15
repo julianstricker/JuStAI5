@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from typing import Any
 
 import httpx
@@ -140,7 +141,7 @@ async def live(device_id: str, p: User, c: C) -> StreamingResponse:
     req = client.build_request("GET", "/api/stream.mp4", params={"src": stream, "video": "h264"})
     upstream = await client.send(req, stream=True)
 
-    async def body():  # type: ignore[no-untyped-def]
+    async def body() -> AsyncIterator[bytes]:
         try:
             async for chunk in upstream.aiter_raw():
                 yield chunk

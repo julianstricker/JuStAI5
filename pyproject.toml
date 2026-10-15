@@ -14,12 +14,16 @@ override-dependencies = ["tflite-runtime; sys_platform == 'never'"]
 members = ["backend", "sdk/python", "sandbox"]
 
 [tool.ruff]
-line-length = 100
+line-length = 120
 target-version = "py312"
+extend-exclude = ["backend/src/justai/db/migrations/versions"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "ASYNC", "RUF", "PT"]
-ignore = ["RUF001", "RUF002", "RUF003", "B008", "ASYNC109"]
+ignore = ["RUF001", "RUF002", "RUF003", "B008", "ASYNC109", "RUF046", "PT018", "PT019", "SIM108"]
 
 [tool.ruff.lint.per-file-ignores]
-"**/tests/**" = ["B011", "PT011"]
+"**/tests/**" = ["B011", "PT011", "PT018", "PT017"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["justai", "justai_sandbox"]

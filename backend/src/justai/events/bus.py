@@ -71,7 +71,7 @@ class _DedupCache:
     def seen(self, key: str) -> bool:
         now = time.monotonic()
         while self._items:
-            oldest_key, ts = next(iter(self._items.items()))
+            _, ts = next(iter(self._items.items()))
             if now - ts > self.ttl_s or len(self._items) > self.max_items:
                 self._items.popitem(last=False)
             else:

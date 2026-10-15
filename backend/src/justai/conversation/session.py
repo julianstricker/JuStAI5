@@ -34,6 +34,7 @@ from justai.ai.config import AISettings, ModelRole
 from justai.ai.router import AIRouter, DataFlags
 from justai.audio.dsp import SR
 from justai.audio.processor import ProcessedFrame
+from justai.common.tasks import spawn
 from justai.conversation.context import ConversationContext, build_system_prompt
 from justai.conversation.echo_filter import EchoTranscriptFilter
 from justai.conversation.state import SessionState, StateMachine
@@ -139,7 +140,7 @@ class ConversationSession:
         if self.audio is not None:
             self.audio.listener = self._on_frame
             self.audio.barge_in_handler = self._on_barge_in
-            asyncio.create_task(self.audio.warm_up())
+            spawn(self.audio.warm_up())
         memories = await self._recall("")
         system = build_system_prompt(self.deps.settings, self.ctx, memories)
         driver_cls = RealtimeDriver if self.mode == "realtime" else PipelineDriver
@@ -271,7 +272,7 @@ class ConversationSession:
                                endpoint_id=self.endpoint_id)))
 
     def _state_changed(self, old: SessionState, new: SessionState, reason: str) -> None:
-        asyncio.create_task(self.publish("conversation.state.changed", {
+        spawn(self.publish("conversation.state.changed", {
             "from": old.value, "to": new.value, "reason": reason}))
 
     # ------------------------------------------------------------------- speaking
@@ -369,7 +370,7 @@ class RealtimeDriver:
                 elif ev.kind == RealtimeEventKind.TOOL_CALL and ev.tool_call is not None:
                     await self._flush_user()
                     s.sm.try_transition(SessionState.PROCESSING, "tool_call")
-                    asyncio.create_task(self._tool(ev.tool_call))
+                    spawn(self._tool(ev.tool_call))
                 elif ev.kind == RealtimeEventKind.INTERRUPTED:
                     if s.audio is not None:
                         await s.audio.stop_output()
@@ -384,14 +385,14 @@ class RealtimeDriver:
                 elif ev.kind in (RealtimeEventKind.ERROR, RealtimeEventKind.CLOSED):
                     if not self._closing:
                         log.warning("realtime session closed", session=s.id, error=ev.error)
-                        asyncio.create_task(s.end("provider_closed"))
+                        spawn(s.end("provider_closed"))
                     return
         except asyncio.CancelledError:
             raise
         except Exception as exc:
             log.error("realtime receive failed", session=s.id, error=str(exc), exc_info=True)
             if not self._closing:
-                asyncio.create_task(s.end("provider_error"))
+                spawn(s.end("provider_error"))
 
     async def _flush_user(self) -> None:
         text, self._user_buf = self._user_buf.strip(), ""
@@ -419,7 +420,7 @@ class RealtimeDriver:
             s.audio.end(uid)
         # Generation is usually faster than playback: wait for the speaker in the
         # background so the receive loop keeps handling events (e.g. interruptions).
-        asyncio.create_task(self._back_to_listening(done, generation, interrupted))
+        spawn(self._back_to_listening(done, generation, interrupted))
 
     async def _back_to_listening(self, done: asyncio.Event | None, generation: int,
                                  interrupted: bool) -> None:

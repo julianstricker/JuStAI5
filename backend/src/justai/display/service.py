@@ -8,6 +8,7 @@ display acknowledged the rendering (acceptance criterion 15).
 from __future__ import annotations
 
 import asyncio
+import builtins
 import contextlib
 import hashlib
 import secrets
@@ -339,7 +340,7 @@ class DisplayService:
         if session is not None:
             await session.inject(f"Der Benutzer hat auf dem Display '{payload['label']}' gewählt.")
 
-    async def list(self) -> list[dict[str, Any]]:
+    async def list(self) -> builtins.list[dict[str, Any]]:
         devices = [d for d in await self.c.device_records.list() if d.driver_id == DRIVER_ID or
                    any(cap.startswith("display.") for cap in d.capabilities)]
         out = []
@@ -355,11 +356,11 @@ class DisplayService:
                                              "title": current.document.get("title")} if current else None})
         return out
 
-    def pending_list(self) -> list[dict[str, Any]]:
+    def pending_list(self) -> builtins.list[dict[str, Any]]:
         return [{"code": code, "user_agent": c.user_agent, "capabilities": c.capabilities,
                  "since": datetime.fromtimestamp(c.since, UTC).isoformat()} for code, c in self.pending.items()]
 
-    async def presentations(self, limit: int = 50) -> list[Presentation]:
+    async def presentations(self, limit: int = 50) -> builtins.list[Presentation]:
         async with self.c.db.session() as s:
             return list((await s.scalars(select(Presentation).order_by(Presentation.created_at.desc())
                                          .limit(limit))).all())

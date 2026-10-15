@@ -34,7 +34,7 @@ ALLOWED: dict[SessionState, set[SessionState]] = {
 }
 
 
-class InvalidTransition(Exception):  # noqa: N818
+class InvalidTransition(Exception):
     pass
 
 

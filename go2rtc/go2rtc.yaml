@@ -1,0 +1,13 @@
+# go2rtc is managed by the JuStAI5 core: streams are registered dynamically through
+# its API (credentials stay in the JuStAI5 database, never in this file).
+# go2rtc is only reachable inside the Docker network.
+api:
+  listen: ":1984"
+  origin: ""
+rtsp:
+  listen: ":8554"
+webrtc:
+  listen: ""
+log:
+  level: info
+streams: {}

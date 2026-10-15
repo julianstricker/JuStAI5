@@ -48,7 +48,8 @@ class Go2rtcClient:
 
     async def set_stream(self, name: str, sources: list[str]) -> None:
         """Create or replace a stream with the given sources."""
-        params: list[tuple[str, str]] = [("name", name)] + [("src", s) for s in sources]
+        params: list[tuple[str, str | int | float | bool | None]] = [("name", name)]
+        params += [("src", s) for s in sources]
         try:
             r = await self._http.put("/api/streams", params=params)
         except httpx.HTTPError as exc:

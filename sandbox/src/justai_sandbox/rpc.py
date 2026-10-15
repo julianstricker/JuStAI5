@@ -23,6 +23,7 @@ class RpcPeer:
         self._ids = itertools.count(1)
         self._pending: dict[int, asyncio.Future[Any]] = {}
         self._task: asyncio.Task[None] | None = None
+        self._serving: set[asyncio.Task[None]] = set()
 
     def start(self) -> None:
         self._task = asyncio.create_task(self._read_loop())
@@ -54,7 +55,9 @@ class RpcPeer:
             except json.JSONDecodeError:
                 continue
             if "method" in msg:
-                asyncio.create_task(self._serve(msg))
+                task = asyncio.create_task(self._serve(msg))
+                self._serving.add(task)
+                task.add_done_callback(self._serving.discard)
             else:
                 fut = self._pending.get(int(msg.get("id", -1)))
                 if fut is not None and not fut.done():

@@ -7,7 +7,7 @@ import contextlib
 import ipaddress
 import re
 import uuid
-from typing import Any
+from typing import Any, ClassVar
 from urllib.parse import quote, urlparse, urlunparse
 
 from justai_sdk.contrib.onvif_ptz import OnvifPtz
@@ -244,7 +244,7 @@ class MdnsDiscovery:
     """mDNS browsing (needs host networking to see multicast; harmless otherwise)."""
 
     discovery_id = "mdns"
-    SERVICES = {
+    SERVICES: ClassVar[dict[str, tuple[str, str]]] = {
         "_googlecast._tcp.local.": ("Google Cast / Google TV", "display"),
         "_airplay._tcp.local.": ("AirPlay", "display"),
         "_home-assistant._tcp.local.": ("Home Assistant", "integration"),
@@ -274,7 +274,7 @@ class MdnsDiscovery:
                 ip = ipaddress.ip_address(addr)
                 if not any(ip in n for n in nets):
                     continue
-                label, kind = self.SERVICES[service_type]
+                label, _kind = self.SERVICES[service_type]
                 friendly = (info.properties or {}).get(b"fn") or name.split(".")[0].encode()
                 out.append(DiscoveredDevice(
                     fingerprint=f"mdns:{name}", host=addr, name=friendly.decode(errors="ignore"),

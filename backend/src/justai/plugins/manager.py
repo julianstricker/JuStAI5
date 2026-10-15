@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import asyncio
+import builtins
 import contextlib
 import io
 import shutil
@@ -22,8 +23,8 @@ from typing import Any, Protocol
 import jsonschema
 from justai_sdk.events import Event, EventSource
 from justai_sdk.manifest import (
-    SDK_API_VERSION,
     MANIFEST_FILENAME,
+    SDK_API_VERSION,
     PluginManifest,
     RuntimeMode,
     TrustLevel,
@@ -146,7 +147,7 @@ class PluginManager:
                     row.manifest = m.model_dump(mode="json")
 
     # ------------------------------------------------------------------ queries
-    async def list(self) -> list[dict[str, Any]]:
+    async def list(self) -> builtins.list[dict[str, Any]]:
         async with self.db.session() as s:
             rows = (await s.scalars(select(InstalledPlugin).order_by(InstalledPlugin.id))).all()
         out = []
@@ -195,7 +196,7 @@ class PluginManager:
             await self._set(plugin_id, enabled=False, status="disabled", error=None)
 
     async def configure(self, plugin_id: str, config: dict[str, Any],
-                        granted_permissions: list[str] | None = None) -> None:
+                        granted_permissions: builtins.list[str] | None = None) -> None:
         row = await self.get_row(plugin_id)
         manifest = PluginManifest.model_validate(row.manifest)
         public = {k: v for k, v in config.items() if k not in manifest.secret_fields}
@@ -404,7 +405,7 @@ class PluginManager:
             if dep.version and Version(row.version) not in SpecifierSet(dep.version):
                 raise ValidationFailed(f"dependency {dep.id} {row.version} does not satisfy {dep.version}")
 
-    async def _enabled_dependants(self, plugin_id: str) -> list[str]:
+    async def _enabled_dependants(self, plugin_id: str) -> builtins.list[str]:
         async with self.db.session() as s:
             rows = (await s.scalars(select(InstalledPlugin).where(InstalledPlugin.enabled))).all()
         return [r.id for r in rows if any(
@@ -412,9 +413,9 @@ class PluginManager:
             for d in r.manifest.get("dependencies", []))]
 
     @staticmethod
-    def _dependency_order(rows: Any) -> list[InstalledPlugin]:
+    def _dependency_order(rows: Any) -> builtins.list[InstalledPlugin]:
         by_id = {r.id: r for r in rows}
-        ordered: list[InstalledPlugin] = []
+        ordered: builtins.list[InstalledPlugin] = []
         seen: set[str] = set()
 
         def visit(r: InstalledPlugin, stack: tuple[str, ...]) -> None:

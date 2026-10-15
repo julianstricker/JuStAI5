@@ -12,6 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 import numpy as np
+
 from justai_sdk.audio import Int16Array
 
 SR = 16000
@@ -89,10 +90,7 @@ class AcousticRoom:
     def _ducked(self, t: float) -> bool:
         if not self.p.hardware_ducking:
             return False
-        for start, end in self._voiced:
-            if start + self.p.ducking_leak_s <= t <= end + 0.05:
-                return True
-        return False
+        return any(start + self.p.ducking_leak_s <= t <= end + 0.05 for start, end in self._voiced)
 
     def mic(self, t: float, n: int) -> Int16Array:
         tail = self._ir.size

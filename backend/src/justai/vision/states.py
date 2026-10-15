@@ -40,7 +40,8 @@ def features(image: np.ndarray, zone: dict[str, float] | None) -> list[float]:
     small = cv2.resize(gray, (SIZE, SIZE), interpolation=cv2.INTER_AREA).astype(np.float32)
     small = cv2.equalizeHist(small.astype(np.uint8)).astype(np.float32)
     v = small.reshape(-1) - small.mean()
-    return (v / (np.linalg.norm(v) + 1e-6)).tolist()
+    result: list[float] = (v / (np.linalg.norm(v) + 1e-6)).tolist()
+    return result
 
 
 def classify(feat: list[float], references: dict[str, list[list[float]]]) -> tuple[str | None, float, float]:

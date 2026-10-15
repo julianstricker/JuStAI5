@@ -13,6 +13,7 @@ queue (retries, restart recovery). Loop protection:
 from __future__ import annotations
 
 import asyncio
+import builtins
 import fnmatch
 import time
 from collections import deque
@@ -130,7 +131,7 @@ class AutomationService:
                 raise NotFound("automation not found")
             await s.delete(auto)
 
-    async def list(self) -> list[Automation]:
+    async def list(self) -> builtins.list[Automation]:
         async with self.db.session() as s:
             return list((await s.scalars(select(Automation).order_by(Automation.created_at))).all())
 
@@ -141,7 +142,7 @@ class AutomationService:
             raise NotFound("automation not found")
         return auto
 
-    async def runs(self, automation_id: str, limit: int = 50) -> list[AutomationRun]:
+    async def runs(self, automation_id: str, limit: int = 50) -> builtins.list[AutomationRun]:
         async with self.db.session() as s:
             return list((await s.scalars(select(AutomationRun).where(
                 AutomationRun.automation_id == automation_id)

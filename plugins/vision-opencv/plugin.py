@@ -119,7 +119,7 @@ class OpenCVFaceAnalyzer:
             sharp = float(cv2.Laplacian(crop, cv2.CV_64F).var()) if crop.size else 0.0
             bright = float(crop.mean()) if crop.size else 0.0
             # Frontalness: nose between the eyes and mouth corners symmetric.
-            (rex, _), (lex, _), (nx, _), (rmx, _), (lmx, _) = landmarks
+            (rex, _), (lex, _), (nx, _), _, _ = landmarks
             eye_mid = (rex + lex) / 2
             eye_dist = abs(lex - rex) + 1e-6
             frontal = max(0.0, 1.0 - abs(nx - eye_mid) / eye_dist * 2)

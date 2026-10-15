@@ -1,7 +1,8 @@
 import pytest
 
 from justai.conversation.echo_filter import EchoTranscriptFilter
-from justai.conversation.state import InvalidTransition, SessionState as S, StateMachine
+from justai.conversation.state import InvalidTransition, StateMachine
+from justai.conversation.state import SessionState as S
 
 
 class Clock:

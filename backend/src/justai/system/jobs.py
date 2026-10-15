@@ -24,7 +24,7 @@ log = get_logger(__name__)
 JobHandler = Callable[[dict[str, Any]], Awaitable[None]]
 
 
-class RetryLater(Exception):  # noqa: N818
+class RetryLater(Exception):
     def __init__(self, delay_s: float, reason: str = "") -> None:
         super().__init__(reason)
         self.delay_s = delay_s

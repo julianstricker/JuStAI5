@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import builtins
 from typing import Any, TypeVar
 
 from pydantic import BaseModel
@@ -93,7 +94,7 @@ class AuditLog:
         async with self.db.session() as s:
             s.add(AuditEntry(actor=actor, action=action, target=target, detail=redact(detail)))
 
-    async def list(self, limit: int = 100, action_prefix: str | None = None) -> list[AuditEntry]:
+    async def list(self, limit: int = 100, action_prefix: str | None = None) -> builtins.list[AuditEntry]:
         stmt = select(AuditEntry).order_by(AuditEntry.ts.desc()).limit(limit)
         if action_prefix:
             stmt = stmt.where(AuditEntry.action.startswith(action_prefix))

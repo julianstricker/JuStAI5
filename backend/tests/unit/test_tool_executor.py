@@ -51,7 +51,7 @@ def ctx(perms=("memory.read",), session="s1") -> ToolContext:
 
 
 async def test_success_and_llm_name_lookup(setup) -> None:
-    reg, ex, _ = setup
+    _, ex, _ = setup
     r = await ex.execute("test__echo", {"text": "hi"}, ctx())
     assert r.ok and r.data == {"echo": "hi"}
 

@@ -5,13 +5,14 @@ from __future__ import annotations
 import asyncio
 import time
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import cv2
 import numpy as np
 from justai_sdk.permissions import Permission
 from justai_sdk.ports.ai import ChatMessage, ImagePart, Role
 from justai_sdk.ports.devices import Capability
+from justai_sdk.ports.vision import Image
 from justai_sdk.tools import NoParams, SideEffect, ToolContext, ToolDefinition, ToolResult
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
@@ -67,6 +68,14 @@ class IntroduceParams(BaseModel):
 
 class RegisterFaceParams(CameraTarget):
     name: str = Field(description="Name der Person, deren Gesicht registriert werden soll")
+
+
+def _identified_by(similarity: float | None, person: Person | None) -> str:
+    if similarity:
+        return "face"
+    if person is not None and person.kind == "pet":
+        return "only registered pet of this species"
+    return "object class"
 
 
 class VisionExtension:
@@ -137,15 +146,18 @@ class VisionExtension:
         h, w = img.shape[:2]
         for d in analysis["detections"]:
             b = d.bbox
-            cv2.rectangle(img, (int(b.x * w), int(b.y * h)), (int((b.x + b.w) * w), int((b.y + b.h) * h)), (80, 200, 80), 2)
+            cv2.rectangle(img, (int(b.x * w), int(b.y * h)), (int((b.x + b.w) * w), int((b.y + b.h) * h)),
+                          (80, 200, 80), 2)
             cv2.putText(img, f"{d.label} {d.score:.2f}", (int(b.x * w), max(15, int(b.y * h) - 5)),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (80, 200, 80), 2)
         for f in analysis["faces"]:
             b = f["face"].bbox
             m = f["match"]
             label = f"{m.name} {m.similarity:.2f}" if m else "unbekannt"
-            cv2.rectangle(img, (int(b.x * w), int(b.y * h)), (int((b.x + b.w) * w), int((b.y + b.h) * h)), (220, 160, 40), 2)
-            cv2.putText(img, label, (int(b.x * w), int((b.y + b.h) * h) + 18), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (220, 160, 40), 2)
+            cv2.rectangle(img, (int(b.x * w), int(b.y * h)), (int((b.x + b.w) * w), int((b.y + b.h) * h)),
+                          (220, 160, 40), 2)
+            cv2.putText(img, label, (int(b.x * w), int((b.y + b.h) * h) + 18), cv2.FONT_HERSHEY_SIMPLEX, 0.6,
+                        (220, 160, 40), 2)
         ok, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 80])
         return buf.tobytes() if ok else b""
 
@@ -156,12 +168,14 @@ class VisionExtension:
         async def look(p: LookParams, ctx: ToolContext) -> ToolResult:
             device_id, room_id = await self.resolve_camera(p, ctx)
             jpeg = await c.devices.snapshot(device_id, width=1280)
-            image = cv2.imdecode(np.frombuffer(jpeg, np.uint8), cv2.IMREAD_COLOR)
             zones = [z.points for z in self.engine.config(device_id).privacy_zones]
+            image = cv2.imdecode(np.frombuffer(jpeg, np.uint8), cv2.IMREAD_COLOR)
+            if image is None:
+                return ToolResult.failure("no_image", "Das Kamerabild konnte nicht gelesen werden")
             if zones:
                 from justai.vision.frames import apply_privacy_mask
 
-                ok, buf = cv2.imencode(".jpg", apply_privacy_mask(image, zones))
+                _, buf = cv2.imencode(".jpg", apply_privacy_mask(cast(Image, image), zones))
                 jpeg = buf.tobytes()
             flags = DataFlags(images=True, personal=True, local_only=await self._room_local_only(room_id))
             result = await c.ai.chat(ModelRole.VISION, [
@@ -222,8 +236,7 @@ class VisionExtension:
                             "camera": cam.name if cam else r.camera_device_id,
                             "last_seen": r.last_seen.isoformat(timespec="seconds"),
                             "minutes_ago": int((datetime.now(UTC) - r.last_seen).total_seconds() // 60),
-                            "identified_by": "face" if r.identity_similarity else (
-                                "only registered pet of this species" if person and person.kind == "pet" else "object class")})
+                            "identified_by": _identified_by(r.identity_similarity, person)})
             return ToolResult.success(out, message=f"Zuletzt gesehen: {out[0]['room']} vor {out[0]['minutes_ago']} min")
 
         reg.register(ToolDefinition(
@@ -233,7 +246,7 @@ class VisionExtension:
             parameters=WhereParams, category="vision", permissions=[Permission.VISION_ANALYZE]), where_is)
 
         async def watch(p: WatchParams, ctx: ToolContext) -> ToolResult:
-            device_id, room_id = await self.resolve_camera(p, ctx)
+            device_id, _ = await self.resolve_camera(p, ctx)
             unknown = [label for label in p.labels if label not in self.engine.labels()]
             if unknown:
                 return ToolResult.failure("unknown_labels", f"Unbekannte Klassen {unknown}. Erlaubt: "

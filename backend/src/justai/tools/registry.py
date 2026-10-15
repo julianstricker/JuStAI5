@@ -10,6 +10,7 @@ timeout-guarded execution -> structured result -> audit log.
 from __future__ import annotations
 
 import asyncio
+import builtins
 import secrets
 import time
 from collections.abc import Awaitable, Callable
@@ -49,7 +50,7 @@ class ToolRegistry:
             definition = definition.model_copy(update={"plugin_id": owner})
         self._tools[definition.name] = RegisteredTool(definition, handler, owner)
 
-    def unregister_owner(self, owner: str) -> list[str]:
+    def unregister_owner(self, owner: str) -> builtins.list[str]:
         names = [n for n, t in self._tools.items() if t.owner == owner]
         for n in names:
             del self._tools[n]
@@ -58,17 +59,17 @@ class ToolRegistry:
     def get(self, name: str) -> RegisteredTool | None:
         return self._tools.get(name) or self._tools.get(name.replace("__", "."))
 
-    def list(self) -> list[RegisteredTool]:
+    def list(self) -> builtins.list[RegisteredTool]:
         return sorted(self._tools.values(), key=lambda t: t.definition.name)
 
-    def available(self, permissions: frozenset[str], *, conversation: bool = True) -> list[RegisteredTool]:
+    def available(self, permissions: frozenset[str], *, conversation: bool = True) -> builtins.list[RegisteredTool]:
         return [
             t for t in self.list()
             if set(t.definition.permissions) <= permissions
             and (t.definition.available_in_conversation or not conversation)
         ]
 
-    def specs(self, permissions: frozenset[str]) -> list[ToolSpec]:
+    def specs(self, permissions: frozenset[str]) -> builtins.list[ToolSpec]:
         return [
             ToolSpec(name=t.definition.llm_name, description=t.definition.description,
                      parameters=t.definition.parameters_schema())

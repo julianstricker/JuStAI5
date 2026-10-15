@@ -32,7 +32,7 @@ def test_extra_props_rejected() -> None:
 def test_image_src_must_be_safe() -> None:
     with pytest.raises(ValidationFailed):
         ComponentRegistry().normalize({"components": [{"type": "image", "src": "javascript:alert(1)"}]})
-    doc, needed = ComponentRegistry().normalize(
+    _, needed = ComponentRegistry().normalize(
         {"components": [{"type": "image", "src": "https://example.org/a.png"}]})
     assert "display.image" in needed
 

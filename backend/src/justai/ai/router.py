@@ -34,7 +34,8 @@ from justai_sdk.ports.ai import (
     Usage,
 )
 
-from justai.ai.config import AISettings, Locality as RoleLocality, ModelRef, ModelRole
+from justai.ai.config import AISettings, ModelRef, ModelRole
+from justai.ai.config import Locality as RoleLocality
 from justai.ai.usage import UsageTracker
 from justai.common.errors import PolicyViolation, Unavailable
 from justai.events.bus import EventBus

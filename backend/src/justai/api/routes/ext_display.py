@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from typing import Any
 
 import httpx
@@ -50,7 +51,7 @@ async def camera(device_id: str, token: str, c: C) -> StreamingResponse:
     upstream = await client.send(client.build_request("GET", "/api/stream.mp4",
                                                       params={"src": stream, "video": "h264"}), stream=True)
 
-    async def body():  # type: ignore[no-untyped-def]
+    async def body() -> AsyncIterator[bytes]:
         try:
             async for chunk in upstream.aiter_raw():
                 yield chunk

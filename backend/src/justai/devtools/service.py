@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import ast
 import asyncio
+import builtins
+import contextlib
 import json
 import re
 import shutil
@@ -155,11 +157,11 @@ class DevToolsService:
         self._tasks.add(task)
         task.add_done_callback(self._tasks.discard)
 
-    async def list(self) -> list[dict[str, Any]]:
+    async def list(self) -> builtins.list[dict[str, Any]]:
         async with self.c.db.session() as s:
             projects = (await s.scalars(select(ToolProject).order_by(ToolProject.created_at.desc()))).all()
             versions = (await s.scalars(select(ToolVersion).order_by(ToolVersion.version.desc()))).all()
-        by_project: dict[str, list[ToolVersion]] = {}
+        by_project: dict[str, builtins.list[ToolVersion]] = {}
         for v in versions:
             by_project.setdefault(v.project_id, []).append(v)
         return [{"id": p.id, "plugin_id": p.plugin_id, "title": p.title, "request": p.request,
@@ -221,7 +223,8 @@ class DevToolsService:
                 async with self.c.db.session() as s:
                     s.add(ToolVersion(project_id=project_id, version=0, spec={"existing": verdict},
                                       manifest={}, code="", tests="", status="covered",
-                                      validation={"review": {"ok": True, "findings": [verdict.get("explanation", "")]}}))
+                                      validation={"review": {"ok": True,
+                                                             "findings": [verdict.get("explanation", "")]}}))
                 await self._set_project(project_id, status="covered_by_existing")
                 return
         await self._set_project(project_id, status="generating")
@@ -263,7 +266,8 @@ class DevToolsService:
             validation["tests"] = await self._run_tests(manifest_dict, code, tests)
         review = await ai.chat(ModelRole.REASONING, [
             ChatMessage(role=Role.SYSTEM, content=REVIEW_PROMPT),
-            ChatMessage(role=Role.USER, content=f"Manifest:\n{json.dumps(manifest_dict, indent=1)}\n\nplugin.py:\n{code}"),
+            ChatMessage(role=Role.USER,
+                        content=f"Manifest:\n{json.dumps(manifest_dict, indent=1)}\n\nplugin.py:\n{code}"),
         ], json_schema=REVIEW_SCHEMA, temperature=0.0)
         validation["review"] = json.loads(review.text or '{"ok": false, "findings": ["keine Antwort"]}')
         passed = (validation["static"]["ok"] and validation.get("tests", {}).get("ok")
@@ -329,10 +333,8 @@ class DevToolsService:
             project = await s.get(ToolProject, project_id)
         if project is None:
             raise NotFound("project not found")
-        try:
+        with contextlib.suppress(NotFound):
             await self.c.plugins.disable(project.plugin_id)
-        except NotFound:
-            pass
         async with self.c.db.session() as s:
             for v in (await s.scalars(select(ToolVersion).where(ToolVersion.project_id == project_id))).all():
                 if v.status == "active":

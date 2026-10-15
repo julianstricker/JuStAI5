@@ -16,7 +16,7 @@ from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from typing import Any
 
-from justai_sdk.events import Event, EventSource
+from justai_sdk.events import Event
 from justai_sdk.ports.ai import ChatMessage, Role
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, delete, func, or_, select, update

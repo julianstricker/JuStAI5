@@ -84,5 +84,5 @@ async def track(device_id: str, body: TrackIn, p: User, c: C) -> dict[str, bool]
     kind, _, value = body.target.partition(":")
     target = TrackingTarget() if kind == "person" else TrackingTarget(kind, value or None)
     await svc.start_tracking(device_id, target)
-    await c.audit.record(p.actor, "ptz.track", device_id, target=body.target)
+    await c.audit.record(p.actor, "ptz.track", device_id, tracking_target=body.target)
     return {"ok": True}

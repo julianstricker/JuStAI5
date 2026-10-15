@@ -1,0 +1,25 @@
+# Development: hot reload for backend and plugins, Vite dev server for the UI.
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+services:
+  core:
+    environment:
+      JUSTAI_ENV: development
+      JUSTAI_LOG_JSON: "false"
+    volumes:
+      - ./backend/src/justai:/app/.venv/lib/python3.12/site-packages/justai:ro
+      - ./sdk/python/src/justai_sdk:/app/.venv/lib/python3.12/site-packages/justai_sdk:ro
+      - ./plugins:/app/plugins:ro
+  frontend:
+    image: node:22.23.3-bookworm-slim
+    working_dir: /src/frontend
+    command: sh -c "npm ci --no-audit --no-fund && npm run dev"
+    environment:
+      JUSTAI_DEV_BACKEND: http://core:8080
+    volumes:
+      - ./frontend:/src/frontend
+      - frontend_node_modules:/src/frontend/node_modules
+    ports:
+      - "5173:5173"
+    networks: [media]
+volumes:
+  frontend_node_modules:

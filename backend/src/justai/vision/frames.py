@@ -7,11 +7,12 @@ import contextlib
 import json
 import time
 from collections.abc import AsyncIterator
-from typing import Protocol
+from typing import Protocol, cast
 
 import cv2
 import numpy as np
 from justai_sdk.ports.devices import VideoSource
+from justai_sdk.ports.vision import Image
 
 from justai.logging import get_logger
 
@@ -19,7 +20,7 @@ log = get_logger(__name__)
 
 
 class FrameSource(Protocol):
-    def frames(self) -> AsyncIterator[tuple[float, np.ndarray]]: ...
+    def frames(self) -> AsyncIterator[tuple[float, Image]]: ...
 
 
 async def probe_size(rtsp_url: str) -> tuple[int, int]:
@@ -42,7 +43,7 @@ class FfmpegFrameSource:
         self.fps = fps
         self.width = width
 
-    async def frames(self) -> AsyncIterator[tuple[float, np.ndarray]]:
+    async def frames(self) -> AsyncIterator[tuple[float, Image]]:
         src_w, src_h = await probe_size(self.rtsp_url)
         w = min(self.width, src_w)
         h = int(round(src_h * w / src_w / 2)) * 2
@@ -73,7 +74,7 @@ class DeviceFrameSource:
         self.fps = fps
         self.width = width
 
-    async def frames(self) -> AsyncIterator[tuple[float, np.ndarray]]:
+    async def frames(self) -> AsyncIterator[tuple[float, Image]]:
         interval = 1.0 / self.fps
         while True:
             started = time.monotonic()
@@ -82,11 +83,11 @@ class DeviceFrameSource:
                 if frame.shape[1] > self.width:
                     scale = self.width / frame.shape[1]
                     frame = cv2.resize(frame, (self.width, int(frame.shape[0] * scale)))
-                yield time.monotonic(), frame
+                yield time.monotonic(), cast(Image, frame)
             await asyncio.sleep(max(0.0, interval - (time.monotonic() - started)))
 
 
-def apply_privacy_mask(image: np.ndarray, zones: list[list[tuple[float, float]]]) -> np.ndarray:
+def apply_privacy_mask(image: Image, zones: list[list[tuple[float, float]]]) -> Image:
     """Black out privacy zones (normalised polygons) before any analysis."""
     if not zones:
         return image

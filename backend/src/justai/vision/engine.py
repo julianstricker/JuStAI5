@@ -18,13 +18,13 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 
 import cv2
 import numpy as np
 from justai_sdk.events import Event, EventSource
 from justai_sdk.ports.devices import Capability
-from justai_sdk.ports.vision import BBox, Detection, FaceAnalyzer, ObjectDetector
+from justai_sdk.ports.vision import BBox, Detection, FaceAnalyzer, Image, ObjectDetector
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
@@ -33,7 +33,7 @@ from justai.common.supervisor import Supervisor
 from justai.db.engine import Database
 from justai.db.models import Sighting, VisionWatch
 from justai.devices.manager import DeviceManager, DeviceRuntime
-from justai.devices.service import DeviceService, DevicePatch
+from justai.devices.service import DevicePatch, DeviceService
 from justai.events.bus import EventBus
 from justai.identity.service import IdentityService, quality_issues
 from justai.logging import get_logger
@@ -86,7 +86,7 @@ class CameraState:
     tracker: IouTracker = field(default_factory=IouTracker)
     motion: MotionDetector = field(default_factory=MotionDetector)
     stats: CameraStats = field(default_factory=CameraStats)
-    latest: tuple[float, np.ndarray] | None = None
+    latest: tuple[float, Image] | None = None
     last_detect: float = 0.0
     boost_until: float = 0.0  # run detection on every frame (PTZ tracking)
     unknown_face_at: float = 0.0
@@ -250,7 +250,7 @@ class VisionEngine:
             for tr in state.tracker.clear():
                 await self._track_left(state, tr)
 
-    async def _process(self, state: CameraState, t: float, frame: np.ndarray) -> None:
+    async def _process(self, state: CameraState, t: float, frame: Image) -> None:
         cfg = state.config
         if cfg.motion:
             change = state.motion.update(frame, t)
@@ -367,9 +367,10 @@ class VisionEngine:
         except Exception as exc:
             log.info("face snapshot failed", camera=state.device_id, error=str(exc))
             return
-        image = cv2.imdecode(np.frombuffer(jpeg, np.uint8), cv2.IMREAD_COLOR)
-        if image is None:
+        decoded = cv2.imdecode(np.frombuffer(jpeg, np.uint8), cv2.IMREAD_COLOR)
+        if decoded is None:
             return
+        image = cast(Image, decoded)
         image = apply_privacy_mask(image, [z.points for z in state.config.privacy_zones])
         state.stats.face_checks += 1
         async with self._sem:
@@ -407,9 +408,10 @@ class VisionEngine:
     async def analyze_device(self, device_id: str) -> dict[str, Any]:
         """Full-resolution analysis of a fresh snapshot (tools, admin UI)."""
         jpeg = await self.devices.snapshot(device_id, width=1920)
-        image = cv2.imdecode(np.frombuffer(jpeg, np.uint8), cv2.IMREAD_COLOR)
-        if image is None:
+        decoded = cv2.imdecode(np.frombuffer(jpeg, np.uint8), cv2.IMREAD_COLOR)
+        if decoded is None:
             raise RuntimeError("snapshot could not be decoded")
+        image = cast(Image, decoded)
         cfg = self.config(device_id)
         image = apply_privacy_mask(image, [z.points for z in cfg.privacy_zones])
         result: dict[str, Any] = {"detections": [], "faces": [], "image_bgr": image}
@@ -431,7 +433,7 @@ class VisionEngine:
                 result["faces"].append(entry)
         return result
 
-    def latest_frame(self, device_id: str) -> np.ndarray | None:
+    def latest_frame(self, device_id: str) -> Image | None:
         state = self.cameras.get(device_id)
         return state.latest[1] if state and state.latest else None
 

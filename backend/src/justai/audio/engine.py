@@ -42,6 +42,7 @@ from justai.audio.io import (
 from justai.audio.processor import EndpointAudioProcessor, ProcessedFrame, WakeCandidate
 from justai.common.errors import NotFound, Unavailable
 from justai.common.supervisor import Supervisor
+from justai.common.tasks import spawn
 from justai.devices.manager import DeviceManager, DeviceRuntime
 from justai.endpoints.service import DeviceRole, EndpointService, EndpointView
 from justai.events.bus import EventBus
@@ -58,6 +59,10 @@ WakeHandler = Callable[[WakeCandidate, ArbitrationResult], Awaitable[None]]
 
 DEFAULT_NETWORK_LATENCY_S = 2.2  # conservative until calibrated (C200 measured ~1.8 s)
 DEFAULT_LOCAL_LATENCY_S = 0.35
+
+
+def _level_db(pcm: Int16Array) -> float:
+    return float(20 * np.log10(np.sqrt(np.mean(pcm.astype(float) ** 2)) / 32768 + 1e-12))
 
 
 def _envelope_db(pcm: Int16Array, frame: int = 160) -> np.ndarray:
@@ -200,7 +205,7 @@ class EndpointAudio:
         if resampler is not None:
             tail = resampler.process(np.zeros(0, np.int16), last=True)
             if tail.size:
-                asyncio.create_task(speaker.enqueue(utterance_id, tail))
+                spawn(speaker.enqueue(utterance_id, tail))
         speaker.end(utterance_id)
 
     async def play(self, utterance_id: str, chunks: AsyncIterator[AudioChunk]) -> None:
@@ -304,7 +309,7 @@ class AudioEngine:
                 self.supervisor.start(f"mic:{device_id}", channel.run, max_backoff_s=30)
         if Capability.AUDIO_OUTPUT in caps:
             custom_sink = handle.audio_sink()
-            latency = float(runtime.settings.get("output_latency_s", 0) or 0)
+            latency = float(str(runtime.settings.get("output_latency_s", 0) or 0))
             if custom_sink is not None:
                 sink: Any = DeviceSinkAdapter(custom_sink, latency or DEFAULT_LOCAL_LATENCY_S)
             elif media is not None and media.backchannel and runtime.stream:
@@ -501,16 +506,17 @@ class AudioEngine:
         last = estimator.last
         onset = onset_delay(pcm, t0, ep.reference.get(t0 - 4.0, pcm.size + 4 * SR), t0 - 4.0)
         delay = est.delay_s if est else onset
-        result = {"delay_s": round(delay, 3) if delay is not None else None,
+        mic_level = _level_db(pcm)
+        result: dict[str, Any] = {"delay_s": round(delay, 3) if delay is not None else None,
                   "method": "gcc-phat" if est else ("onset" if onset is not None else None),
                   "gcc_confidence": round(last.confidence, 1) if last else 0.0,
                   "onset_delay_s": round(onset, 3) if onset is not None else None,
-                  "mic_level_db": round(float(20 * np.log10(np.sqrt(np.mean(pcm.astype(float) ** 2)) / 32768 + 1e-12)), 1)}
+                  "mic_level_db": round(mic_level, 1)}
         noise_floor = ep.processor.stats.noise_floor_db
         if delay is not None:
             ep.processor.seed_delay(delay)
             result["interpretation"] = "echo delay measured"
-        elif result["mic_level_db"] < noise_floor + 6:
+        elif mic_level < noise_floor + 6:
             result["interpretation"] = (
                 "no echo reached the microphone: the device most likely mutes its microphone "
                 "while its speaker plays (hardware half duplex). This is safe; the conservative "

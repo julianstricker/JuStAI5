@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Literal
 from justai_sdk.permissions import Permission
 from justai_sdk.ports.devices import Capability
 from justai_sdk.tools import SideEffect, ToolContext, ToolDefinition, ToolResult
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from justai.common.errors import Unavailable
 from justai.identity.service import IdentityService
@@ -51,6 +51,7 @@ class PtzExtension:
 
     async def _ptz_camera(self, target: CameraTarget, ctx: ToolContext) -> str:
         vision = self.c.extensions["vision"]
+        device_id: str
         device_id, room_id = await vision.resolve_camera(target, ctx)
         rt = self.c.devices.get(device_id)
         if rt is None or Capability.PTZ_PAN not in rt.capabilities:

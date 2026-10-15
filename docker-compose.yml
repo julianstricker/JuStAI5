@@ -1,0 +1,105 @@
+# JuStAI5 - start everything with:  docker compose up -d --build
+name: justai5
+
+x-env-file: &env-file
+  env_file:
+    - path: .env
+      required: false
+
+services:
+  secrets-init:
+    image: alpine:3.22
+    command: ["/bin/sh", "/init.sh"]
+    volumes:
+      - secrets:/secrets
+      - ./docker/secrets-init.sh:/init.sh:ro
+    network_mode: none
+    restart: "no"
+
+  postgres:
+    image: pgvector/pgvector:0.8.1-pg17
+    environment:
+      POSTGRES_USER: justai
+      POSTGRES_DB: justai
+      POSTGRES_PASSWORD_FILE: /run/secrets-shared/db_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - secrets:/run/secrets-shared:ro
+    networks: [db]
+    depends_on:
+      secrets-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U justai -d justai"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  go2rtc:
+    image: alexxit/go2rtc:1.9.14
+    volumes:
+      - ./go2rtc/go2rtc.yaml:/config/go2rtc.yaml:ro
+    networks: [media]
+    restart: unless-stopped
+
+  core:
+    <<: *env-file
+    build:
+      context: .
+      dockerfile: docker/core.Dockerfile
+    image: justai5/core:local
+    environment:
+      JUSTAI_DATABASE_URL: postgresql+asyncpg://justai@postgres:5432/justai
+      JUSTAI_GO2RTC_URL: http://go2rtc:1984
+      JUSTAI_GO2RTC_RTSP_URL: rtsp://go2rtc:8554
+      JUSTAI_CORE_INTERNAL_URL: http://core:8080
+      JUSTAI_SANDBOX_URL: http://sandbox:8090
+    volumes:
+      - data:/data
+      - secrets:/run/secrets-shared:ro
+    ports:
+      - "${JUSTAI_HTTP_PORT:-8080}:8080"
+    networks: [db, media, sandbox]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      go2rtc:
+        condition: service_started
+    stop_grace_period: 20s
+    restart: unless-stopped
+
+  sandbox:
+    build:
+      context: .
+      dockerfile: docker/sandbox.Dockerfile
+    image: justai5/sandbox:local
+    volumes:
+      - secrets:/run/secrets-shared:ro
+    networks: [sandbox]
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 256
+    mem_limit: 1g
+    cpus: 1.0
+    depends_on:
+      secrets-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+networks:
+  db:
+    internal: true    # database only reachable by the core
+  sandbox:
+    internal: true    # sandbox: no internet, no LAN - only the core
+  media: {}           # go2rtc and core reach cameras in the LAN
+
+volumes:
+  pgdata:
+  data:
+  secrets:

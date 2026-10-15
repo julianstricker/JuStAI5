@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import base64
+import builtins
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -84,7 +85,7 @@ class IdentityService:
     def __init__(self, db: Database, bus: EventBus) -> None:
         self.db = db
         self.bus = bus
-        self._gallery: list[tuple[str, str, np.ndarray]] = []  # (person_id, name, matrix)
+        self._gallery: builtins.list[tuple[str, str, np.ndarray]] = []  # (person_id, name, matrix)
         self.store_thumbnails = True
 
     # --------------------------------------------------------------- gallery
@@ -93,7 +94,7 @@ class IdentityService:
             people = (await s.scalars(select(Person).where(
                 Person.biometric_consent, Person.recognition_enabled, Person.merged_into.is_(None)))).all()
             rows = (await s.scalars(select(FaceEmbedding))).all()
-        by_person: dict[str, list[np.ndarray]] = {}
+        by_person: dict[str, builtins.list[np.ndarray]] = {}
         for r in rows:
             by_person.setdefault(r.person_id, []).append(np.asarray(r.embedding, dtype=np.float32))
         self._gallery = [(p.id, p.name, np.stack(by_person[p.id])) for p in people if p.id in by_person]
@@ -113,7 +114,7 @@ class IdentityService:
         return best
 
     # ----------------------------------------------------------------- people
-    async def list(self) -> list[dict[str, Any]]:
+    async def list(self) -> builtins.list[dict[str, Any]]:
         async with self.db.session() as s:
             people = (await s.scalars(select(Person).where(Person.merged_into.is_(None))
                                       .order_by(Person.name))).all()
@@ -185,13 +186,13 @@ class IdentityService:
         await self.reload_gallery()
 
     # -------------------------------------------------------------- enrolment
-    async def enroll_images(self, person_id: str, images: list[np.ndarray], analyzer: FaceAnalyzer,
+    async def enroll_images(self, person_id: str, images: builtins.list[np.ndarray], analyzer: FaceAnalyzer,
                             *, source: str = "enrollment", max_samples: int = 8) -> EnrollResult:
         person = await self.get(person_id)
         if not person.biometric_consent:
             raise ValidationFailed("biometrische Registrierung erfordert eine Einwilligung")
-        reasons: list[str] = []
-        accepted: list[tuple[np.ndarray, FaceObservation, np.ndarray]] = []
+        reasons: builtins.list[str] = []
+        accepted: builtins.list[tuple[np.ndarray, FaceObservation, np.ndarray]] = []
         for image in images:
             faces = analyzer.detect_faces(image)
             if len(faces) != 1:
@@ -236,7 +237,7 @@ class IdentityService:
         ok, buf = cv2.imencode(".jpg", crop, [cv2.IMWRITE_JPEG_QUALITY, 80])
         return buf.tobytes() if ok else b""
 
-    async def faces(self, person_id: str) -> list[dict[str, Any]]:
+    async def faces(self, person_id: str) -> builtins.list[dict[str, Any]]:
         async with self.db.session() as s:
             rows = (await s.scalars(select(FaceEmbedding).where(FaceEmbedding.person_id == person_id)
                                     .order_by(FaceEmbedding.created_at))).all()
@@ -297,11 +298,11 @@ class IdentityService:
                            "last_seen": x.last_seen.isoformat()} for x in sightings],
         }
 
-    async def pets_by_species(self) -> dict[str, list[Person]]:
+    async def pets_by_species(self) -> dict[str, builtins.list[Person]]:
         async with self.db.session() as s:
             pets = (await s.scalars(select(Person).where(Person.kind == "pet",
                                                          Person.merged_into.is_(None)))).all()
-        out: dict[str, list[Person]] = {}
+        out: dict[str, builtins.list[Person]] = {}
         for p in pets:
             if p.species:
                 out.setdefault(p.species.lower(), []).append(p)

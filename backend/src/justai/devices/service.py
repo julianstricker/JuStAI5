@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import builtins
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -40,7 +41,7 @@ class DeviceService:
         self.db = db
         self.secrets = secrets
 
-    async def list(self, room_id: str | None = None) -> list[Device]:
+    async def list(self, room_id: str | None = None) -> builtins.list[Device]:
         stmt = select(Device).order_by(Device.name)
         if room_id:
             stmt = stmt.where(Device.room_id == room_id)
@@ -54,7 +55,7 @@ class DeviceService:
             raise NotFound(f"device {device_id} not found")
         return device
 
-    async def create(self, data: DeviceIn, secret_fields: list[str]) -> Device:
+    async def create(self, data: DeviceIn, secret_fields: builtins.list[str]) -> Device:
         public, secret = _split(data.config, secret_fields)
         async with self.db.session() as s:
             device = Device(name=data.name, driver_id=data.driver_id, room_id=data.room_id,
@@ -67,7 +68,7 @@ class DeviceService:
             await self.secrets.set(_secret_key(device_id, k), str(v))
         return device
 
-    async def update(self, device_id: str, patch: DevicePatch, secret_fields: list[str]) -> Device:
+    async def update(self, device_id: str, patch: DevicePatch, secret_fields: builtins.list[str]) -> Device:
         secret: dict[str, Any] = {}
         async with self.db.session() as s:
             device = await s.get(Device, device_id)
@@ -103,11 +104,11 @@ class DeviceService:
         secret = await self.secrets.get_many(f"device:{device.id}:")
         return {**device.config, **secret}
 
-    async def secret_fields_present(self, device_id: str) -> list[str]:
+    async def secret_fields_present(self, device_id: str) -> builtins.list[str]:
         return sorted((await self.secrets.get_many(f"device:{device_id}:")).keys())
 
     async def set_status(self, device_id: str, *, status: str, detail: str | None = None,
-                         capabilities: list[str] | None = None,
+                         capabilities: builtins.list[str] | None = None,
                          info: dict[str, Any] | None = None, seen: bool = False) -> None:
         from datetime import UTC, datetime
 

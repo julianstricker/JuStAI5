@@ -11,7 +11,7 @@ from typing import Any
 
 import numpy as np
 from justai_sdk.audio import AudioChunk
-from justai_sdk.plugin import Plugin, PluginHealth, HealthState
+from justai_sdk.plugin import HealthState, Plugin, PluginHealth
 from justai_sdk.ports.ai import (
     ChatEvent,
     ChatEventKind,

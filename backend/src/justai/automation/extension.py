@@ -138,4 +138,5 @@ class AutomationExtension:
 def describe_schema() -> dict[str, Any]:
     from justai.automation.model import definition_schema
 
-    return json.loads(json.dumps(definition_schema()))
+    schema: dict[str, Any] = json.loads(json.dumps(definition_schema()))
+    return schema

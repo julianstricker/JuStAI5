@@ -8,7 +8,8 @@ prevents duplicate activations when a wakeword and an event arrive together.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
+import builtins
+from collections.abc import Callable, Coroutine
 from datetime import UTC, datetime
 from typing import Any
 
@@ -22,10 +23,12 @@ from justai.audio.engine import AudioEngine
 from justai.audio.processor import WakeCandidate
 from justai.auth.rbac import conversation_permissions
 from justai.common.errors import NotFound, Unavailable
+from justai.common.tasks import spawn
 from justai.conversation.context import ConversationContext
 from justai.conversation.session import ConversationSession, SessionDeps
 from justai.db.engine import Database
-from justai.db.models import ConversationSession as SessionRow, Person, TranscriptTurn, User
+from justai.db.models import ConversationSession as SessionRow
+from justai.db.models import Person, TranscriptTurn, User
 from justai.endpoints.service import ConversationMode, DeviceRole, EndpointService
 from justai.events.bus import EventBus
 from justai.logging import get_logger
@@ -61,13 +64,13 @@ class SessionRepository:
             row.person_id = person_id or row.person_id
             row.language = language or row.language
 
-    async def list(self, limit: int = 50) -> list[SessionRow]:
+    async def list(self, limit: int = 50) -> builtins.list[SessionRow]:
         async with self.db.session() as s:
             rows = await s.scalars(select(SessionRow).order_by(SessionRow.started_at.desc())
                                    .limit(limit))
             return list(rows.all())
 
-    async def turns(self, session_id: str) -> list[TranscriptTurn]:
+    async def turns(self, session_id: str) -> builtins.list[TranscriptTurn]:
         async with self.db.session() as s:
             rows = await s.scalars(select(TranscriptTurn).where(TranscriptTurn.session_id == session_id)
                                    .order_by(TranscriptTurn.created_at))
@@ -92,7 +95,7 @@ class ConversationManager:
         self._by_endpoint: dict[str, ConversationSession] = {}
         self._by_id: dict[str, ConversationSession] = {}
         self._locks: dict[str, asyncio.Lock] = {}
-        self._start_hooks: list[Callable[[ConversationSession], Awaitable[None]]] = []
+        self._start_hooks: list[Callable[[ConversationSession], Coroutine[Any, Any, None]]] = []
         audio.set_wake_handler(self._on_wake, lambda ep: ep in self._by_endpoint)
 
     # ------------------------------------------------------------------ queries
@@ -109,7 +112,7 @@ class ConversationManager:
         session = self._by_id.get(session_id)
         return session.user_turns if session else 0
 
-    def on_session_start(self, hook: Callable[[ConversationSession], Awaitable[None]]) -> None:
+    def on_session_start(self, hook: Callable[[ConversationSession], Coroutine[Any, Any, None]]) -> None:
         self._start_hooks.append(hook)
 
     # ------------------------------------------------------------------- starts
@@ -150,7 +153,7 @@ class ConversationManager:
             self._by_endpoint[endpoint_id] = session
         await session.start(instruction)
         for hook in self._start_hooks:
-            asyncio.create_task(hook(session))
+            spawn(hook(session))
         return session
 
     async def start_text(self, *, room_id: str | None, user_role: str = "resident",

@@ -7,6 +7,7 @@ point with its own wakeword and audio configuration.
 
 from __future__ import annotations
 
+import builtins
 from enum import StrEnum
 
 from pydantic import BaseModel, Field
@@ -128,14 +129,14 @@ class EndpointService:
     def __init__(self, db: Database) -> None:
         self.db = db
 
-    async def list(self, room_id: str | None = None) -> list[EndpointView]:
+    async def list(self, room_id: str | None = None) -> builtins.list[EndpointView]:
         stmt = select(InteractionEndpoint).order_by(InteractionEndpoint.name)
         if room_id:
             stmt = stmt.where(InteractionEndpoint.room_id == room_id)
         async with self.db.session() as s:
             endpoints = (await s.scalars(stmt)).all()
             refs = (await s.scalars(select(EndpointDevice))).all()
-        by_ep: dict[str, list[EndpointDeviceRef]] = {}
+        by_ep: dict[str, builtins.list[EndpointDeviceRef]] = {}
         for r in refs:
             by_ep.setdefault(r.endpoint_id, []).append(
                 EndpointDeviceRef(device_id=r.device_id, role=DeviceRole(r.role), priority=r.priority)
@@ -197,7 +198,7 @@ class EndpointService:
                 raise NotFound(f"endpoint {endpoint_id} not found")
             await s.delete(ep)
 
-    async def _validate_devices(self, room_id: str, refs: list[EndpointDeviceRef]) -> None:
+    async def _validate_devices(self, room_id: str, refs: builtins.list[EndpointDeviceRef]) -> None:
         if not refs:
             return
         async with self.db.session() as s:
@@ -217,7 +218,7 @@ class EndpointService:
             raise ValidationFailed("an endpoint has at most one speaker")
 
     @staticmethod
-    def _view(ep: InteractionEndpoint, refs: list[EndpointDeviceRef]) -> EndpointView:
+    def _view(ep: InteractionEndpoint, refs: builtins.list[EndpointDeviceRef]) -> EndpointView:
         return EndpointView(id=ep.id, name=ep.name, room_id=ep.room_id, enabled=ep.enabled,
                             priority=ep.priority, arbitration_group=ep.arbitration_group,
                             language=ep.language,

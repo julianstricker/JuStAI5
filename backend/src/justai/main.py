@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import uvicorn
 
+import justai
 from justai.config import get_settings
 
 
@@ -17,7 +20,8 @@ def main() -> None:
         log_config=None,
         proxy_headers=True,
         reload=settings.is_dev,
-        reload_dirs=["/app/backend/src", "/app/plugins"] if settings.is_dev else None,
+        reload_dirs=[str(Path(justai.__file__).parent), str(settings.builtin_plugins_dir)]
+        if settings.is_dev else None,
     )
 
 

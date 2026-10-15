@@ -191,21 +191,21 @@ class TapoDriver:
 
         use_rtsp = config.get("stream") == "rtsp"
         if use_rtsp and not ports[PORT_RTSP]:
-            warnings.append("RTSP port closed (battery models support no RTSP); using Tapo protocol")
+            warnings.append("RTSP-Port geschlossen (Akku-Modelle haben kein RTSP); verwende das Tapo-Protokoll")
             use_rtsp = False
         if use_rtsp:
             main, sub = rtsp_source(host, config, 1), rtsp_source(host, config, 2)
             backchannel = False
             if main is None:
                 return ProbeResult(ok=False, error="RTSP needs the camera account")
-            warnings.append("RTSP has no two-way audio; use the Tapo protocol for speaker output")
+            warnings.append("RTSP hat kein Zwei-Wege-Audio; für den Lautsprecher das Tapo-Protokoll verwenden")
         else:
             main, sub = tapo_source(host, config, 0), tapo_source(host, config, 1)
             backchannel = True
             if main is None:
                 if rtsp_source(host, config, 1) and ports[PORT_RTSP]:
                     main, sub, backchannel = rtsp_source(host, config, 1), rtsp_source(host, config, 2), False
-                    warnings.append("no cloud password: using RTSP without speaker output")
+                    warnings.append("kein Cloud-Passwort: RTSP ohne Lautsprecher")
                 else:
                     return ProbeResult(ok=False, error="cloud password (or hash) required")
             elif not ports[PORT_TAPO_STREAM]:
@@ -237,11 +237,11 @@ class TapoDriver:
                     await asyncio.to_thread(tapo.getPrivacyMode)
                     caps.add(Capability.CAMERA_PRIVACY_MODE)
             except Exception as exc:
-                warnings.append(f"local Tapo API not usable: {type(exc).__name__}: {exc}")
+                warnings.append(f"lokale Tapo-API nicht nutzbar: {type(exc).__name__}: {exc}")
         elif ports[PORT_ONVIF] and config.get("camera_username"):
             caps |= {Capability.PTZ_PAN, Capability.PTZ_TILT}  # confirmed on open()
         else:
-            warnings.append("PTZ/presets need the cloud password (local API) or the camera account (ONVIF)")
+            warnings.append("PTZ/Presets brauchen das Cloud-Passwort (lokale API) oder das Kamerakonto (ONVIF)")
 
         media = Go2rtcMedia(sources=[main], sub_sources=[sub] if sub else [],
                             backchannel=backchannel, backchannel_codec="pcma")

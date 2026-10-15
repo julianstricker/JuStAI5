@@ -186,7 +186,12 @@ class ToolExecutor:
         except Exception as exc:
             code = getattr(exc, "code", "tool_error")
             log.warning("tool failed", tool=definition.name, error=str(exc), exc_info=True)
-            result = ToolResult.failure(str(code), getattr(exc, "message", None) or str(exc))
+            message = getattr(exc, "message", None) or str(exc)
+            problems = (getattr(exc, "details", None) or {}).get("errors")
+            if problems:  # let the model correct its arguments
+                message += ": " + "; ".join(
+                    f"{'.'.join(str(x) for x in e.get('loc', []))}: {e.get('msg')}" for e in problems[:6])
+            result = ToolResult.failure(str(code), message)
         await self._record(definition.name, tool.owner, args, ctx, result, started)
         for listener in self._listeners:
             await listener(definition.name, ctx, result)

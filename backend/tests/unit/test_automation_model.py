@@ -41,3 +41,17 @@ def test_cron_matching() -> None:
 ])
 def test_compare(left, op, right, expected) -> None:  # type: ignore[no-untyped-def]
     assert compare(left, op, right) is expected
+
+
+def test_tool_definitions_without_type_are_normalized() -> None:
+    from justai.automation.extension import normalize_definition
+
+    raw = {"trigger": {"event": "vision.person.recognized", "match": {"person_id": "person-1"}},
+           "conditions": [{"start": "07:00", "end": "22:00"}],
+           "actions": [{"room": "trigger", "instruction": "Begrüße Anna"}, {"text": "Hallo"},
+                       {"name": "weather.current", "args": {}}],
+           "options": {"once": True}}
+    d = AutomationService.validate(normalize_definition(raw))
+    assert d.trigger.type == "event"
+    assert [a.type for a in d.actions] == ["assistant.invoke", "speak", "tool"]
+    assert d.conditions[0].type == "time_window"

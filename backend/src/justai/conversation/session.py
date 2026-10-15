@@ -48,6 +48,18 @@ log = get_logger(__name__)
 MAX_TOOL_ROUNDS = 6
 MAX_HISTORY = 30
 
+_SORRY = {
+    "de": ("Entschuldigung, dabei ist ein Fehler aufgetreten.",
+           "Entschuldigung, das habe ich leider nicht geschafft."),
+    "it": ("Scusa, si è verificato un errore.", "Scusa, non ci sono riuscito."),
+    "en": ("Sorry, something went wrong.", "Sorry, I could not do that."),
+}
+
+
+def _sorry(language: str | None, *, failed: bool = False) -> str:
+    texts = _SORRY.get((language or "de")[:2], _SORRY["de"])
+    return texts[1] if failed else texts[0]
+
 
 class AudioPort(Protocol):
     """What a session needs from the audio engine (see ``EndpointAudio``)."""
@@ -563,15 +575,18 @@ class PipelineDriver:
                         role=Role.TOOL, tool_call_id=call.id, name=call.name,
                         content=json.dumps(tool_result_payload(result), ensure_ascii=False,
                                            default=str)))
+            if not "".join(spoken).strip():
+                # Tool rounds exhausted or the model ended without text: never stay silent.
+                fallback = _sorry(s.ctx.language, failed=True)
+                spoken.append(fallback)
+                await tts_queue.put(fallback)
         except asyncio.CancelledError:
             speaker.cancel()
             raise
         except Exception as exc:
             log.error("llm turn failed", session=s.id, error=str(exc))
-            fallback = {"de": "Entschuldigung, dabei ist ein Fehler aufgetreten.",
-                        "it": "Scusa, si è verificato un errore.",
-                        "en": "Sorry, something went wrong."}.get((s.ctx.language or "de")[:2])
-            spoken.append(fallback or "")
+            fallback = _sorry(s.ctx.language)
+            spoken.append(fallback)
             await tts_queue.put(fallback)
         finally:
             await tts_queue.put(None)

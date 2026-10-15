@@ -8,8 +8,11 @@ from typing import TYPE_CHECKING, Any
 from justai_sdk.permissions import Permission
 from justai_sdk.tools import NoParams, SideEffect, ToolContext, ToolDefinition, ToolResult
 from pydantic import BaseModel, Field
+from sqlalchemy import func, select
 
 from justai.automation.engine import AutomationEngine, AutomationService
+from justai.common.errors import ValidationFailed
+from justai.db.models import Person
 
 if TYPE_CHECKING:
     from justai.container import Container
@@ -64,6 +67,36 @@ def _substitute(value: Any, ctx: ToolContext) -> Any:
     return value
 
 
+_TRIGGER_KEYS = (("event", "event"), ("cron", "cron"), ("at", "at"), ("seconds", "interval"))
+_ACTION_KEYS = (("instruction", "assistant.invoke"), ("document", "display.show"), ("text", "speak"),
+                ("seconds", "wait"), ("event", "event.emit"), ("name", "tool"))
+_CONDITION_KEYS = (("start", "time_window"), ("path", "payload"), ("detector", "visual_state"))
+
+
+def _with_type(item: Any, keys: tuple[tuple[str, str], ...]) -> Any:
+    """Models often omit the discriminator; infer it from the fields that are present."""
+    if isinstance(item, dict) and "type" not in item:
+        for key, type_ in keys:
+            if key in item:
+                return {"type": type_, **item}
+    return item
+
+
+def normalize_definition(definition: dict[str, Any]) -> dict[str, Any]:
+    return {
+        **definition,
+        "trigger": _with_type(definition.get("trigger"), _TRIGGER_KEYS),
+        "conditions": [_with_type(c, _CONDITION_KEYS) for c in definition.get("conditions") or []],
+        "actions": [_with_type(a, _ACTION_KEYS) for a in definition.get("actions") or []],
+    }
+
+
+def describe_errors(exc: ValidationFailed) -> str:
+    errors = exc.details.get("errors") or []
+    parts = [f"{'.'.join(str(x) for x in e.get('loc', []))}: {e.get('msg')}" for e in errors[:6]]
+    return "; ".join(parts) or exc.message
+
+
 class AutomationExtension:
     def __init__(self, c: Container) -> None:
         self.c = c
@@ -75,6 +108,23 @@ class AutomationExtension:
 
     async def stop(self) -> None:
         await self.engine.stop()
+
+    async def _resolve_people(self, definition: dict[str, Any]) -> str | None:
+        """Replace person names in event matches by person ids; returns an unknown name."""
+        trigger = definition.get("trigger")
+        match = trigger.get("match") if isinstance(trigger, dict) else None
+        if not isinstance(match, dict):
+            return None
+        value = match.get("person_id")
+        if not isinstance(value, str) or value.startswith("person-"):
+            return None
+        async with self.c.db.session() as s:
+            person_id = await s.scalar(select(Person.id).where(
+                func.lower(Person.name) == value.strip().lower(), Person.merged_into.is_(None)))
+        if person_id is None:
+            return value
+        match["person_id"] = person_id
+        return None
 
     def register_tools(self, reg: ToolRegistry) -> None:
         svc, engine = self.service, self.engine
@@ -90,9 +140,18 @@ class AutomationExtension:
                                               "Person, sich vorzustellen (identity.introduce) bzw. ihr Gesicht "
                                               "registrieren zu lassen, damit ich sie erkenne.")
                 return ToolResult.failure("room_unknown", "Kein aktueller Raum bekannt")
-            auto = await svc.create_from_definition(
-                name=p.name, description=p.description, definition=definition, created_by="assistant",
-                owner_person_id=ctx.person_id, origin={"session_id": ctx.session_id})
+            definition = normalize_definition(definition)
+            unknown = await self._resolve_people(definition)
+            if unknown:
+                return ToolResult.failure("person_unknown", f"Unbekannte Person '{unknown}'. Mit "
+                                          "identity.list_people die richtige person_id nachsehen.")
+            try:
+                auto = await svc.create_from_definition(
+                    name=p.name, description=p.description, definition=definition, created_by="assistant",
+                    owner_person_id=ctx.person_id, origin={"session_id": ctx.session_id})
+            except ValidationFailed as exc:
+                return ToolResult.failure("invalid_automation", f"Ungültige Automation ({describe_errors(exc)}). "
+                                          "Definition korrigieren und erneut versuchen.")
             await engine.reload()
             await self.c.audit.record("assistant", "automation.create", auto.id, name=p.name,
                                       session=ctx.session_id)

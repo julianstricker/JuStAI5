@@ -8,7 +8,7 @@ und **nicht getestet**.
 
 | Suite | Ort | Braucht | Ergebnis |
 | --- | --- | --- | --- |
-| Unit | `backend/tests/unit` | nichts | 98 bestanden |
+| Unit | `backend/tests/unit` | nichts | 100 bestanden |
 | Audio mit echten Modellen | `backend/tests/audio` | Modelle (`JUSTAI_TEST_MODELS_DIR`) | 5 bestanden |
 | Datenbank | `backend/tests/db` | PostgreSQL + pgvector (`JUSTAI_TEST_DATABASE_URL`) | 2 bestanden |
 | End-to-End | `backend/tests/e2e` | laufende Instanz (`JUSTAI_E2E_URL`, `JUSTAI_E2E_PASSWORD`), Gemini | 5 bestanden |
@@ -44,6 +44,14 @@ Eine Test-Datenbank startet man z. B. mit
 * **E2E**: zwei simulierte Räume mit akustischem Echo, echte lokale STT/TTS/Wakeword,
   Gemini als LLM: Gespräch, Raum-Routing, kein Echo, Timeout, doppelte Wakewords,
   parallele Gespräche, Display-Kopplung mit Bestätigung, proaktive Automation.
+
+**Hinweis zu E2E:** Die Suite nutzt das konfigurierte Cloud-LLM (Gemini). Am
+2026-10-15 lieferte Gemini zeitweise gleichzeitig 429 (Kontingent erschöpft) für
+`gemini-3.8-flash` und 503 (Überlastung) für den Fallback. In diesem Fall
+antwortet der Assistent korrekt mit einer Fehlermeldung, und drei Tests schlugen
+fehl. Die direkte Wiederholung bestand 5/5, obwohl im selben Zeitraum 8 weitere
+429/503-Fehler über die Fallback-Kette abgefangen wurden. Für stabile Läufe ein
+lokales LLM als zusätzlichen Fallback eintragen.
 
 ## Abnahmekriterien
 

@@ -73,7 +73,7 @@ class World:
                 "name": f"E2E {name} {tag}", "room_id": self.rooms[name],
                 "arbitration_group": f"{name}-{tag}" if separate_groups else f"house-{tag}",
                 "devices": [{"device_id": self.devices[name], "role": r} for r in ("mic", "speaker")],
-                "config": {"conversation": {"mode": "pipeline", "inactivity_timeout_s": 8},
+                "config": {"conversation": {"mode": "pipeline", "inactivity_timeout_s": 12},
                            "audio": {"duplex": "half", "output_latency_ms": 900}}}))
             self.endpoints[name] = ep["id"]
         assert wait_for(lambda: all(ok(api.get(f"/api/endpoints/{e}"))["runtime"] for e in self.endpoints.values()), 20)

@@ -126,6 +126,8 @@ class EndpointAudioProcessor:
         self._raw_hist: deque[tuple[float, Int16Array]] = deque(maxlen=200)  # 2 s raw
         self._last_delay_run = 0.0
         self._erle_hist: deque[float] = deque(maxlen=300)
+        self._levels: deque[float] = deque(maxlen=120)  # raw levels of the last 1.2 s (dBFS)
+        self._raw_noise_db = -60.0
         self.muted = False
         self._configure_duplex()
         self._aec = EchoCanceller(aec=self.audio.aec and self._duplex_mode == DuplexMode.FULL,
@@ -211,13 +213,15 @@ class EndpointAudioProcessor:
         processed = self._aec.process(raw, ref)
 
         level = dbfs(processed)
+        raw_db = dbfs(raw)
+        self._levels.append(raw_db)
         st.level_db = 0.7 * st.level_db + 0.3 * level
         vad = self._vad.process(processed)
         st.vad = vad
         if not echo_window and vad < 0.2:
             st.noise_floor_db = 0.995 * st.noise_floor_db + 0.005 * level
+            self._raw_noise_db = 0.995 * self._raw_noise_db + 0.005 * raw_db
 
-        raw_db = dbfs(raw)
         if echo_window:
             self._measure_echo(t, raw, processed)
             self._measure_coupling(t, raw_db, vad)
@@ -332,6 +336,11 @@ class EndpointAudioProcessor:
             if self.muted:
                 continue
             self._last_wake_t = t
+            # Loudness of the wake phrase itself (not of the frame at detection time,
+            # which often falls into the pause after the word): best indicator of which
+            # microphone is closest to the speaker.
+            # Raw (pre noise suppression) levels: NS would hide the real background noise.
+            phrase_level = float(np.percentile(self._levels, 90)) if self._levels else level
             out.wakes.append(WakeCandidate(
-                self.endpoint_id, best.model, best.score, t, level,
-                level - self.stats.noise_floor_db, vad, echo_window))
+                self.endpoint_id, best.model, best.score, t, phrase_level,
+                phrase_level - self._raw_noise_db, vad, echo_window))

@@ -39,7 +39,7 @@ RejectHandler = Callable[[WakeCandidate, str], Awaitable[None]]
 
 def score(c: WakeCandidate, ctx: ArbitrationContext) -> float:
     s = c.score * 10.0  # 0..10
-    s += max(-10.0, min(c.snr_db, 40.0)) * 0.15  # up to +6 for a clear signal
+    s += max(-10.0, min(c.snr_db, 70.0)) * 0.25  # loudness of the phrase dominates (proximity)
     s += c.vad * 2.0
     s += ctx.priority * 1.0
     if c.during_playback:

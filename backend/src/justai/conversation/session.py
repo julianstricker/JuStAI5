@@ -515,6 +515,7 @@ class PipelineDriver:
             return
         if result.language and result.language in s.deps.settings.languages:
             s.ctx.language = result.language
+            self._set_language_hint(result.language)
         if not await s.record_user(text, {"language": result.language}):
             s.sm.try_transition(SessionState.LISTENING, "echo")
             return
@@ -603,13 +604,26 @@ class PipelineDriver:
             with contextlib.suppress(TimeoutError):
                 await asyncio.wait_for(done.wait(), timeout=300)
 
+    def _set_language_hint(self, language: str) -> None:
+        """Keep one system note with the detected user language (replaced, not appended)."""
+        from justai.conversation.context import LANG_NAMES
+
+        name = LANG_NAMES.get(language, language)
+        note = ChatMessage(role=Role.SYSTEM, content=f"Der Benutzer spricht gerade {name}. Antworte auf {name}.")
+        if len(self.messages) > 1 and self.messages[1].role == Role.SYSTEM:
+            self.messages[1] = note
+        else:
+            self.messages.insert(1, note)
+
     def _trimmed(self) -> list[ChatMessage]:
         if len(self.messages) <= MAX_HISTORY:
             return self.messages
+        head = self.messages[:2] if len(self.messages) > 1 and self.messages[1].role == Role.SYSTEM \
+            else self.messages[:1]
         tail = self.messages[-MAX_HISTORY:]
-        while tail and tail[0].role == Role.TOOL:  # never start with orphaned tool results
+        while tail and tail[0].role in (Role.TOOL, Role.SYSTEM):  # no orphaned tool results
             tail = tail[1:]
-        return [self.messages[0], *tail]
+        return [*head, *tail]
 
     async def interrupt(self) -> None:
         if self._turn and not self._turn.done():

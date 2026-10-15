@@ -38,6 +38,7 @@ SCHEMA: dict[str, Any] = {
 }
 
 ROOMS: dict[str, AcousticRoom] = {}
+VOICES: dict[str, Any] = {}
 
 
 class SimMic:
@@ -246,8 +247,10 @@ class SimulatedPlugin(Plugin):
             return ToolResult.failure("unknown_device", "kein simuliertes Gerät mit dieser ID aktiv")
         from piper import PiperVoice
 
-        path = Path(os.environ.get("JUSTAI_MODELS_DIR", "/models")) / "piper" / f"{p.voice}.onnx"
-        voice = await asyncio.to_thread(PiperVoice.load, str(path))
+        voice = VOICES.get(p.voice)
+        if voice is None:
+            path = Path(os.environ.get("JUSTAI_MODELS_DIR", "/models")) / "piper" / f"{p.voice}.onnx"
+            voice = VOICES[p.voice] = await asyncio.to_thread(PiperVoice.load, str(path))
         pcm = np.concatenate([c.audio_int16_array for c in voice.synthesize(p.text)])
         import soxr
 

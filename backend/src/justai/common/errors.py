@@ -42,6 +42,11 @@ class Unauthorized(JustAIError):
     code = "unauthorized"
 
 
+class TooManyRequests(JustAIError):
+    status_code = 429
+    code = "too_many_requests"
+
+
 class Unavailable(JustAIError):
     status_code = 503
     code = "unavailable"

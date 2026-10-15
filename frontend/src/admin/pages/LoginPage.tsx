@@ -1,7 +1,7 @@
 import { Alert, Button, Center, Paper, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
 import { useState } from "react";
 
-import { api } from "@/shared/api";
+import { api, ApiError } from "@/shared/api";
 
 import { errorMessage } from "../components/common";
 
@@ -19,7 +19,14 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
       await api.post("/api/auth/login", { username, password });
       onLoggedIn();
     } catch (err) {
-      setError(errorMessage(err));
+      if (err instanceof ApiError && err.status === 429) {
+        const wait = (err.details as { retry_after_s?: number } | undefined)?.retry_after_s;
+        setError(`Zu viele Fehlversuche. Bitte ${wait ? `in ${wait} s` : "später"} erneut versuchen.`);
+      } else if (err instanceof ApiError && err.status === 401) {
+        setError("Benutzername oder Passwort falsch.");
+      } else {
+        setError(errorMessage(err));
+      }
     } finally {
       setBusy(false);
     }

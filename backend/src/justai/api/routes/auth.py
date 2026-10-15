@@ -1,12 +1,17 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Response
+import math
+
+from fastapi import APIRouter, Request, Response
 from pydantic import BaseModel, Field
 
 from justai.api.deps import COOKIE, Admin, C, User
 from justai.auth.rbac import Role
+from justai.auth.throttle import LoginThrottle
+from justai.common.errors import TooManyRequests, Unauthorized
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+throttle = LoginThrottle()
 
 
 class LoginIn(BaseModel):
@@ -31,8 +36,18 @@ class UserPatch(BaseModel):
 
 
 @router.post("/login")
-async def login(body: LoginIn, response: Response, c: C) -> dict[str, object]:
-    token, p = await c.auth.login(body.username, body.password)
+async def login(body: LoginIn, request: Request, response: Response, c: C) -> dict[str, object]:
+    keys = (f"user:{body.username.lower()}", f"ip:{request.client.host if request.client else '?'}")
+    wait = throttle.retry_after(*keys)
+    if wait > 0:
+        raise TooManyRequests("too many failed logins, try again later", retry_after_s=math.ceil(wait))
+    try:
+        token, p = await c.auth.login(body.username, body.password)
+    except Unauthorized:
+        throttle.failure(*keys)
+        await c.audit.record(f"ip:{keys[1][3:]}", "auth.login_failed", None, username=body.username[:64])
+        raise
+    throttle.success(keys[0])
     response.set_cookie(COOKIE, token, httponly=True, samesite="strict",
                         secure=c.settings.public_url.startswith("https"),
                         max_age=c.settings.jwt_ttl_hours * 3600)

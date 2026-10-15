@@ -41,6 +41,27 @@ def validate_cidrs(cidrs: list[str], authorised: list[str]) -> list[str]:
     return cidrs
 
 
+GENERIC_DRIVERS = frozenset({"onvif", "rtsp"})
+
+
+def merge_discoveries(a: DiscoveredDevice, b: DiscoveredDevice) -> DiscoveredDevice:
+    """Merge two findings for the same host.
+
+    The driver suggestion of a vendor-specific driver (e.g. tapo: two-way audio) wins over a
+    generic one (onvif/rtsp); descriptive fields come from whichever result reports them
+    from the device itself (ONVIF reports the real model, port signatures only guess).
+    """
+    def specific(d: DiscoveredDevice) -> bool:
+        return bool(d.suggested_driver) and d.suggested_driver not in GENERIC_DRIVERS
+
+    primary, other = (b, a) if specific(b) and not specific(a) else (a, b)
+    update: dict[str, Any] = {"protocols": sorted(set(a.protocols) | set(b.protocols))}
+    for field in ("name", "model", "manufacturer"):
+        if getattr(other, field) and (not getattr(primary, field) or other.discovered_by in GENERIC_DRIVERS):
+            update[field] = getattr(other, field)
+    return primary.model_copy(update=update)
+
+
 class DiscoveryService:
     def __init__(self, providers: ProviderRegistry, devices: DeviceService) -> None:
         self.providers = providers
@@ -60,16 +81,10 @@ class DiscoveryService:
                 return []
 
         results = [d for batch in await asyncio.gather(*(run(p) for p in providers)) for d in batch]
-        # Merge by host: keep the most specific suggestion, union of protocols.
         merged: dict[str, DiscoveredDevice] = {}
         for d in results:
             existing = merged.get(d.host)
-            if existing is None:
-                merged[d.host] = d
-                continue
-            protocols = sorted(set(existing.protocols) | set(d.protocols))
-            better = d if (d.suggested_driver and d.model) and not existing.model else existing
-            merged[d.host] = better.model_copy(update={"protocols": protocols})
+            merged[d.host] = d if existing is None else merge_discoveries(existing, d)
         known = {str(dev.config.get("host", "")): dev.id for dev in await self.devices.list()}
         known_fp = {dev.fingerprint: dev.id for dev in await self.devices.list() if dev.fingerprint}
         out = []

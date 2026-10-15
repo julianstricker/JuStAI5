@@ -187,3 +187,83 @@ def test_parallel_conversations_in_two_rooms(separate_world: World) -> None:
         s = w.session(room)
         if s:
             w.api.post(f"/api/conversations/{s['id']}/end")
+
+
+def test_display_pairing_presentation_ack_and_room_routing(world: World) -> None:
+    """Criteria 14/15: a display in the room shows the content and the tool only reports
+    success after the display acknowledged it."""
+    import asyncio
+    import json
+
+    import websockets
+
+    api = world.api
+    ws_url = BASE.replace("http", "ws", 1) + "/api/display/ws"  # type: ignore[union-attr]
+    received: list[dict[str, Any]] = []
+
+    async def display_client() -> dict[str, Any]:
+        async with websockets.connect(ws_url) as ws:
+            await ws.send(json.dumps({"type": "hello", "token": None, "user_agent": "e2e",
+                                      "capabilities": ["display.text", "display.dashboard", "display.image"]}))
+            code = json.loads(await ws.recv())["code"]
+            approve = await asyncio.to_thread(api.post, f"/api/displays/pairing/{code}/approve",
+                                              json={"name": "E2E TV", "room_id": world.rooms["Wohnzimmer"]})
+            device_id = approve.json()["device_id"]
+            while True:
+                msg = json.loads(await asyncio.wait_for(ws.recv(), 60))
+                received.append(msg)
+                if msg["type"] == "ready":
+                    break
+            # Wait until the core sees the display online, then ask the assistant's tool to show something.
+            for _ in range(40):
+                d = await asyncio.to_thread(api.get, f"/api/devices/{device_id}")
+                if d.json()["status"] == "online":
+                    break
+                await asyncio.sleep(0.5)
+            call = asyncio.ensure_future(asyncio.to_thread(api.post, "/api/tools/display.show/execute", json={
+                "room_id": world.rooms["Wohnzimmer"],
+                "args": {"document": {"title": "Börse", "components": [
+                    {"type": "stock-quote", "symbol": "AAPL", "price": 1.0, "currency": "USD"}]}}}))
+            show = json.loads(await asyncio.wait_for(ws.recv(), 30))
+            while show["type"] != "show":
+                show = json.loads(await asyncio.wait_for(ws.recv(), 30))
+            assert not call.done(), "tool must wait for the display acknowledgement"
+            await ws.send(json.dumps({"type": "ack", "presentation_id": show["presentation_id"],
+                                      "status": "displayed"}))
+            result = (await call).json()
+            await asyncio.to_thread(api.delete, f"/api/devices/{device_id}")
+            return result
+
+    result = asyncio.run(display_client())
+    assert result["ok"], result
+    assert result["data"]["status"] == "displayed"
+
+
+def test_automation_greets_recognised_person_in_the_trigger_room(world: World) -> None:
+    """Criterion 13 (with the recognition event injected): proactive conversation
+    without wakeword in the room where the person was seen."""
+    api = world.api
+    person = ok(api.post("/api/people", json={"name": f"E2E Julian {uuid.uuid4().hex[:4]}"}))
+    auto = ok(api.post("/api/automations", json={
+        "name": "E2E greet", "definition": {
+            "trigger": {"type": "event", "event": "vision.person.recognized", "match": {"person_id": person["id"]}},
+            "actions": [{"type": "assistant.invoke", "instruction": "Begrüße die Person kurz mit ihrem Namen.",
+                         "room": "trigger"}],
+            "options": {"once": True}}}))
+    try:
+        ok(api.post("/api/events", json={
+            "type": "vision.person.recognized", "room_id": world.rooms["Wohnzimmer"],
+            "payload": {"person_id": person["id"], "camera_id": "sim", "similarity": 0.61, "match_level": "strong"}}))
+        greeted = wait_for(lambda: (s := world.session("Wohnzimmer")) and any(
+            t["role"] == "assistant" for t in s["transcript"]) and s, 60)
+        assert greeted, "no proactive greeting"
+        assert world.session("Kueche") is None
+        runs = ok(api.get(f"/api/automations/{auto['id']}/runs"))
+        assert runs and runs[0]["status"] == "succeeded"
+        # once=True: a second recognition does not greet again
+        auto_state = next(a for a in ok(api.get("/api/automations")) if a["id"] == auto["id"])
+        assert auto_state["enabled"] is False
+        api.post(f"/api/conversations/{greeted['id']}/end")
+    finally:
+        api.delete(f"/api/automations/{auto['id']}")
+        api.delete(f"/api/people/{person['id']}")

@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import asyncio
 import contextlib
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, UploadFile
 
 from justai.ai.config import AISettings
 from justai.api.deps import Admin, C, User
+from justai.common.errors import Conflict, Unavailable, ValidationFailed
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 
@@ -53,6 +55,37 @@ async def models(kind: str, provider_id: str, _: Admin, c: C) -> list[dict[str, 
     with contextlib.suppress(Exception):
         return [m.model_dump() for m in await provider.list_models()]
     return []
+
+
+@router.post("/wakewords")
+async def upload_wakeword(file: UploadFile, p: Admin, c: C) -> dict[str, str]:
+    """Install a custom openWakeWord model (.onnx), e.g. trained for "Hey Justi"."""
+    provider = c.providers.get("wakeword", "openwakeword")
+    if provider is None or not hasattr(provider, "install_model"):
+        raise Unavailable("openWakeWord plugin is not running")
+    data = await file.read(20_000_001)
+    try:
+        mid = await asyncio.to_thread(provider.install_model, file.filename or "", data)
+    except ValueError as exc:
+        raise ValidationFailed(str(exc)) from exc
+    await c.audit.record(p.actor, "wakeword.install", mid, size=len(data))
+    return {"id": mid}
+
+
+@router.delete("/wakewords/{model_id}")
+async def delete_wakeword(model_id: str, p: Admin, c: C) -> dict[str, bool]:
+    provider = c.providers.get("wakeword", "openwakeword")
+    if provider is None or not hasattr(provider, "remove_model"):
+        raise Unavailable("openWakeWord plugin is not running")
+    in_use = [e.name for e in await c.endpoints.list() if model_id in e.config.wakeword.models]
+    if in_use:
+        raise Conflict(f"model is used by endpoints: {', '.join(in_use)}")
+    try:
+        provider.remove_model(model_id)
+    except ValueError as exc:
+        raise ValidationFailed(str(exc)) from exc
+    await c.audit.record(p.actor, "wakeword.delete", model_id)
+    return {"ok": True}
 
 
 @router.get("/usage")

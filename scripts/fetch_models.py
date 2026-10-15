@@ -31,6 +31,8 @@ FILES: list[tuple[str, str, str]] = [
      "6ff566a01d12670e8d9e3c59da32651db1575d17272a601b7f8a39283dfbae3e"),
     ("openwakeword/hey_mycroft_v0.1.onnx", OWW + "hey_mycroft_v0.1.onnx",
      "c2a311e8fa1338de89c31b3b46dc4dffd4af2f9a8d6ddead48893c2d301b1f18"),
+    ("openwakeword/hey_rhasspy_v0.1.onnx", OWW + "hey_rhasspy_v0.1.onnx",
+     "5a9b3ed3be2910e35780e097905aa9f35a9c10038df47914cf2b3ec4d670f6ea"),
     ("piper/de_DE-thorsten-medium.onnx", PIPER + "de/de_DE/thorsten/medium/de_DE-thorsten-medium.onnx",
      "7e64762d8e5118bb578f2eea6207e1a35a8e0c30595010b666f983fc87bb7819"),
     ("piper/de_DE-thorsten-medium.onnx.json", PIPER + "de/de_DE/thorsten/medium/de_DE-thorsten-medium.onnx.json",

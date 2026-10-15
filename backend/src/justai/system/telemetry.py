@@ -28,6 +28,10 @@ class TelemetryHub:
                     q.get_nowait()
             q.put_nowait(message)
 
+    def forget(self, topic: str) -> None:
+        """Drop the last value of a topic (its source was removed or stopped)."""
+        self._latest.pop(topic, None)
+
     def snapshot(self, prefix: str = "") -> dict[str, Any]:
         return {k: {"ts": ts, "data": v} for k, (ts, v) in self._latest.items() if k.startswith(prefix)}
 

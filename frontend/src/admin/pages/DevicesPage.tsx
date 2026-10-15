@@ -21,6 +21,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { api } from "@/shared/api";
+import { LiveVideo } from "@/shared/render/LiveVideo";
 import type { Device, Driver, Room } from "@/shared/types";
 
 import { useIsAdmin } from "../auth";
@@ -186,7 +187,7 @@ function DiscoveryModal({ onAdd, onClose }: { onAdd: (d: Discovered) => void; on
 function DeviceDrawer({ device, onClose }: { device: Device; onClose: () => void }) {
   const isAdmin = useIsAdmin();
   const [snapKey, setSnapKey] = useState(() => Date.now());
-  const [live, setLive] = useState(false);
+  const [live, setLive] = useState(true); // live by default; the switch falls back to snapshots
   const drivers = useQuery({ queryKey: ["drivers"], queryFn: () => api.get<Driver[]>("/api/devices/drivers") });
   const driver = drivers.data?.find((d) => d.id === device.driver_id);
   const [config, setConfig] = useState<Record<string, unknown>>(device.config);
@@ -228,7 +229,7 @@ function DeviceDrawer({ device, onClose }: { device: Device; onClose: () => void
             <Tabs.Panel value="view" pt="sm">
               <Stack>
                 {live ? (
-                  <video src={`/api/devices/${device.id}/live.mp4`} autoPlay muted playsInline style={{ width: "100%", borderRadius: 8 }} />
+                  <LiveVideo src={`/api/devices/${device.id}/live.mp4`} />
                 ) : (
                   <Image src={`/api/devices/${device.id}/snapshot.jpg?k=${snapKey}`} radius="md" alt="Snapshot" fallbackSrc="" />
                 )}

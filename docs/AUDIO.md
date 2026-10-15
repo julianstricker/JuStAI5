@@ -123,12 +123,20 @@ dabei nur nicht-gegatete Frames.
 
 ## Wakeword
 
-openWakeWord 0.6.0 (ONNX), Standardmodell `hey_jarvis`, Schwelle 0,5 pro Endpoint.
-Pro Endpoint gibt es eine Refraktärzeit von 1,5 s. Eigene Modelle (`.onnx`):
-Im Plugin *openWakeWord* `models_dir` auf einen Ordner im Volume `/data` setzen,
-dort `melspectrogram.onnx`, `embedding_model.onnx` und die Wakeword-Modelle ablegen
-(die mitgelieferten liegen unter `/models/openwakeword`). Alle `.onnx`-Dateien des
-Ordners stehen dann im Endpoint zur Auswahl.
+openWakeWord 0.6.0 (ONNX), Schwelle 0,5 pro Endpoint, Refraktärzeit 1,5 s.
+Auswahl: *Räume → Endpoint bearbeiten → Wakeword* (mehrere gleichzeitig möglich).
+
+Mitgeliefert: **Hey Jarvis** (Standard), **Alexa**, **Hey Mycroft**, **Hey Rhasspy**,
+alle auf Englisch trainiert.
+
+**Eigene Wakewords** (z. B. „Hey Justi“): Ein openWakeWord-Modell trainieren (das
+Projekt openWakeWord bietet dafür ein Trainings-Notebook mit synthetischen
+Sprachdaten), dann die `.onnx`-Datei im selben Tab mit *Eigenes Wakeword
+hochladen* installieren. Der Dateiname wird zur ID (`hey_justi.onnx` → `hey_justi`).
+Der Core prüft, ob es wirklich ein openWakeWord-Klassifikator ist (Eingang
+`[1, n, 96]`, Ausgang `[1, 1]`), und legt ihn im Volume `/data/wakewords` ab, sodass
+er Updates übersteht. Eigene Modelle lassen sich löschen
+(`DELETE /api/ai/wakewords/<id>`), solange kein Endpoint sie nutzt.
 
 ## Raumbewusste Wakeword-Arbitrierung
 

@@ -284,6 +284,9 @@ class AudioEngine:
             await self.supervisor.stop(f"mic:{device_id}")
             self.mics.pop(device_id, None)
             speaker = self.speakers.pop(device_id, None)
+            # Old values would look alive in the diagnostics (e.g. after deleting a device).
+            self.telemetry.forget(f"audio.mic.{device_id}")
+            self.telemetry.forget(f"audio.speaker.{device_id}")
             if speaker:
                 await speaker.close()
             for ep in self.endpoints.values():
@@ -329,6 +332,7 @@ class AudioEngine:
                 ep = self.endpoints.pop(ep_id)
                 ep.detach_mic()
                 ep.processor.close()
+                self.telemetry.forget(f"audio.endpoint.{ep_id}")
         for ep_id, view in views.items():
             if ep_id not in self.endpoints:
                 self.endpoints[ep_id] = self._build_endpoint(view)

@@ -226,21 +226,22 @@ class TapoDriver:
                                   firmware=dev.get("sw_version"), mac=dev.get("mac"),
                                   extra={"type": dev.get("device_type")})
                 with contextlib.suppress(Exception):
-                    # pytapo raises if the device has no motor
+                    # Not implemented by every firmware (C200: METHOD_DO_NOT_EXIST).
                     if await asyncio.to_thread(tapo.getMotorCapability):
                         caps |= {Capability.PTZ_PAN, Capability.PTZ_TILT}
                 with contextlib.suppress(Exception):
+                    # The preset API only exists on pan/tilt models, so it also proves the motor.
                     await asyncio.to_thread(tapo.getPresets)
-                    if Capability.PTZ_PAN in caps:
-                        caps.add(Capability.PTZ_PRESETS)
+                    caps |= {Capability.PTZ_PAN, Capability.PTZ_TILT, Capability.PTZ_PRESETS}
                 with contextlib.suppress(Exception):
                     await asyncio.to_thread(tapo.getPrivacyMode)
                     caps.add(Capability.CAMERA_PRIVACY_MODE)
             except Exception as exc:
                 warnings.append(f"lokale Tapo-API nicht nutzbar: {type(exc).__name__}: {exc}")
-        elif ports[PORT_ONVIF] and config.get("camera_username"):
-            caps |= {Capability.PTZ_PAN, Capability.PTZ_TILT}  # confirmed on open()
-        else:
+        if Capability.PTZ_PAN not in caps and ports[PORT_ONVIF] and config.get("camera_username"):
+            caps |= {Capability.PTZ_PAN, Capability.PTZ_TILT}  # confirmed via ONVIF on open()
+        if Capability.PTZ_PAN not in caps and not config.get("cloud_password") \
+                and not config.get("camera_username"):
             warnings.append("PTZ/Presets brauchen das Cloud-Passwort (lokale API) oder das Kamerakonto (ONVIF)")
 
         media = Go2rtcMedia(sources=[main], sub_sources=[sub] if sub else [],

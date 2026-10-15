@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import Markdown from "react-markdown";
 
 import { Chart } from "./Chart";
+import { LiveVideo } from "./LiveVideo";
 
 export type Component = { type: string; [key: string]: any };
 
@@ -183,7 +184,7 @@ function Render({ c, onInteract }: { c: Component; onInteract: InteractionHandle
     }
     case "camera":
       return c.src ? (
-        <video src={c.src} autoPlay muted playsInline style={{ width: "100%", borderRadius: 8 }} />
+        <LiveVideo src={c.src} />
       ) : (
         <Text c="dimmed">Kamerabild nicht verfügbar</Text>
       );

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import threading
 from pathlib import Path
 
@@ -50,25 +51,72 @@ class OpenWakeWordDetector:
         self._model.reset()
 
 
+MAX_CUSTOM_MODEL_BYTES = 20_000_000
+_CUSTOM_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9_]{1,40}$")
+
+
+def validate_wakeword_model(data: bytes) -> None:
+    """Accept only openWakeWord classifier models: input [1, n, 96] embeddings, output [1, 1]."""
+    import onnxruntime as ort
+
+    if len(data) > MAX_CUSTOM_MODEL_BYTES:
+        raise ValueError("Modelldatei zu groß")
+    try:
+        session = ort.InferenceSession(data, providers=["CPUExecutionProvider"])
+    except Exception as exc:
+        raise ValueError(f"keine gültige ONNX-Datei: {exc}") from exc
+    inputs, outputs = session.get_inputs(), session.get_outputs()
+    shape_in = inputs[0].shape if len(inputs) == 1 else None
+    shape_out = outputs[0].shape if len(outputs) == 1 else None
+    if not shape_in or len(shape_in) != 3 or shape_in[-1] != 96 or not shape_out or shape_out[-1] != 1:
+        raise ValueError("kein openWakeWord-Modell (erwartet Eingang [1, n, 96] und Ausgang [1, 1])")
+
+
 class OpenWakeWordProvider:
     provider_id = "openwakeword"
 
-    def __init__(self, models_dir: Path) -> None:
-        self.models_dir = models_dir
+    def __init__(self, models_dir: Path, custom_dir: Path | None = None) -> None:
+        self.models_dir = models_dir  # bundled models + feature models (read-only image)
+        self.custom_dir = custom_dir  # uploaded models (persistent volume)
         self._lock = threading.Lock()
 
     def _models(self) -> dict[str, Path]:
         found: dict[str, Path] = {}
-        for p in sorted(self.models_dir.glob("*.onnx")):
-            if p.name in FEATURE_MODELS:
-                continue
-            found[model_id(p)] = p
+        dirs = [self.models_dir] + ([self.custom_dir] if self.custom_dir else [])
+        for d in dirs:
+            for p in sorted(d.glob("*.onnx")) if d.exists() else []:
+                if p.name in FEATURE_MODELS:
+                    continue
+                found[model_id(p)] = p
         return found
 
     def list_models(self) -> list[WakewordModelInfo]:
-        return [WakewordModelInfo(id=mid, name=mid, phrase=PHRASES.get(mid, mid.replace("_", " ")),
-                                  languages=["en"])
-                for mid in self._models()]
+        return [WakewordModelInfo(id=mid, name=mid + (" (eigenes)" if path.parent == self.custom_dir else ""),
+                                  phrase=PHRASES.get(mid, mid.replace("_", " ").title()),
+                                  languages=["en"] if mid in PHRASES else [])
+                for mid, path in self._models().items()]
+
+    def install_model(self, name: str, data: bytes) -> str:
+        """Store an uploaded wakeword model; returns its id (the file name without .onnx)."""
+        if self.custom_dir is None:
+            raise ValueError("kein Verzeichnis für eigene Modelle konfiguriert")
+        mid = name.lower().removesuffix(".onnx").replace("-", "_").replace(" ", "_")
+        if not _CUSTOM_NAME_RE.match(mid):
+            raise ValueError("Name nur aus Kleinbuchstaben, Ziffern und _ (z. B. hey_justi)")
+        if mid in self._models() and (self.models_dir / f"{mid}.onnx").exists():
+            raise ValueError(f"{mid} ist ein mitgeliefertes Modell")
+        validate_wakeword_model(data)
+        self.custom_dir.mkdir(parents=True, exist_ok=True)
+        tmp = self.custom_dir / f".{mid}.upload"
+        tmp.write_bytes(data)
+        tmp.replace(self.custom_dir / f"{mid}.onnx")
+        return mid
+
+    def remove_model(self, mid: str) -> None:
+        path = self._models().get(mid)
+        if path is None or self.custom_dir is None or path.parent != self.custom_dir:
+            raise ValueError("nur eigene Modelle können gelöscht werden")
+        path.unlink()
 
     def create_detector(self, models: list[str]) -> OpenWakeWordDetector:
         available = self._models()
@@ -84,7 +132,8 @@ class OpenWakeWordPlugin(Plugin):
     async def setup(self) -> None:
         root = os.environ.get("JUSTAI_MODELS_DIR", "/models")
         models_dir = Path(self.ctx.config.get("models_dir") or f"{root}/openwakeword")
-        self.provider = OpenWakeWordProvider(models_dir)
+        custom_dir = Path(os.environ.get("JUSTAI_DATA_DIR", "/data")) / "wakewords"
+        self.provider = OpenWakeWordProvider(models_dir, custom_dir)
         self.ctx.register_provider("wakeword", self.provider)
 
     async def health(self) -> PluginHealth:

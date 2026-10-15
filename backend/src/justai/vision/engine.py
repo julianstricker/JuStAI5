@@ -151,6 +151,7 @@ class VisionEngine:
         if not ready:
             await self.supervisor.stop(f"vision:{runtime.device_id}")
             self.cameras.pop(runtime.device_id, None)
+            self.telemetry.forget(f"vision.camera.{runtime.device_id}")
             return
         if Capability.VIDEO_INPUT not in runtime.capabilities:
             return

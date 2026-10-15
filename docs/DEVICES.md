@@ -54,9 +54,12 @@ Getestet mit echter Hardware:
   Es kommt kein Echo an, die konservative Latenz bleibt aktiv. Gemessene
   Ende-zu-Ende-Latenz Wiedergabe → Mikrofon: etwa 1,8 s. Barge-in während der
   Ausgabe ist mit diesem Gerät physikalisch nicht möglich.
-* **PTZ der C200**: im Code über pytapo (Cloud-Passwort) oder ONVIF (Kamerakonto)
-  umgesetzt; mit echter Hardware **nicht getestet**, weil beim Test nur der
-  Passwort-Hash vorlag.
+* **PTZ der C200**: über die lokale Tapo-API (Cloud-Passwort) oder ONVIF
+  (Kamerakonto). Die C200-Firmware kennt `getMotorCapability` nicht; die
+  Schwenkfunktion wird deshalb über die Preset-API erkannt (die gibt es nur bei
+  Schwenkmodellen), ersatzweise über ONVIF. Die lokale API scheitert gelegentlich
+  beim Verbindungsaufbau (`pake_share failed`); dann übernimmt ONVIF. Getestet:
+  Schwenken rechts und zurück aus der Admin-UI bzw. API.
 * **C410** (Akku-Kamera): war beim Test meist nicht erreichbar (schläft) und bietet
   kein RTSP. Für den Dauerbetrieb als Mikrofon ist sie ungeeignet.
 
@@ -97,5 +100,7 @@ Zustand in der UI, statt auf andere Räume auszuweichen.
 
 * `POST /api/devices/{id}/test-tone`: Testton über den Lautsprecher (über den Output Router)
 * `GET /api/devices/{id}/snapshot.jpg`, `GET /api/devices/{id}/live.mp4`
+  (Live-Video im Geräte-Dialog: startet automatisch, bleibt an der Live-Kante,
+  beendet die Kameraverbindung beim Schließen)
 * Admin-UI → *Audio*: Pegel, VAD, Wakeword-Score, Echo-Fenster, Duplex-Modus pro Endpoint
 * Admin-UI → *Diagnose*: Event-Strom, Telemetrie, Audit-Log

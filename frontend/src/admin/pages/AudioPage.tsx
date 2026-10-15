@@ -63,6 +63,18 @@ function EndpointCard({ ep, rt }: { ep: Endpoint; rt?: EndpointRuntime }) {
     }
   };
   const r = rt ?? ep.runtime;
+  const hasMic = ep.devices.some((d) => d.role === "mic");
+  if (!hasMic) {
+    return (
+      <Card withBorder>
+        <Title order={5}>{ep.name}</Title>
+        <Text size="sm" c="dimmed" mt="xs">
+          Kein Mikrofon zugeordnet – das Gerät wurde gelöscht oder nie zugewiesen. Unter „Räume“ ein Mikrofon zuordnen oder den
+          Endpoint löschen.
+        </Text>
+      </Card>
+    );
+  }
   return (
     <Card withBorder>
       <Group justify="space-between" mb="xs">

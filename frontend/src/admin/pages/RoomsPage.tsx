@@ -3,6 +3,7 @@ import {
   Badge,
   Button,
   Card,
+  FileButton,
   Checkbox,
   Divider,
   Group,
@@ -27,7 +28,7 @@ import { api } from "@/shared/api";
 import type { Device, DeviceRole, Endpoint, EndpointConfig, Room, RoomPolicy } from "@/shared/types";
 
 import { useIsAdmin } from "../auth";
-import { PageHeader, StatusBadge, useAction } from "../components/common";
+import { PageHeader, StatusBadge, notifyError, notifyOk, useAction } from "../components/common";
 
 const ROLE_LABEL: Record<DeviceRole, string> = { mic: "Mikrofon", camera: "Kamera", speaker: "Lautsprecher", display: "Display" };
 const ROLE_CAP: Record<DeviceRole, string> = { mic: "audio.input", camera: "video.input", speaker: "audio.output", display: "display.text" };
@@ -127,7 +128,7 @@ function EndpointModal({
   const roomDevices = devices.filter((d) => d.room_id === room.id || d.room_id === null);
   const models = useQuery({
     queryKey: ["wakeword-models"],
-    queryFn: () => api.get<{ id: string; phrase: string }[]>("/api/ai/providers/wakeword/openwakeword/models"),
+    queryFn: () => api.get<{ id: string; name: string; phrase: string }[]>("/api/ai/providers/wakeword/openwakeword/models"),
   });
 
   const pick = (role: DeviceRole) => refs.find((r) => r.role === role)?.device_id ?? null;
@@ -175,10 +176,38 @@ function EndpointModal({
               <Switch label="Wakeword aktiv" checked={config.wakeword.enabled} onChange={(e) => upd("wakeword", { enabled: e.currentTarget.checked })} />
               <MultiSelect
                 label="Wakeword-Modelle"
-                data={(models.data ?? []).map((m) => ({ value: m.id, label: `${m.phrase} (${m.id})` }))}
+                data={(models.data ?? []).map((m) => ({ value: m.id, label: `${m.phrase} (${m.name})` }))}
                 value={config.wakeword.models}
                 onChange={(v) => upd("wakeword", { models: v })}
+                description="Mehrere möglich. Eigene Modelle (openWakeWord, .onnx) lassen sich hochladen."
               />
+              <Group gap="xs">
+                <FileButton
+                  accept=".onnx"
+                  onChange={(f) => {
+                    if (!f) return;
+                    const form = new FormData();
+                    form.append("file", f);
+                    api
+                      .upload<{ id: string }>("/api/ai/wakewords", form)
+                      .then((r) => {
+                        notifyOk(`Wakeword „${r.id}“ installiert`);
+                        void models.refetch();
+                        upd("wakeword", { models: [...new Set([...config.wakeword.models, r.id])] });
+                      })
+                      .catch(notifyError);
+                  }}
+                >
+                  {(props) => (
+                    <Button {...props} size="xs" variant="default">
+                      Eigenes Wakeword hochladen (.onnx)
+                    </Button>
+                  )}
+                </FileButton>
+                <Text size="xs" c="dimmed">
+                  Dateiname = ID, z. B. hey_justi.onnx
+                </Text>
+              </Group>
               <Group grow>
                 <NumberInput label="Schwelle" step={0.05} min={0.05} max={0.99} decimalScale={2} value={config.wakeword.threshold} onChange={(v) => upd("wakeword", { threshold: Number(v) })} />
                 <NumberInput
@@ -386,6 +415,11 @@ export function RoomsPage() {
                         </Text>
                         {ep.session && <StatusBadge status={ep.session.state} />}
                         {!ep.enabled && <Badge color="gray">inaktiv</Badge>}
+                        {ep.devices.length === 0 && (
+                          <Tooltip label="Die Geräte dieses Endpoints wurden gelöscht. Neue Geräte zuordnen oder den Endpoint löschen.">
+                            <Badge color="orange">keine Geräte</Badge>
+                          </Tooltip>
+                        )}
                       </Group>
                       {isAdmin && (
                         <Group gap={4}>

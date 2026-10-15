@@ -117,7 +117,6 @@ class VisionEngine:
         self._track_listeners: dict[str, list[TrackListener]] = {}
         self._watches: dict[str, list[VisionWatch]] = {}
         self.background_slowdown = 1.0  # >1 while conversations are active
-        self.store_snapshots = False
         devices.on_ready_change(self._on_device)
 
     # --------------------------------------------------------------- providers

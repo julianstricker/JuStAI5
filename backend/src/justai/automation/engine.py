@@ -165,6 +165,7 @@ class AutomationEngine:
 
     # ------------------------------------------------------------- lifecycle
     async def start(self) -> None:
+        await self.load_timezone()
         await self.reload()
         self.jobs.register("automation.run", self._run_job)
         self._unsubscribe = self.bus.subscribe("*", self._on_event, name="automation-engine")
@@ -175,6 +176,15 @@ class AutomationEngine:
             self._scheduler.cancel()
         if self._unsubscribe:
             self._unsubscribe()
+
+    async def load_timezone(self) -> None:
+        from justai.system.settings import SystemSettings
+
+        try:
+            raw = await self.c.settings_store.get("system")
+            self.tz = ZoneInfo(SystemSettings.model_validate(raw or {}).timezone)
+        except Exception as exc:
+            log.warning("invalid timezone setting", keeping=str(self.tz), error=str(exc))
 
     async def reload(self) -> None:
         cache = []

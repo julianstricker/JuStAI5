@@ -36,6 +36,9 @@ async def put_system(body: SystemSettings, p: Admin, c: C) -> dict[str, Any]:
     vision = c.extensions.get("vision")
     if vision is not None:
         vision.identity.store_thumbnails = body.store_face_thumbnails
+    automation = c.extensions.get("automation")
+    if automation is not None:
+        await automation.engine.load_timezone()
     await c.audit.record(p.actor, "settings.system", None, discovery=body.discovery_cidrs)
     return body.model_dump()
 

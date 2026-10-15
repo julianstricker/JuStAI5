@@ -21,9 +21,8 @@ interface UserRow {
 interface SystemSettings {
   timezone: string;
   discovery_cidrs: string[];
-  retention: { events_days: number; transcripts_days: number; sightings_days: number; snapshots_days: number };
+  retention: { events_days: number; transcripts_days: number; sightings_days: number; tool_executions_days: number };
   store_face_thumbnails: boolean;
-  vision_snapshots: boolean;
 }
 
 function UserModal({ user, onClose }: { user: UserRow | null; onClose: () => void }) {
@@ -92,7 +91,7 @@ export function SettingsPage() {
           <Card withBorder>
             <Stack>
               <Title order={5}>System</Title>
-              <TextInput label="Zeitzone" value={draft.timezone} onChange={(e) => setDraft({ ...draft, timezone: e.currentTarget.value })} />
+              <TextInput label="Zeitzone" description="IANA-Name, z. B. Europe/Rome; gilt für Zeitpläne von Automationen" value={draft.timezone} onChange={(e) => setDraft({ ...draft, timezone: e.currentTarget.value })} />
               <TextInput
                 label="Autorisierte Netzbereiche für die Gerätesuche"
                 description="Kommagetrennte CIDR-Bereiche, z. B. 192.168.0.0/24"
@@ -113,11 +112,6 @@ export function SettingsPage() {
                 checked={draft.store_face_thumbnails}
                 onChange={(e) => setDraft({ ...draft, store_face_thumbnails: e.currentTarget.checked })}
               />
-              <Switch
-                label="Snapshots zu Sichtungen speichern"
-                checked={draft.vision_snapshots}
-                onChange={(e) => setDraft({ ...draft, vision_snapshots: e.currentTarget.checked })}
-              />
             </Stack>
           </Card>
           <Card withBorder>
@@ -128,7 +122,7 @@ export function SettingsPage() {
                   ["events_days", "Persistente Ereignisse"],
                   ["transcripts_days", "Gesprächstranskripte"],
                   ["sightings_days", "Sichtungen"],
-                  ["snapshots_days", "Snapshots"],
+                  ["tool_executions_days", "Tool-Protokoll"],
                 ] as const
               ).map(([k, label]) => (
                 <NumberInput

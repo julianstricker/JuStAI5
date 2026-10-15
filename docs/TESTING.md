@@ -70,7 +70,7 @@ Legende: ✅ nachgewiesen · 🟡 teilweise (was fehlt, steht dabei) · ⏳ offe
 | 17 | Plugin-Installation | ✅ | Live: Zip hochgeladen → als `untrusted` in der Sandbox → Start ohne Rechte abgelehnt → Recht gewährt → aktiv, Tool erscheint, der Assistent nutzt es → deaktiviert → Tool verschwindet. |
 | 18 | Tool-Entwicklung | ✅ | Live: „Kalenderwoche und Wochentag zu einem Datum“ → Spezifikation, Code, Tests → statische Prüfung → Tests in der Sandbox (2 bestanden) → Sicherheitsreview → Freigabe → der Assistent beantwortet „KW von 24.12.2026?“ korrekt mit dem neuen Tool → Deaktivierung. |
 | 19 | Neustart | ✅ | `docker compose down` + `up`: Räume, Geräte, Endpoints, Plugins (aktiv), Personen, Erinnerungen, Automationen, KI- und Systemeinstellungen identisch. Zusätzlich Backup in ein getrenntes Projekt wiederhergestellt. |
-| 20 | Fehlerbehandlung | ✅ | Live: die C410 ist meist offline, die C200 arbeitet unbeeinflusst. Neustart des Medienservers: Kameras nach 2 s wieder verfügbar. Ein fehlschlagendes Plugin (fehlende Rechte) wird `failed` markiert, alles andere läuft weiter. Gemini-Überlastung: Fallback statt Ausfall. Unit: Bus-Fehlerisolation, hängende Provider. |
+| 20 | Fehlerbehandlung | ✅ | Live: die C410 ist meist offline, die C200 arbeitet unbeeinflusst. Neustarts einzelner Dienste: Medienserver → Kameras nach 2 s wieder da; Datenbank → API nach 3 s; Sandbox → Sandbox-Plugins nach 44 s automatisch neu gestartet. Ein fehlschlagendes Plugin (fehlende Rechte) wird `failed` markiert, alles andere läuft weiter. Gemini-Überlastung: Fallback statt Ausfall. Unit: Bus-Fehlerisolation, hängende Provider. |
 
 ### Was nur der Benutzer machen kann (offene Punkte)
 

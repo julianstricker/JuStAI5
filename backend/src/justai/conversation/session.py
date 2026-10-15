@@ -31,7 +31,7 @@ from justai_sdk.ports.ai import (
 from justai_sdk.tools import InvocationOrigin, ToolContext, ToolResult
 
 from justai.ai.config import AISettings, ModelRole
-from justai.ai.router import AIRouter, DataFlags
+from justai.ai.router import CLOUD_FALLBACK_NOTICES, AIRouter, DataFlags
 from justai.audio.dsp import SR
 from justai.audio.processor import ProcessedFrame
 from justai.common.tasks import spawn
@@ -53,6 +53,13 @@ _SORRY = {
            "Entschuldigung, das habe ich leider nicht geschafft."),
     "it": ("Scusa, si è verificato un errore.", "Scusa, non ci sono riuscito."),
     "en": ("Sorry, something went wrong.", "Sorry, I could not do that."),
+}
+
+
+_CLOUD_NOTE = {
+    "de": "Hinweis: Das lokale Modell ist gerade nicht verfügbar, ich antworte über ein Cloud-Modell.",
+    "it": "Nota: il modello locale non è disponibile, rispondo tramite un modello cloud.",
+    "en": "Note: the local model is unavailable, I am answering with a cloud model.",
 }
 
 
@@ -547,6 +554,9 @@ class PipelineDriver:
         tts_queue: asyncio.Queue[str | None] = asyncio.Queue()
         speaker = asyncio.create_task(self._tts_worker(uid, tts_queue))
         spoken: list[str] = []
+        cloud_notices: list[str] = []
+        notices_token = CLOUD_FALLBACK_NOTICES.set(cloud_notices)
+        announced = False
         try:
             for _round in range(MAX_TOOL_ROUNDS):
                 splitter = SentenceSplitter()
@@ -555,6 +565,11 @@ class PipelineDriver:
                 stream = s.deps.router.stream_chat(ModelRole.CONVERSATION, self._trimmed(),
                                                    tools=specs, flags=DataFlags(personal=True))
                 async for ev in stream:
+                    if cloud_notices and not announced:
+                        announced = True  # say it before the answer that comes from the cloud
+                        note = _CLOUD_NOTE.get((s.ctx.language or "de")[:2], _CLOUD_NOTE["de"])
+                        spoken.append(note)
+                        await tts_queue.put(note)
                     if ev.kind == ChatEventKind.TEXT:
                         text_parts.append(ev.text)
                         for sentence in splitter.push(ev.text):
@@ -589,6 +604,7 @@ class PipelineDriver:
             spoken.append(fallback)
             await tts_queue.put(fallback)
         finally:
+            CLOUD_FALLBACK_NOTICES.reset(notices_token)
             await tts_queue.put(None)
         await speaker
         answer = " ".join(spoken)

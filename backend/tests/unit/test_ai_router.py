@@ -168,3 +168,37 @@ def test_fill_empty_roles_only_fills_unconfigured_roles() -> None:
     assert s.role(ModelRole.REASONING).chain[0].model == "qwen"  # admin choice kept
     assert s.conversation_mode == ConversationMode.REALTIME
     assert not fill_empty_roles(s, {"llm": {"gemini"}, "realtime": {"gemini"}})
+
+
+async def test_cloud_fallback_notice_and_audit_even_without_announcement() -> None:
+    from justai.ai.router import CLOUD_FALLBACK_NOTICES
+
+    local = FakeLLM("local", Locality.LOCAL, fail=True)
+    cloud = FakeLLM("cloud", Locality.CLOUD)
+    s = chain("local", "cloud", locality=RoleLocality.PREFER_LOCAL)
+    router, bus, _, audits = await make(s, local, cloud)
+    notices: list[str] = []
+    token = CLOUD_FALLBACK_NOTICES.set(notices)
+    try:
+        await router.chat(ModelRole.CONVERSATION, MSG)
+        assert notices == ["local -> cloud"]  # the session will say it before the answer
+        s.privacy.announce_cloud_fallback = False
+        notices.clear()
+        await router.chat(ModelRole.CONVERSATION, MSG)
+        assert notices == []
+        assert audits == ["ai.cloud_fallback", "ai.cloud_fallback"]  # never silent in the audit log
+    finally:
+        CLOUD_FALLBACK_NOTICES.reset(token)
+    await bus.close()
+
+
+async def test_monthly_cost_limit_blocks_cloud() -> None:
+    cloud = FakeLLM("cloud", Locality.CLOUD)
+    s = chain("cloud")
+    s.cost_limits.monthly_usd = 1.0
+    router, bus, _, _ = await make(s, cloud)
+    router.usage.record(provider="cloud", model="m", role="conversation", ok=True, cost_usd=1.5)
+    with pytest.raises(Exception):  # noqa: B017
+        await router.chat(ModelRole.CONVERSATION, MSG)
+    assert cloud.calls == 0
+    await bus.close()

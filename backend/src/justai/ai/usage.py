@@ -48,6 +48,7 @@ class UsageTracker:
         self._pending: dict[tuple[datetime, str, str, str], _Agg] = defaultdict(_Agg)
         self._today_cost = 0.0
         self._today: datetime | None = None
+        self._month_cost = 0.0  # includes today
         self._task: asyncio.Task[None] | None = None
 
     async def start(self) -> None:
@@ -70,16 +71,22 @@ class UsageTracker:
         self._today = self._day()
         if self.db is None:
             return
+        month_start = self._today.replace(day=1)
         async with self.db.session() as s:
             total = await s.scalar(select(func.coalesce(func.sum(AIUsage.cost_usd), 0.0))
                                    .where(AIUsage.day == self._today))
+            month = await s.scalar(select(func.coalesce(func.sum(AIUsage.cost_usd), 0.0))
+                                   .where(AIUsage.day >= month_start))
         self._today_cost = float(total or 0.0)
+        self._month_cost = float(month or 0.0)
 
     def record(self, *, provider: str, model: str, role: str, ok: bool, input_tokens: int = 0,
                output_tokens: int = 0, audio_seconds: float = 0.0, latency_ms: int = 0,
                cost_usd: float | None = None) -> None:
         day = self._day()
         if self._today != day:
+            if self._today is None or self._today.month != day.month:
+                self._month_cost = 0.0
             self._today, self._today_cost = day, 0.0
         cost = cost_usd if cost_usd is not None else estimate_cost(model, input_tokens, output_tokens)
         agg = self._pending[(day, provider, model, role)]
@@ -91,10 +98,15 @@ class UsageTracker:
         agg.cost_usd += cost
         agg.latency_ms_total += latency_ms
         self._today_cost += cost
+        self._month_cost += cost
 
     @property
     def today_cost_usd(self) -> float:
         return self._today_cost
+
+    @property
+    def month_cost_usd(self) -> float:
+        return self._month_cost
 
     async def flush(self) -> None:
         if self.db is None or not self._pending:

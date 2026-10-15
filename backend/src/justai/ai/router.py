@@ -15,6 +15,7 @@ import asyncio
 import contextlib
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -43,6 +44,10 @@ from justai.logging import get_logger
 from justai.plugins.providers import ProviderRegistry
 
 log = get_logger(__name__)
+
+# Set by a conversation turn: local->cloud fallbacks during the turn are appended so the
+# session can tell the user (privacy setting ``announce_cloud_fallback``).
+CLOUD_FALLBACK_NOTICES: ContextVar[list[str] | None] = ContextVar("cloud_fallback_notices", default=None)
 
 KIND_FOR_ROLE: dict[ModelRole, str] = {
     ModelRole.CONVERSATION: "llm",
@@ -181,6 +186,8 @@ class AIRouter:
             return "conversation audio must stay local"
         if s.cost_limits.daily_usd is not None and self.usage.today_cost_usd >= s.cost_limits.daily_usd:
             return "daily cost limit reached"
+        if s.cost_limits.monthly_usd is not None and self.usage.month_cost_usd >= s.cost_limits.monthly_usd:
+            return "monthly cost limit reached"
         return None
 
     async def _require(self, role: ModelRole, flags: DataFlags) -> list[Candidate]:
@@ -199,8 +206,14 @@ class AIRouter:
                    "to": f"{used.ref.provider}/{used.ref.model}", "error": error[:300],
                    "local_to_cloud": to_cloud}
         await self.bus.publish(Event(type="ai.provider.fallback", payload=payload))
-        if to_cloud and settings.privacy.announce_cloud_fallback and self.audit:
-            await self.audit("ai.cloud_fallback", payload)
+        if to_cloud:
+            # A switch from local to cloud is never silent: always audited, and announced
+            # in the running conversation if configured (see CLOUD_FALLBACK_NOTICES).
+            if self.audit:
+                await self.audit("ai.cloud_fallback", payload)
+            notices = CLOUD_FALLBACK_NOTICES.get()
+            if notices is not None and settings.privacy.announce_cloud_fallback:
+                notices.append(f"{failed.ref.provider} -> {used.ref.provider}")
 
     # ---------------------------------------------------------------------- LLM
     async def chat(self, role: ModelRole, messages: list[ChatMessage], *,

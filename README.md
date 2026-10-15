@@ -37,11 +37,13 @@ docker compose exec core cat /data/initial_admin_password.txt
 * Display-Client (z. B. auf einem Fernseher/Tablet öffnen und in der Admin-UI unter
   *Displays* mit dem angezeigten Code koppeln): <http://HOST:8080/display>
 
-Ohne `.env` funktioniert alles mit lokalen Modellen (openWakeWord, faster-whisper,
-Piper, fastembed, OpenCV). Für Cloud-KI einen Google-API-Key in `.env`
-(`GOOGLE_API_KEY=…`, siehe `.env.example`) oder in der Admin-UI unter
-*Plugins → Gemini* eintragen; ein lokales Ollama kann über das Plugin
-*OpenAI-kompatibel* angebunden werden.
+Wakeword, Spracherkennung, Sprachausgabe, Embeddings und Bildanalyse laufen lokal
+(openWakeWord, faster-whisper, Piper, fastembed, OpenCV). **Für die Antworten braucht
+es ein Sprachmodell**: entweder einen Google-API-Key (`GOOGLE_API_KEY=…` in `.env`,
+siehe `.env.example`, oder in der Admin-UI unter *Plugins → Gemini*), damit sind alle
+Rollen sofort belegt; oder ein lokales LLM (z. B. Ollama über das Plugin
+*OpenAI-kompatibel*), das unter *KI-Provider* den Rollen zugeordnet wird
+([docs/AI.md](docs/AI.md)).
 
 ### Erste Schritte
 
@@ -63,6 +65,7 @@ Piper, fastembed, OpenCV). Für Cloud-KI einen Google-API-Key in `.env`
 | Geräte (Tapo, ONVIF, RTSP, simuliert) | [docs/DEVICES.md](docs/DEVICES.md) |
 | Räume & Endpoints, Output Router | [docs/ROOMS.md](docs/ROOMS.md) |
 | Audio: AEC, VAD, Wakeword, Arbitrierung, Duplex | [docs/AUDIO.md](docs/AUDIO.md) |
+| KI-Provider, Rollen, Fallbacks, Datenschutz | [docs/AI.md](docs/AI.md) |
 | Vision, Identität | [docs/VISION.md](docs/VISION.md) |
 | PTZ-Tracking | [docs/PTZ.md](docs/PTZ.md) |
 | Gedächtnis | [docs/MEMORY.md](docs/MEMORY.md) |

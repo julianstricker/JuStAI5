@@ -389,5 +389,4 @@ class AIRouter:
                             "locality": c.locality.value} for c in usable],
                 "skipped": skipped,
             }
-        out["_cooldowns"] = self.cooldowns()
         return out

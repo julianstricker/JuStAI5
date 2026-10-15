@@ -20,6 +20,7 @@ interface Status {
 
 interface AIStatus {
   roles: Record<string, { usable: { provider: string; model: string; locality: string }[]; skipped: string[] }>;
+  cooldowns?: Record<string, number>; // "provider/model" -> seconds paused after errors
 }
 
 function Stat({ label, value, sub }: { label: string; value: React.ReactNode; sub?: React.ReactNode }) {
@@ -149,15 +150,25 @@ export function DashboardPage() {
                 <Table.Tr key={role}>
                   <Table.Td>{role}</Table.Td>
                   <Table.Td>
-                    {info.usable.length ? (
-                      info.usable.map((u) => (
-                        <Badge key={u.provider + u.model} mr={4} color={u.locality === "local" ? "green" : "blue"} variant="light">
-                          {u.provider} {u.model}
-                        </Badge>
-                      ))
+                    {info.usable?.length ? (
+                      info.usable.map((u) => {
+                        const paused = ai.data?.cooldowns?.[`${u.provider}/${u.model}`];
+                        return (
+                          <Badge
+                            key={u.provider + u.model}
+                            mr={4}
+                            color={paused ? "orange" : u.locality === "local" ? "green" : "blue"}
+                            variant="light"
+                            title={paused ? `Nach Fehlern pausiert (noch ${Math.ceil(paused)} s)` : undefined}
+                          >
+                            {u.provider} {u.model}
+                            {paused ? " (pausiert)" : ""}
+                          </Badge>
+                        );
+                      })
                     ) : (
                       <Text size="xs" c="dimmed">
-                        {info.skipped.join("; ") || "nicht konfiguriert"}
+                        {info.skipped?.join("; ") || "nicht konfiguriert"}
                       </Text>
                     )}
                   </Table.Td>

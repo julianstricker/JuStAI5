@@ -38,6 +38,9 @@ def create_app(settings: Settings | None = None, *, start_container: bool = True
     app = FastAPI(title="JuStAI5", version=__version__, lifespan=lifespan,
                   docs_url="/api/docs", openapi_url="/api/openapi.json", redoc_url=None)
 
+    from justai.api.security import SecurityHeadersMiddleware
+
+    app.add_middleware(SecurityHeadersMiddleware)
     if settings.cors_origins:
         app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins,
                            allow_credentials=True, allow_methods=["*"], allow_headers=["*"])

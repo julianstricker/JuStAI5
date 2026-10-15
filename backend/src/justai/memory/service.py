@@ -32,6 +32,10 @@ from justai.logging import get_logger
 log = get_logger(__name__)
 
 DUPLICATE_SIMILARITY = 0.92
+# Extraction must not bring back what a user asked to forget: deleted memories keep a
+# text-free tombstone (embedding only) and similar extracted facts are dropped.
+FORGOTTEN = "forgotten"
+FORGOTTEN_SIMILARITY = 0.85
 
 
 class Provenance(StrEnum):
@@ -176,9 +180,23 @@ class MemoryService:
         return or_(*clauses) if clauses else Memory.id.is_(None)
 
     # ---------------------------------------------------------------------- CRUD
-    async def add(self, data: MemoryIn, *, dedupe: bool = True) -> MemoryHit:
+    async def add(self, data: MemoryIn, *, dedupe: bool = True,
+                  respect_forgotten: bool = False) -> MemoryHit | None:
+        """Store a memory. With ``respect_forgotten`` (automatic extraction) nothing similar
+        to a forgotten memory is stored (returns None); an explicit, confirmed memory
+        lifts such a block instead."""
         vec, model = await self._embed(data.content)
         async with self.db.session() as s:
+            if vec is not None:
+                dist = Memory.embedding.cosine_distance(vec)
+                forgotten = (await s.execute(select(Memory.id, dist.label("d")).where(
+                    Memory.status == FORGOTTEN, Memory.embedding.is_not(None),
+                    _same_owner(data.owner_person_id), dist < 1 - FORGOTTEN_SIMILARITY))).all()
+                if forgotten and respect_forgotten:
+                    log.info("extracted memory matches a forgotten one, skipped")
+                    return None
+                if forgotten and data.provenance == Provenance.CONFIRMED:
+                    await s.execute(delete(Memory).where(Memory.id.in_([r.id for r in forgotten])))
             if dedupe and vec is not None:
                 dist = Memory.embedding.cosine_distance(vec)
                 stmt = (select(Memory, dist.label("d")).where(
@@ -219,7 +237,7 @@ class MemoryService:
     async def get(self, memory_id: str) -> MemoryHit:
         async with self.db.session() as s:
             m = await s.get(Memory, memory_id)
-        if m is None:
+        if m is None or m.status == FORGOTTEN:
             raise NotFound("memory not found")
         return _hit(m)
 
@@ -240,10 +258,15 @@ class MemoryService:
             return _hit(m)
 
     async def delete(self, memory_id: str) -> None:
+        """Forget a memory: its content is erased; only a tombstone with the embedding stays
+        so that automatic extraction from older transcripts cannot re-create it."""
         async with self.db.session() as s:
-            result = await s.execute(delete(Memory).where(Memory.id == memory_id))
-            if not result.rowcount:  # type: ignore[attr-defined]
+            m = await s.get(Memory, memory_id)
+            if m is None or m.status == FORGOTTEN:
                 raise NotFound("memory not found")
+            m.status, m.content, m.value, m.source = FORGOTTEN, "", {}, {}
+            m.subject = m.predicate = None
+            m.updated_at = datetime.now(UTC)
 
     # -------------------------------------------------------------------- search
     async def search(self, query: str, *, person_id: str | None = None, room_id: str | None = None,
@@ -252,8 +275,7 @@ class MemoryService:
                      owner_filter: str | None = None) -> list[MemoryHit]:
         visible = self._visible(person_id, room_id, scopes)
         filters = [visible]
-        if not include_inactive:
-            filters.append(Memory.status == "active")
+        filters.append(Memory.status == "active" if not include_inactive else Memory.status != FORGOTTEN)
         if kind:
             filters.append(Memory.kind == kind)
         if owner_filter:
@@ -302,7 +324,7 @@ class MemoryService:
 
     async def list_all(self, *, person_id: str | None = None, kind: str | None = None,
                        limit: int = 200) -> list[MemoryHit]:
-        stmt = select(Memory).order_by(Memory.updated_at.desc()).limit(limit)
+        stmt = select(Memory).where(Memory.status != FORGOTTEN).order_by(Memory.updated_at.desc()).limit(limit)
         if person_id:
             stmt = stmt.where(Memory.owner_person_id == person_id)
         if kind:
@@ -339,7 +361,7 @@ class MemoryService:
         except json.JSONDecodeError:
             log.warning("memory extraction returned invalid JSON", session=session_id)
             data = {"memories": []}
-        stored = 0
+        stored = skipped_forgotten = 0
         for item in data.get("memories", [])[:20]:
             about = str(item.get("about", "speaker")).lower()
             owner = person_id if about == "speaker" else people.get(about)
@@ -350,17 +372,21 @@ class MemoryService:
                           "guess": Provenance.INFERRED}.get(certainty, Provenance.EXTRACTED)
             confidence = {"stated": 0.9, "implied": 0.7, "guess": 0.4}.get(certainty, 0.6)
             private = bool(item.get("private")) and owner is not None
-            await self.add(MemoryIn(
+            hit = await self.add(MemoryIn(
                 content=str(item["content"])[:2000], kind=item.get("kind", "fact"),
                 scope="private" if private else "shared", owner_person_id=owner, room_id=room_id,
                 subject=item.get("subject") or (speaker.name if speaker and about == "speaker" else None),
                 predicate=item.get("predicate"), value=item.get("value") or {},
                 provenance=provenance, confidence=confidence,
                 importance=float(item.get("importance") or 0.5),
-                source={"type": "conversation", "session_id": session_id}))
-            stored += 1
+                source={"type": "conversation", "session_id": session_id}), respect_forgotten=True)
+            if hit is None:
+                skipped_forgotten += 1
+            else:
+                stored += 1
         summary = data.get("summary")
-        if summary and stored:
+        # The summary could repeat forgotten content: only keep it if nothing was forgotten.
+        if summary and stored and not skipped_forgotten:
             await self.add(MemoryIn(content=f"Gespräch: {summary}", kind="episode",
                                     scope="private" if person_id else "shared",
                                     owner_person_id=person_id, room_id=room_id,
@@ -368,7 +394,7 @@ class MemoryService:
                                     source={"type": "conversation", "session_id": session_id}),
                            dedupe=False)
         await self._mark_processed(session_id)
-        log.info("memories extracted", session=session_id, count=stored)
+        log.info("memories extracted", session=session_id, count=stored, skipped_forgotten=skipped_forgotten)
         return stored
 
     async def _mark_processed(self, session_id: str) -> None:

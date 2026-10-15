@@ -66,6 +66,19 @@ Extraktion aus Gesprächen mit unbekanntem Sprecher speichert als `shared`.
    verlangt eine Bestätigung im Gespräch. In der Admin-UI (*Gedächtnis*) lässt
    sich alles ansehen, suchen, bearbeiten und löschen.
 
+   Vergessen ist **dauerhaft**. Der Inhalt wird gelöscht; zurück bleibt nur ein
+   Grabstein mit dem Embedding (ohne Text). So kann die spätere automatische
+   Extraktion aus dem Transkript eines älteren Gesprächs die Information nicht
+   wiederherstellen: Ähnliche Fakten (≥ 0,85) werden verworfen, und die
+   Zusammenfassung dieses Gesprächs entfällt. Nur eine ausdrückliche Bitte („Merk
+   dir …“) hebt die Sperre wieder auf. Gefunden wurde das in einem Live-Test: Ohne
+   diese Sperre tauchte ein vergessener Fakt nach dem Ende der ursprünglichen
+   Session wieder auf.
+
+   Hinweis: Die **Transkripte** selbst sind ein eigener Speicher mit eigener
+   Aufbewahrungsfrist (Standard 365 Tage, *Einstellungen → Aufbewahrung*).
+   Vergessen löscht nur das Gedächtnis, nicht das Transkript.
+
 ## Datenschutz
 
 * Erinnerungen gehen nur an Cloud-Modelle, wenn `personal_memories_to_cloud`
@@ -81,6 +94,12 @@ Gegen die laufende Docker-Instanz (Gemini als LLM, fastembed lokal):
 * In einer **neuen** Session: „Wo liegt der Ersatzschlüssel für den Keller?“ →
   richtige Antwort aus dem Gedächtnis.
 * „Vergiss bitte, wo der Ersatzschlüssel liegt.“ → Rückfrage, nach „Ja“ gelöscht.
+* Live nach der Korrektur: „Merk dir: Der Code für das Gartentor ist 4711“ →
+  „Vergiss den Code“ → beide Sessions beendet → die Extraktion verwirft den
+  Fakt (`skipped_forgotten: 1`), das Gedächtnis bleibt leer.
 
-Automatisierte Tests für Konsolidierung und Extraktion fehlen noch (sie brauchen
-eine Datenbank und ein Modell). Siehe [TESTING.md](TESTING.md).
+Automatisiert (`backend/tests/db/test_memory_forget.py`, echte PostgreSQL mit
+pgvector, deterministische Test-Embeddings): Vergessenes wird nicht re-extrahiert,
+ist unsichtbar und textfrei; ausdrückliches Merken hebt die Sperre auf; anderes
+wird weiterhin extrahiert. Für Konsolidierung gibt es noch keinen
+automatisierten Test.

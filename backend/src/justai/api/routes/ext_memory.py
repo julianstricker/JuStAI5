@@ -40,6 +40,7 @@ async def create_memory(body: MemoryIn, p: User, c: C) -> dict[str, Any]:
     if not p.is_admin and body.owner_person_id not in (None, p.person_id):
         raise Forbidden("not allowed")
     hit = await _svc(c).add(body.model_copy(update={"source": {"type": "admin", "user": p.username}}))
+    assert hit is not None  # only automatic extraction can be blocked by forgotten memories
     await c.audit.record(p.actor, "memory.create", hit.id)
     return hit.model_dump(mode="json")
 

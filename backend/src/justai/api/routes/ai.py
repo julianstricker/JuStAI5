@@ -27,7 +27,8 @@ async def put_settings(body: AISettings, p: Admin, c: C) -> dict[str, Any]:
 
 @router.get("/status")
 async def status(_: User, c: C) -> dict[str, Any]:
-    return {"roles": await c.ai.status(), "today_cost_usd": round(c.usage.today_cost_usd, 4)}
+    return {"roles": await c.ai.status(), "cooldowns": c.ai.cooldowns(),
+            "today_cost_usd": round(c.usage.today_cost_usd, 4)}
 
 
 @router.get("/providers")

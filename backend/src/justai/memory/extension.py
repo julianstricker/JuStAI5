@@ -97,7 +97,11 @@ class MemoryExtension:
                 owner_person_id=owner, room_id=ctx.room_id, subject=p.subject, predicate=p.predicate,
                 provenance=Provenance.CONFIRMED if p.user_requested else Provenance.EXTRACTED,
                 confidence=0.95 if p.user_requested else 0.8,
-                source={"type": "conversation", "session_id": ctx.session_id, "tool": True}))
+                source={"type": "conversation", "session_id": ctx.session_id, "tool": True}),
+                respect_forgotten=not p.user_requested)
+            if hit is None:
+                return ToolResult.failure("forgotten", "Das sollte ich auf Wunsch vergessen und merke es mir "
+                                          "nur, wenn der Benutzer es ausdrücklich verlangt.")
             return ToolResult.success({"id": hit.id}, message="Gemerkt")
 
         reg.register(ToolDefinition(

@@ -232,8 +232,15 @@ class ConversationManager:
         for session in list(self._by_id.values()):
             await session.end("shutdown")
 
-    async def ask_text(self, session: ConversationSession, text: str, timeout_s: float = 90) -> str:
+    async def ask_text(self, session: ConversationSession, text: str, timeout_s: float = 120) -> str:
         """Send typed text and wait for the assistant's answer (admin chat)."""
+        from justai.conversation.session import PipelineDriver
+
+        if isinstance(session.driver, PipelineDriver):
+            try:
+                return await asyncio.wait_for(session.driver.user_text(text), timeout=timeout_s)
+            except TimeoutError as exc:
+                raise Unavailable("no answer in time") from exc
         future: asyncio.Future[str] = asyncio.get_running_loop().create_future()
 
         async def listener(role: str, answer: str) -> None:

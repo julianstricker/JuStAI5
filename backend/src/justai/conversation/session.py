@@ -471,7 +471,8 @@ class PipelineDriver:
         self._pre: deque[np.ndarray] = deque(maxlen=self.PRE_ROLL)
         self._utt: list[np.ndarray] | None = None
         self._silence = 0
-        self._turn: asyncio.Task[None] | None = None
+        self._turn: asyncio.Task[str] | None = None
+        self._lock = asyncio.Lock()  # one turn at a time (voice, text, injected events)
 
     async def start(self) -> None:
         return None
@@ -496,7 +497,7 @@ class PipelineDriver:
             self._utt = None
             self._pre.clear()
             self.s.sm.try_transition(SessionState.PROCESSING, "utterance")
-            self._turn = asyncio.create_task(self._handle_audio(pcm))
+            self._turn = asyncio.create_task(self._handle_audio(pcm))  # type: ignore[arg-type]
 
     async def _handle_audio(self, pcm: np.ndarray) -> None:
         s = self.s
@@ -516,11 +517,16 @@ class PipelineDriver:
         if not await s.record_user(text, {"language": result.language}):
             s.sm.try_transition(SessionState.LISTENING, "echo")
             return
-        self.messages.append(ChatMessage(role=Role.USER, content=text))
-        await self._respond()
+        async with self._lock:
+            self.messages.append(ChatMessage(role=Role.USER, content=text))
+            await self._respond_locked()
 
     # ------------------------------------------------------------------ respond
-    async def _respond(self) -> None:
+    async def _respond(self) -> str:
+        async with self._lock:
+            return await self._respond_locked()
+
+    async def _respond_locked(self) -> str:
         s = self.s
         specs = s.deps.registry.specs(s.permissions)
         uid = new_id("utt")
@@ -568,10 +574,12 @@ class PipelineDriver:
         finally:
             await tts_queue.put(None)
         await speaker
-        await s.record_assistant(" ".join(spoken))
+        answer = " ".join(spoken)
+        await s.record_assistant(answer)
         if not s.sm.ended:
             s.sm.try_transition(SessionState.LISTENING, "answered")
             s.sm.activity()
+        return answer
 
     async def _tts_worker(self, uid: str, queue: asyncio.Queue[str | None]) -> None:
         s = self.s
@@ -607,16 +615,22 @@ class PipelineDriver:
             self._turn.cancel()
 
     async def inject(self, text: str) -> None:
-        self.messages.append(ChatMessage(
-            role=Role.USER, content=f"[Systemereignis, nicht vom Benutzer gesprochen] {text}"))
-        self._turn = asyncio.create_task(self._respond())
+        async def run() -> str:
+            async with self._lock:
+                self.messages.append(ChatMessage(
+                    role=Role.USER, content=f"[Systemereignis, nicht vom Benutzer gesprochen] {text}"))
+                return await self._respond_locked()
 
-    async def user_text(self, text: str) -> None:
-        if not await self.s.record_user(text, {"typed": True}):
-            return
-        self.s.sm.try_transition(SessionState.PROCESSING, "text")
-        self.messages.append(ChatMessage(role=Role.USER, content=text))
-        self._turn = asyncio.create_task(self._respond())
+        self._turn = asyncio.create_task(run())
+
+    async def user_text(self, text: str) -> str:
+        """Typed input; returns the answer to exactly this message."""
+        async with self._lock:
+            if not await self.s.record_user(text, {"typed": True}):
+                return ""
+            self.s.sm.try_transition(SessionState.PROCESSING, "text")
+            self.messages.append(ChatMessage(role=Role.USER, content=text))
+            return await self._respond_locked()
 
     async def close(self) -> None:
         if self._turn and not self._turn.done():

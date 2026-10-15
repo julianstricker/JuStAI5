@@ -289,7 +289,12 @@ class GeminiPlugin(Plugin):
             self.ctx.logger.warning("no Gemini API key configured; provider not registered")
             self.client = None
             return
-        self.client = genai.Client(api_key=key)
+        from google.genai import types
+
+        # No SDK-internal retries: JuStAI's AI router falls back to the next provider
+        # immediately, which is much faster than retrying an overloaded model.
+        self.client = genai.Client(api_key=key, http_options=types.HttpOptions(
+            timeout=60_000, retry_options=types.HttpRetryOptions(attempts=1)))
         self.ctx.register_provider("llm", GeminiLLM(self.client))
         self.ctx.register_provider("realtime", GeminiRealtime(
             self.client, self.ctx.config.get("default_voice", "Kore"),

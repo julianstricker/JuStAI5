@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field
@@ -104,6 +105,28 @@ class AIRouter:
         self.usage = usage
         self.audit = audit
         self._settings: AISettings | None = None
+        # (provider, model) -> monotonic time until which it is skipped after overload errors
+        self._cooldown: dict[tuple[str, str], float] = {}
+
+    COOLDOWN_S = 60.0
+    FIRST_TOKEN_TIMEOUT_S = 25.0
+
+    def _cool(self, cand: Candidate, error: BaseException) -> None:
+        text = f"{type(error).__name__} {error}"
+        if isinstance(error, TimeoutError) or any(code in text for code in ("503", "429", "UNAVAILABLE",
+                                                                             "RESOURCE_EXHAUSTED")):
+            self._cooldown[(cand.ref.provider, cand.ref.model)] = time.monotonic() + self.COOLDOWN_S
+
+    def _ordered(self, candidates: list[Candidate]) -> list[Candidate]:
+        """Candidates in configured order, but recently overloaded ones last."""
+        now = time.monotonic()
+        fresh = [c for c in candidates if self._cooldown.get((c.ref.provider, c.ref.model), 0) <= now]
+        cooled = [c for c in candidates if c not in fresh]
+        return fresh + cooled
+
+    def cooldowns(self) -> dict[str, float]:
+        now = time.monotonic()
+        return {f"{p}/{m}": round(until - now, 1) for (p, m), until in self._cooldown.items() if until > now}
 
     async def settings(self) -> AISettings:
         if self._settings is None:
@@ -183,7 +206,7 @@ class AIRouter:
                    tools: list[ToolSpec] | None = None, json_schema: dict[str, Any] | None = None,
                    flags: DataFlags = DataFlags(), temperature: float | None = None,
                    max_tokens: int | None = None) -> ChatResult:
-        candidates = await self._require(role, flags)
+        candidates = self._ordered(await self._require(role, flags))
         settings = await self.settings()
         timeout = settings.role(role).timeout_s
         first: Candidate | None = None
@@ -198,8 +221,9 @@ class AIRouter:
                 result = await asyncio.wait_for(self._collect(cand, req), timeout=timeout)
             except Exception as exc:
                 last_error = f"{type(exc).__name__}: {exc}"
+                self._cool(cand, exc)
                 log.warning("llm provider failed", role=role, provider=cand.ref.provider,
-                            error=last_error)
+                            model=cand.ref.model, error=last_error[:200])
                 self.usage.record(provider=cand.ref.provider, model=cand.ref.model, role=role,
                                   ok=False, latency_ms=int((time.monotonic() - started) * 1000))
                 first = first or cand
@@ -230,19 +254,28 @@ class AIRouter:
     async def stream_chat(self, role: ModelRole, messages: list[ChatMessage], *,
                           tools: list[ToolSpec] | None = None,
                           flags: DataFlags = DataFlags()) -> AsyncIterator[ChatEvent]:
-        """Streaming chat. Falls back only if a provider fails before producing output."""
-        candidates = await self._require(role, flags)
+        """Streaming chat. Falls back only if a provider fails (or stays silent for
+        FIRST_TOKEN_TIMEOUT_S) before producing output."""
+        candidates = self._ordered(await self._require(role, flags))
         settings = await self.settings()
+        total_timeout = settings.role(role).timeout_s
         first: Candidate | None = None
         last_error = ""
         for cand in candidates:
             started = time.monotonic()
             produced = False
             req = ChatRequest(model=cand.ref.model, messages=messages, tools=tools or [],
-                              timeout_s=settings.role(role).timeout_s,
+                              timeout_s=total_timeout,
                               temperature=cand.ref.options.get("temperature"))
+            stream = cand.provider.chat(req).__aiter__()
             try:
-                async for ev in cand.provider.chat(req):
+                while True:
+                    budget = (self.FIRST_TOKEN_TIMEOUT_S if not produced
+                              else max(1.0, total_timeout - (time.monotonic() - started)))
+                    try:
+                        ev = await asyncio.wait_for(stream.__anext__(), timeout=budget)
+                    except StopAsyncIteration:
+                        return
                     if not produced and first is not None:
                         await self._fallback_used(role, first, cand, last_error)
                     produced = True
@@ -253,15 +286,19 @@ class AIRouter:
                                           output_tokens=u.output_tokens, cost_usd=u.cost_usd,
                                           latency_ms=int((time.monotonic() - started) * 1000))
                     yield ev
-                return
             except Exception as exc:
                 if produced:
                     raise
                 last_error = f"{type(exc).__name__}: {exc}"
-                log.warning("llm stream failed", provider=cand.ref.provider, error=last_error)
+                self._cool(cand, exc)
+                log.warning("llm stream failed", provider=cand.ref.provider, model=cand.ref.model,
+                            error=last_error[:200])
                 self.usage.record(provider=cand.ref.provider, model=cand.ref.model, role=role, ok=False)
                 first = first or cand
-        raise Unavailable(f"all providers failed for {role}: {last_error}")
+            finally:
+                with contextlib.suppress(Exception):
+                    await stream.aclose()  # type: ignore[attr-defined]
+        raise Unavailable(f"all providers failed for {role}: {last_error[:300]}")
 
     # ----------------------------------------------------------------- realtime
     async def connect_realtime(self, config: RealtimeConfig, flags: DataFlags = DataFlags(audio=True)
@@ -351,4 +388,5 @@ class AIRouter:
                             "locality": c.locality.value} for c in usable],
                 "skipped": skipped,
             }
+        out["_cooldowns"] = self.cooldowns()
         return out

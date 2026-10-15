@@ -124,3 +124,33 @@ async def test_cost_limit_blocks_cloud() -> None:
     usable, skipped = await router.candidates(ModelRole.CONVERSATION)
     assert not usable and "cost" in skipped[0]
     await bus.close()
+
+
+class HangingLLM(FakeLLM):
+    async def chat(self, request: ChatRequest) -> AsyncIterator[ChatEvent]:
+        self.calls += 1
+        import asyncio
+
+        await asyncio.sleep(3600)
+        yield ChatEvent(kind=ChatEventKind.DONE)
+
+
+async def test_stream_falls_back_when_provider_hangs_and_cools_it_down() -> None:
+    import asyncio
+
+    hanging = HangingLLM("slow", Locality.CLOUD)
+    backup = FakeLLM("backup", Locality.CLOUD)
+    router, bus, _, _ = await make(chain("slow", "backup"), hanging, backup)
+    router.FIRST_TOKEN_TIMEOUT_S = 0.2
+    texts = [ev.text async for ev in router.stream_chat(ModelRole.CONVERSATION, MSG) if ev.kind == "text"]
+    assert texts == ["answer from backup"]
+    # The hanging provider is now in cooldown and tried last.
+    texts = await asyncio.wait_for(
+        _collect_text(router.stream_chat(ModelRole.CONVERSATION, MSG)), timeout=1.0)
+    assert texts == ["answer from backup"] and hanging.calls == 1
+    assert "slow/m" in router.cooldowns()
+    await bus.close()
+
+
+async def _collect_text(stream):  # type: ignore[no-untyped-def]
+    return [ev.text async for ev in stream if ev.kind == "text"]

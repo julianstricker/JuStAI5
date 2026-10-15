@@ -119,9 +119,14 @@ class AutomationService:
                     mode="json", exclude_none=True)
                 auto.revision += 1
                 auto.state = {}
+            elif fields.get("enabled") is True and not auto.enabled:
+                # Re-enabling a used-up "once" rule means: arm it again.
+                auto.state = {**(auto.state or {}), "run_count": 0}
             for k, v in fields.items():
                 if v is not None:
                     setattr(auto, k, v)
+            await s.flush()
+            await s.refresh(auto)  # load server-side updated_at before the session closes
             return auto
 
     async def delete(self, automation_id: str) -> None:

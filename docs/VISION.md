@@ -35,6 +35,18 @@ Admin-UI → *Vision* (`PUT /api/vision/cameras/{device_id}`):
 | `privacy_zones` | Polygone (normalisierte Koordinaten); werden vor jeder Analyse geschwärzt |
 | `heartbeat_s` | 20 |
 
+## Wann gilt jemand als „gesehen“?
+
+Der Objektdetektor läuft nur bei Bewegung oder alle 20 s. Sitzt jemand still, bricht
+sein Track zwischen zwei Durchläufen ab (nach 4 s ohne Treffer) und wird kurz darauf
+neu erkannt. Deshalb gilt:
+
+* `vision.person.recognized` wird pro Person höchstens alle 2 Minuten gemeldet.
+* Das Event enthält `away_s`: Sekunden seit die Person zuletzt auf irgendeiner Kamera
+  identifiziert war (nach einem Neustart aus den gespeicherten Sichtungen; nie gesehen
+  = ein Jahr). Damit unterscheiden Automationen „ist zurückgekommen“ von „saß die
+  ganze Zeit da“.
+
 ## Events
 
 `vision.motion.started/ended`, `vision.object.appeared/left`,

@@ -26,7 +26,7 @@ from justai_sdk.events import Event, EventSource
 from justai_sdk.ports.devices import Capability
 from justai_sdk.ports.vision import BBox, Detection, FaceAnalyzer, Image, ObjectDetector
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 
 from justai.common.supervisor import Supervisor
@@ -46,6 +46,7 @@ from justai.vision.tracker import IouTracker, Track
 
 log = get_logger(__name__)
 
+NEVER_SEEN_AWAY_S = 365 * 24 * 3600
 DEFAULT_LABELS = ["person", "dog", "cat", "car", "truck", "bicycle", "motorcycle", "bird"]
 
 
@@ -117,6 +118,10 @@ class VisionEngine:
         self._track_listeners: dict[str, list[TrackListener]] = {}
         self._watches: dict[str, list[VisionWatch]] = {}
         self.background_slowdown = 1.0  # >1 while conversations are active
+        # person_id -> wall-clock time the person was last seen on any camera. Used to tell
+        # "came back after an absence" apart from re-identifying someone who never left
+        # (tracks break up when a person sits still between detector runs).
+        self._person_seen: dict[str, float] = {}
         devices.on_ready_change(self._on_device)
 
     # --------------------------------------------------------------- providers
@@ -285,6 +290,10 @@ class VisionEngine:
         await self._check_watches(state, t)
         if cfg.faces:
             await self._check_faces(state, t)
+        now_wall = time.time()
+        for tr in state.tracker.confirmed():
+            if tr.person_id:
+                self._person_seen[tr.person_id] = now_wall
         for tr in state.tracker.confirmed():
             if t - tr.last_persisted > 60:
                 await self._persist(state, tr)
@@ -399,10 +408,26 @@ class VisionEngine:
                 state.recognized_at[match.person_id] = t
                 await self._persist(state, track)
                 if t - last > 120:  # do not re-announce the same person on short track loss
+                    away_s = await self._away_seconds(match.person_id, track.id)
                     await self._emit(state, "vision.person.recognized", {
                         "person_id": match.person_id, "person_name": match.name,
                         "camera_id": state.device_id, "similarity": round(match.similarity, 3),
-                        "match_level": match.level, "track_id": track.id})
+                        "match_level": match.level, "track_id": track.id, "away_s": away_s})
+                self._person_seen[match.person_id] = time.time()
+
+    async def _away_seconds(self, person_id: str, current_track: str) -> int:
+        """Seconds since the person was last seen on any camera (before the current track).
+
+        Falls back to persisted sightings after a restart; a person never seen before
+        counts as away for a year.
+        """
+        seen = self._person_seen.get(person_id)
+        if seen is None:
+            async with self.db.session() as s:
+                last = await s.scalar(select(func.max(Sighting.last_seen)).where(
+                    Sighting.person_id == person_id, Sighting.track_id != current_track))
+            seen = last.timestamp() if last is not None else None
+        return int(time.time() - seen) if seen is not None else NEVER_SEEN_AWAY_S
 
     # ----------------------------------------------------------- on-demand use
     async def analyze_device(self, device_id: str) -> dict[str, Any]:

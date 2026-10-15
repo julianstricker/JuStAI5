@@ -72,7 +72,8 @@ Zeitangaben gelten in der Zeitzone aus *Einstellungen → System* (Standard
 
 ### Optionen
 
-`once` (nach dem ersten erfolgreichen Lauf deaktivieren), `cooldown_s`, `priority`
+`once` (nach dem ersten erfolgreichen Lauf deaktivieren; erneutes Aktivieren macht
+die Regel wieder scharf), `cooldown_s`, `priority`
 (0–3), `max_retries`, `expires_at`, `max_runs_per_hour`.
 
 ### Ausführung
@@ -90,7 +91,11 @@ kommt aus dem Trigger oder der Konfiguration, nie aus einer Modellausgabe.
 ### Anlegen
 
 * **Im Gespräch**: Tool `automation.create`, z. B. „Wenn du Anna das nächste Mal
-  siehst, begrüße sie mit Namen.“ Das Tool akzeptiert Personennamen (wird zur
+  siehst, begrüße sie mit Namen.“ Regeln auf `vision.person.recognized` bekommen
+  automatisch die Bedingung `away_s >= 600` (mindestens 10 Minuten nicht gesehen),
+  sonst würde die Begrüßung irgendwann auslösen, während die Person noch vor der
+  Kamera sitzt (so im Live-Test passiert). Andere Abstände kann das Modell setzen
+  („wenn ich heimkomme“ ≥ 3600, „jedes Mal“ ≥ 0). Das Tool akzeptiert Personennamen (wird zur
   Personen-ID aufgelöst), `self` (die sprechende, erkannte Person) und `here` (der
   aktuelle Raum). Fehlende `type`-Angaben werden aus den Feldern ergänzt.
   Validierungsfehler gehen mit Details an das Modell zurück, damit es korrigieren

@@ -26,7 +26,10 @@ class CreateParams(BaseModel):
         "Auslöser. Ereignis: {\"type\":\"event\",\"event\":\"vision.person.recognized\","
         "\"match\":{\"person_id\":\"self\"}} - 'self' steht für die sprechende Person. "
         "Weitere Ereignisse: vision.object.appeared (match label), vision.watch.triggered, "
-        "vision.state.changed (match name/state), display.interaction. Zeit: {\"type\":\"cron\","
+        "vision.state.changed (match name/state), display.interaction. Bei vision.person.recognized "
+        "gilt automatisch: nur nach mindestens 10 Minuten Abwesenheit (Bedingung payload away_s >= 600); "
+        "für andere Abstände selbst setzen, z. B. 'wenn ich heimkomme' away_s >= 3600, "
+        "'jedes Mal' away_s >= 0. Zeit: {\"type\":\"cron\","
         "\"cron\":\"0 7 * * 1-5\"}, {\"type\":\"at\",\"at\":\"2026-10-15T07:30:00\"}, "
         "{\"type\":\"interval\",\"seconds\":3600}"))
     conditions: list[dict[str, Any]] = Field(default_factory=list, description=(
@@ -91,6 +94,23 @@ def normalize_definition(definition: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+# "Wenn du mich das nächste Mal siehst": the person must have been away, otherwise the rule
+# fires while they are still sitting in front of the camera (tracks are re-identified
+# whenever a still person is lost between detector runs).
+DEFAULT_AWAY_S = 600
+
+
+def add_default_absence(definition: dict[str, Any]) -> dict[str, Any]:
+    trigger = definition.get("trigger") or {}
+    if not isinstance(trigger, dict) or trigger.get("event") != "vision.person.recognized":
+        return definition
+    conditions = list(definition.get("conditions") or [])
+    if any(isinstance(c, dict) and c.get("path") == "away_s" for c in conditions):
+        return definition
+    conditions.append({"type": "payload", "path": "away_s", "op": ">=", "value": DEFAULT_AWAY_S})
+    return {**definition, "conditions": conditions}
+
+
 def describe_errors(exc: ValidationFailed) -> str:
     errors = exc.details.get("errors") or []
     parts = [f"{'.'.join(str(x) for x in e.get('loc', []))}: {e.get('msg')}" for e in errors[:6]]
@@ -140,7 +160,7 @@ class AutomationExtension:
                                               "Person, sich vorzustellen (identity.introduce) bzw. ihr Gesicht "
                                               "registrieren zu lassen, damit ich sie erkenne.")
                 return ToolResult.failure("room_unknown", "Kein aktueller Raum bekannt")
-            definition = normalize_definition(definition)
+            definition = add_default_absence(normalize_definition(definition))
             unknown = await self._resolve_people(definition)
             if unknown:
                 return ToolResult.failure("person_unknown", f"Unbekannte Person '{unknown}'. Mit "

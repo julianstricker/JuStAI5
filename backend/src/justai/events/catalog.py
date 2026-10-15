@@ -67,6 +67,7 @@ class PersonRecognizedPayload(BaseModel):
     similarity: float
     match_level: str  # strong | weak
     track_id: str | None = None
+    away_s: int | None = None  # seconds since last seen on any camera (absence before this sighting)
 
 
 class ObjectPayload(BaseModel):

@@ -55,3 +55,16 @@ def test_tool_definitions_without_type_are_normalized() -> None:
     assert d.trigger.type == "event"
     assert [a.type for a in d.actions] == ["assistant.invoke", "speak", "tool"]
     assert d.conditions[0].type == "time_window"
+
+
+def test_recognition_rules_get_a_default_absence_condition() -> None:
+    from justai.automation.extension import DEFAULT_AWAY_S, add_default_absence
+
+    raw = {"trigger": {"type": "event", "event": "vision.person.recognized", "match": {"person_id": "p1"}},
+           "actions": [{"type": "speak", "text": "Hallo"}]}
+    d = AutomationService.validate(add_default_absence(raw))
+    assert [(c.path, c.op, c.value) for c in d.conditions] == [("away_s", ">=", DEFAULT_AWAY_S)]
+    explicit = {**raw, "conditions": [{"type": "payload", "path": "away_s", "op": ">=", "value": 0}]}
+    assert add_default_absence(explicit) == explicit
+    other = {"trigger": {"type": "event", "event": "vision.object.appeared"}, "actions": raw["actions"]}
+    assert add_default_absence(other) == other

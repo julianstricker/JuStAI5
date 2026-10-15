@@ -3,6 +3,8 @@
 # Usage: ./scripts/backup.sh [target-dir]
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# Volume names follow the compose project (default "justai5", see docker-compose.yml).
+PROJECT="${COMPOSE_PROJECT_NAME:-justai5}"
 TARGET="${1:-backups}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 WORK="$(mktemp -d)"
@@ -12,7 +14,7 @@ echo "dumping database ..."
 docker compose exec -T postgres pg_dump -U justai -d justai --format=custom > "$WORK/database.dump"
 echo "archiving volumes ..."
 for vol in data secrets; do
-  docker run --rm -v "justai5_${vol}:/v:ro" -v "$WORK:/out" alpine:3.22 tar czf "/out/${vol}.tar.gz" -C /v .
+  docker run --rm -v "${PROJECT}_${vol}:/v:ro" -v "$WORK:/out" alpine:3.22 tar czf "/out/${vol}.tar.gz" -C /v .
 done
 cp docker-compose.yml "$WORK/"
 [ -f .env ] && cp .env "$WORK/env"

@@ -3,14 +3,16 @@
 # Usage: ./scripts/restore.sh backups/justai5-backup-XXXX.tar.gz
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# Volume names follow the compose project (default "justai5", see docker-compose.yml).
+PROJECT="${COMPOSE_PROJECT_NAME:-justai5}"
 ARCHIVE="$1"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 tar xzf "$ARCHIVE" -C "$WORK"
 docker compose stop core sandbox || true
 for vol in secrets data; do
-  docker volume create "justai5_${vol}" >/dev/null
-  docker run --rm -v "justai5_${vol}:/v" -v "$WORK:/in:ro" alpine:3.22 \
+  docker volume create "${PROJECT}_${vol}" >/dev/null
+  docker run --rm -v "${PROJECT}_${vol}:/v" -v "$WORK:/in:ro" alpine:3.22 \
     sh -c "find /v -mindepth 1 -delete && tar xzf /in/${vol}.tar.gz -C /v"
 done
 docker compose up -d postgres

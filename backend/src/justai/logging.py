@@ -54,7 +54,8 @@ def configure_logging(level: str = "INFO", json: bool = True) -> None:
     root = logging.getLogger()
     root.handlers[:] = [handler]
     root.setLevel(level.upper())
-    for noisy in ("uvicorn.access", "httpx", "httpcore", "asyncio", "zeep", "faster_whisper"):
+    for noisy in ("uvicorn.access", "httpx", "httpcore", "asyncio", "zeep", "faster_whisper",
+                  "openai", "google_genai", "anthropic"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
 

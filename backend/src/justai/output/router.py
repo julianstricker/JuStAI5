@@ -25,6 +25,9 @@ from justai_sdk.permissions import Permission
 from justai_sdk.ports.devices import Capability
 
 from justai.common.errors import RoutingDenied
+from justai.logging import get_logger
+
+log = get_logger(__name__)
 
 
 class OutputKind(StrEnum):
@@ -105,6 +108,17 @@ class OutputRouter:
         self.topology = topology
 
     def route(self, req: OutputRequest) -> RouteDecision:
+        try:
+            decision = self._route(req)
+        except RoutingDenied as exc:
+            log.info("output denied", kind=str(req.kind), origin_endpoint=req.origin_endpoint_id,
+                     origin_room=req.origin_room_id, target_room=req.target_room_id, reason=exc.message)
+            raise
+        log.debug("output routed", kind=str(req.kind), room=decision.room_id, devices=decision.device_ids,
+                  cross_room=decision.cross_room, reasons=decision.reasons)
+        return decision
+
+    def _route(self, req: OutputRequest) -> RouteDecision:
         reasons: list[str] = []
         origin_room = self._origin_room(req, reasons)
         target_room = req.target_room_id or origin_room

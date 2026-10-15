@@ -58,6 +58,7 @@ function ProjectCard({ project }: { project: Project }) {
     success: "Rollback durchgeführt",
   });
   const deactivate = useAction(() => api.post(`/api/devtools/projects/${project.id}/deactivate`), { invalidate: [["devtools"], ["tools"]], success: "Deaktiviert" });
+  const remove = useAction(() => api.del(`/api/devtools/projects/${project.id}`), { invalidate: [["devtools"], ["tools"], ["plugins"]], success: "Gelöscht" });
   const revise = useAction((feedback: string) => api.post(`/api/devtools/projects/${project.id}/revise`, { feedback }), {
     invalidate: [["devtools"]],
     success: "Neue Version wird erstellt",
@@ -71,11 +72,21 @@ function ProjectCard({ project }: { project: Project }) {
           <StatusBadge status={project.status} />
           {project.active_version && <Badge color="green">aktiv: v{project.active_version}</Badge>}
         </Group>
-        {project.active_version && (
-          <Button size="xs" variant="subtle" color="red" onClick={() => deactivate.mutate(undefined)}>
-            Deaktivieren
+        <Group gap="xs">
+          {project.active_version && (
+            <Button size="xs" variant="subtle" color="red" onClick={() => deactivate.mutate(undefined)}>
+              Deaktivieren
+            </Button>
+          )}
+          <Button
+            size="xs"
+            variant="subtle"
+            color="red"
+            onClick={() => confirm(`Projekt „${project.title}“ mit allen Versionen und dem erzeugten Plugin löschen?`) && remove.mutate(undefined)}
+          >
+            Löschen
           </Button>
-        )}
+        </Group>
       </Group>
       <Text size="sm" c="dimmed">
         „{project.request}“ · Plugin {project.plugin_id} · {fmtTime(project.created_at)}

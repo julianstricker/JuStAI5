@@ -46,9 +46,9 @@ class RpcPeer:
         while True:
             line = await self.reader.readline()
             if not line:
-                for fut in self._pending.values():
-                    if not fut.done():
-                        fut.set_exception(RpcError("peer closed"))
+                for waiting in self._pending.values():
+                    if not waiting.done():
+                        waiting.set_exception(RpcError("peer closed"))
                 return
             try:
                 msg = json.loads(line)

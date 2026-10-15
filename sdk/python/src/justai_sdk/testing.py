@@ -9,7 +9,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from justai_sdk.events import Event
-from justai_sdk.manifest import PluginManifest
+from justai_sdk.manifest import PluginManifest, load_manifest
 from justai_sdk.permissions import Permission
 from justai_sdk.plugin import (
     CoreServices,
@@ -24,6 +24,9 @@ from justai_sdk.plugin import (
 from justai_sdk.tools import InvocationOrigin, ToolContext, ToolDefinition, ToolHandler, ToolResult
 
 FakeRoute = Callable[[str, str, dict[str, Any] | None, Any], HttpResponse]
+
+
+__all__ = ["FakeHttp", "FakePluginContext", "FakeServices", "MemoryStore", "load_manifest"]
 
 
 class FakeHttp(PluginHttp):
@@ -110,11 +113,13 @@ class FakeServices(CoreServices):
 class FakePluginContext(PluginContext):
     def __init__(
         self,
-        manifest: PluginManifest,
+        manifest: PluginManifest | dict[str, Any],
         config: dict[str, Any] | None = None,
         *,
         http_routes: dict[str, FakeRoute] | None = None,
     ) -> None:
+        if isinstance(manifest, dict):
+            manifest = PluginManifest.model_validate(manifest)
         self.plugin_id = manifest.id
         self.manifest = manifest
         self.config = config or {}

@@ -26,7 +26,7 @@ from sqlalchemy import select
 
 from justai.ai.config import ModelRole
 from justai.common.errors import Conflict, NotFound, Unavailable, ValidationFailed
-from justai.db.models import ToolProject, ToolVersion
+from justai.db.models import InstalledPlugin, ToolProject, ToolVersion
 from justai.logging import get_logger
 
 if TYPE_CHECKING:
@@ -44,6 +44,7 @@ FORBIDDEN_MODULES = {"os", "sys", "subprocess", "socket", "ctypes", "importlib",
 FORBIDDEN_CALLS = {"eval", "exec", "compile", "open", "__import__", "globals", "locals", "vars",
                    "getattr", "setattr", "delattr", "breakpoint", "input"}
 
+AUTO_REVISIONS = 2
 EXAMPLE_DIR = Path(__file__).resolve().parents[4] / "plugins" / "example-weather"
 
 SPEC_SCHEMA: dict[str, Any] = {
@@ -105,6 +106,18 @@ Regeln:
   ohne echtes Netzwerk; Plugin wie im Beispiel per importlib aus `../plugin.py` laden und das
   Manifest per `load_manifest(ROOT)` lesen.
 - Erlaubte Berechtigungen: {permissions}.
+SDK-API (genau so, es gibt KEINE Dekoratoren und kein `justai_sdk.decorators`):
+- `from justai_sdk import Plugin, ToolContext, ToolDefinition, ToolResult`
+- Tools in `async def setup(self)` registrieren: `self.ctx.register_tool(ToolDefinition(name="x.y",
+  description="...", parameters=ParamsModel, category="..."), self.handler)`; ParamsModel ist ein
+  pydantic `BaseModel`.
+- Handler: `async def handler(self, p: ParamsModel, ctx: ToolContext) -> ToolResult`.
+- `ToolResult.success(data, message="...")`, `ToolResult.failure("code", "Meldung")`; Felder `.ok`,
+  `.data`, `.message`.
+- Tests: `from justai_sdk.testing import FakePluginContext, load_manifest`;
+  `ctx = FakePluginContext(load_manifest(ROOT), config={{...}}, http_routes={{...}})`,
+  `plugin = KlassenName(ctx)`, `await plugin.setup()`, `result = await ctx.call_tool("x.y", {{...}})`.
+  Async-Tests laufen ohne Marker (asyncio_mode=auto), `asyncio.run(...)` geht ebenfalls.
 Hier ist ein vollständiges Beispiel-Plugin:
 
 {example}
@@ -197,12 +210,20 @@ class DevToolsService:
 
     async def _develop(self, project_id: str, feedback: str | None) -> None:
         try:
-            await self._develop_inner(project_id, feedback)
+            passed = await self._develop_inner(project_id, feedback)
+            for _ in range(AUTO_REVISIONS):
+                if passed:
+                    break
+                # Let the model fix its own failing tests/static issues once before a human
+                # has to look at it; the previous version and its results are in the prompt.
+                passed = await self._develop_inner(
+                    project_id, "Automatische Korrektur: Die Prüfungen sind fehlgeschlagen. Behebe die "
+                                "Ursache (siehe Prüfergebnisse) und liefere Code und Tests, die zusammenpassen.")
         except Exception as exc:
             log.error("tool development failed", project=project_id, error=str(exc), exc_info=True)
             await self._set_project(project_id, status="failed")
 
-    async def _develop_inner(self, project_id: str, feedback: str | None) -> None:
+    async def _develop_inner(self, project_id: str, feedback: str | None) -> bool:
         async with self.c.db.session() as s:
             project = await s.get(ToolProject, project_id)
             assert project is not None
@@ -226,7 +247,7 @@ class DevToolsService:
                                       validation={"review": {"ok": True,
                                                              "findings": [verdict.get("explanation", "")]}}))
                 await self._set_project(project_id, status="covered_by_existing")
-                return
+                return True
         await self._set_project(project_id, status="generating")
         user = f"Gewünschte Fähigkeit: {project.request}"
         if previous is not None and previous.code:
@@ -241,7 +262,8 @@ class DevToolsService:
         ], json_schema=GEN_SCHEMA, temperature=0.2, max_tokens=12000)
         data = json.loads(gen.text or "{}")
         slug = re.sub(r"[^a-z0-9-]", "-", str(data.get("slug", "tool")).lower()).strip("-")[:30] or "tool"
-        plugin_id = project.plugin_id if not project.plugin_id.startswith("gen-pending") else f"gen-{slug}"
+        plugin_id = project.plugin_id if not project.plugin_id.startswith("gen-pending") \
+            else await self._unique_plugin_id(f"gen-{slug}", project_id)
         version = (previous.version + 1) if previous else 1
         manifest_dict = {
             "id": plugin_id, "name": data.get("title", slug), "version": f"1.0.{version}",
@@ -251,9 +273,12 @@ class DevToolsService:
             "network_allowlist": data.get("network_allowlist") or [],
             "config_schema": data.get("config_schema") or {"type": "object"},
         }
-        code = str(data.get("code", "")).replace("class Plugin(", "class GeneratedPlugin(")
-        if "GeneratedPlugin" not in code:
-            code = re.sub(r"class (\w+)\(Plugin\)", "class GeneratedPlugin(Plugin)", code, count=1)
+        code = str(data.get("code", ""))
+        # The manifest entrypoint is plugin:GeneratedPlugin. Keep the model's class name
+        # (its tests import it) and add an alias instead of renaming the class.
+        match = re.search(r"^class (\w+)\(Plugin\)", code, re.M)
+        if match and match.group(1) != "GeneratedPlugin" and not re.search(r"^GeneratedPlugin\s*=", code, re.M):
+            code = code.rstrip() + f"\n\n\nGeneratedPlugin = {match.group(1)}  # manifest entrypoint\n"
         tests = str(data.get("tests", ""))
         validation: dict[str, Any] = {}
         issues = static_check(code, tests, manifest_dict["permissions"])
@@ -281,6 +306,20 @@ class DevToolsService:
             assert row is not None
             row.plugin_id, row.title = plugin_id, data.get("title", row.title)
             row.status = "awaiting_approval" if passed else "needs_revision"
+        return bool(passed)
+
+    async def _unique_plugin_id(self, base: str, project_id: str) -> str:
+        """Plugin ids are unique across projects and installed plugins (gen-x, gen-x-2, ...)."""
+        async with self.c.db.session() as s:
+            taken = set((await s.scalars(select(ToolProject.plugin_id).where(
+                ToolProject.plugin_id.startswith(base), ToolProject.id != project_id))).all())
+            taken |= set((await s.scalars(select(InstalledPlugin.id).where(
+                InstalledPlugin.id.startswith(base)))).all())
+        candidate, n = base, 1
+        while candidate in taken:
+            n += 1
+            candidate = f"{base}-{n}"
+        return candidate
 
     async def _run_tests(self, manifest: dict[str, Any], code: str, tests: str) -> dict[str, Any]:
         sandbox = self.c.sandbox
@@ -343,6 +382,21 @@ class DevToolsService:
             assert p is not None
             p.active_version, p.status = None, "inactive"
         await self.c.audit.record(user, "devtools.deactivate", project_id)
+
+    async def delete(self, project_id: str, user: str) -> None:
+        """Remove a project with all versions and its generated plugin (if it was installed)."""
+        async with self.c.db.session() as s:
+            project = await s.get(ToolProject, project_id)
+        if project is None:
+            raise NotFound("project not found")
+        if not project.plugin_id.startswith("gen-pending"):
+            with contextlib.suppress(NotFound):
+                await self.c.plugins.remove(project.plugin_id)
+        async with self.c.db.session() as s:
+            row = await s.get(ToolProject, project_id)
+            if row is not None:
+                await s.delete(row)  # versions cascade
+        await self.c.audit.record(user, "devtools.delete", project_id, plugin=project.plugin_id)
 
     def require_sandbox(self) -> None:
         if self.c.sandbox is None:

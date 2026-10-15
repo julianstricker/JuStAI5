@@ -25,7 +25,7 @@ class OnvifPtz:
         self._lock = asyncio.Lock()
 
     async def connect(self) -> PtzCapabilities:
-        from onvif import ONVIFCamera
+        from onvif import ONVIFCamera  # type: ignore[import-untyped]
 
         self._camera = ONVIFCamera(self.host, self.port, self.username, self.password)
         await self._camera.update_xaddrs()

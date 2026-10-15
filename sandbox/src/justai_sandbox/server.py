@@ -185,12 +185,18 @@ async def run_tests(request: Request) -> JSONResponse:
     _auth(request)
     body = await request.json()
     timeout = min(float(body.get("timeout_s", 60)), 180)
-    directory = WORK / "tests" / uuid.uuid4().hex
+    # Fixed directory name prefix: a valid package name must not depend on the random id.
+    directory = WORK / "tests" / f"run_{uuid.uuid4().hex}" / "plugin_under_test"
     directory.mkdir(parents=True)
     try:
-        _write_files(directory, body["files"])
+        # A root __init__.py would turn the directory into a package and hide `plugin` from
+        # the tests (pytest prepend import mode); -I ignores PYTHONPATH, so the plugin
+        # directory is put on sys.path through pytest's own `pythonpath` option.
+        files = {k: v for k, v in body["files"].items() if k != "__init__.py"}
+        _write_files(directory, files)
         proc = await asyncio.create_subprocess_exec(
             sys.executable, "-I", "-m", "pytest", "-q", "-p", "no:cacheprovider", "--rootdir", str(directory),
+            "-o", "pythonpath=.", "-o", "asyncio_mode=auto",
             "-x", str(directory), stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT,
             cwd=str(directory), env=_env({"PYTHONPATH": str(directory)}),
             preexec_fn=_limits(cpu_s=int(timeout), mem_mb=512))
@@ -204,7 +210,7 @@ async def run_tests(request: Request) -> JSONResponse:
         return JSONResponse({"ok": code == 0, "exit_code": code,
                              "output": out.decode(errors="replace")[-12000:]})
     finally:
-        shutil.rmtree(directory, ignore_errors=True)
+        shutil.rmtree(directory.parent, ignore_errors=True)
 
 
 async def health(_: Request) -> JSONResponse:

@@ -63,7 +63,7 @@ class HttpResponse(BaseModel):
     headers: dict[str, str] = Field(default_factory=dict)
     text: str = ""
 
-    def json(self) -> Any:
+    def json(self) -> Any:  # type: ignore[override]  # requests-like API, replaces deprecated BaseModel.json
         import json
 
         return json.loads(self.text)

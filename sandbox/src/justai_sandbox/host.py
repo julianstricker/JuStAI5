@@ -197,12 +197,12 @@ async def main(plugin_dir: str) -> None:
                 result = ToolResult.success(result)
             return json.loads(result.model_dump_json())
         if method == "health":
-            plugin = state.get("plugin")
-            return (await plugin.health()).model_dump() if plugin else {"state": "failed"}
+            running = state.get("plugin")
+            return (await running.health()).model_dump() if running else {"state": "failed"}
         if method == "stop":
-            plugin = state.get("plugin")
-            if plugin:
-                await plugin.stop()
+            running = state.get("plugin")
+            if running:
+                await running.stop()
             loop.call_later(0.1, sys.exit, 0)
             return True
         raise ValueError(f"unknown method {method}")

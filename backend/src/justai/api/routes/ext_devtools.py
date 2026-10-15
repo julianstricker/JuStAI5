@@ -60,6 +60,12 @@ async def deactivate(project_id: str, p: Admin, c: C) -> dict[str, bool]:
     return {"ok": True}
 
 
+@router.delete("/projects/{project_id}")
+async def delete_project(project_id: str, p: Admin, c: C) -> dict[str, bool]:
+    await _svc(c).delete(project_id, p.actor)
+    return {"ok": True}
+
+
 @router.post("/projects/{project_id}/revise")
 async def revise(project_id: str, body: FeedbackIn, p: Admin, c: C) -> dict[str, bool]:
     await _svc(c).revise(project_id, body.feedback)

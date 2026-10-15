@@ -7,7 +7,7 @@ permission vocabulary, the event model, tool definitions and the capability port
 
 from justai_sdk.audio import AudioChunk
 from justai_sdk.events import Event, EventPriority, EventSource, new_id
-from justai_sdk.manifest import SDK_API_VERSION, PluginManifest, PluginType, TrustLevel
+from justai_sdk.manifest import SDK_API_VERSION, PluginManifest, PluginType, TrustLevel, load_manifest
 from justai_sdk.permissions import Permission
 from justai_sdk.plugin import (
     DisplayComponentSpec,
@@ -39,5 +39,6 @@ __all__ = [
     "ToolDefinition",
     "ToolResult",
     "TrustLevel",
+    "load_manifest",
     "new_id",
 ]

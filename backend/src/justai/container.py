@@ -131,11 +131,25 @@ class Container:
             return settings
         return AISettings.model_validate(raw)
 
+    async def _autoconfigure_ai(self) -> None:
+        from justai.ai.config import fill_empty_roles
+
+        settings = await self._load_ai_settings()
+        available: dict[str, set[str]] = {}
+        for entry in self.providers.entries():
+            available.setdefault(entry.kind, set()).add(entry.id)
+        if fill_empty_roles(settings, available):
+            await self.settings_store.set("ai", settings)
+            self.ai.invalidate()
+            log.info("AI roles auto-configured for newly available providers")
+
     async def _audit_system(self, action: str, detail: dict[str, Any]) -> None:
         await self.audit.record("system", action, None, **detail)
 
     def _on_provider_change(self, kind: str, provider_id: str, available: bool) -> None:
         self.ai.invalidate()
+        if available and kind in ("llm", "realtime", "stt", "tts", "embedding"):
+            asyncio.get_running_loop().create_task(self._autoconfigure_ai())
         if kind == "device_driver":
             asyncio.get_running_loop().create_task(
                 self.devices.on_driver_change(provider_id, available))

@@ -251,7 +251,7 @@ class AudioEngine:
         self.mics: dict[str, MicChannel] = {}
         self.speakers: dict[str, SpeakerChannel] = {}
         self.endpoints: dict[str, EndpointAudio] = {}
-        self.arbiter = WakeArbiter(self._arbitration_context, self._on_arbitrated)
+        self.arbiter = WakeArbiter(self._arbitration_context, self._on_arbitrated, on_reject=self._on_rejected)
         self._wake_handler: WakeHandler | None = None
         self._has_session: Callable[[str], bool] = lambda _ep: False
         self._telemetry_task: asyncio.Task[None] | None = None
@@ -418,6 +418,10 @@ class AudioEngine:
             return None
         return ArbitrationContext(ep.endpoint.arbitration_group, ep.endpoint.priority,
                                   self._has_session(endpoint_id))
+
+    async def _on_rejected(self, candidate: WakeCandidate, reason: str) -> None:
+        await self.bus.publish(Event(type="audio.wakeword.rejected", payload={
+            "endpoint_id": candidate.endpoint_id, "reason": reason}))
 
     async def _on_arbitrated(self, result: ArbitrationResult) -> None:
         win = result.winner

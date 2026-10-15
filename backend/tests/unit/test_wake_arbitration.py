@@ -23,7 +23,7 @@ async def run(cands: list[WakeCandidate], ctx=None, delays=None) -> list[Arbitra
     async def handler(r: ArbitrationResult) -> None:
         results.append(r)
 
-    arb = WakeArbiter(lambda ep: ctx.get(ep), handler, window_s=0.1)
+    arb = WakeArbiter(lambda ep: ctx.get(ep), handler, window_s=0.1, suppress_s=0.0)
     for i, c in enumerate(cands):
         if delays:
             await asyncio.sleep(delays[i])
@@ -66,3 +66,26 @@ async def test_priority_breaks_ties() -> None:
 async def test_late_candidate_after_window_is_separate_decision() -> None:
     results = await run([cand("living"), cand("kitchen")], delays=[0, 0.2])
     assert len(results) == 2
+
+
+
+async def test_late_duplicate_from_other_room_is_suppressed() -> None:
+    results: list[ArbitrationResult] = []
+    rejected: list[str] = []
+
+    async def handler(r: ArbitrationResult) -> None:
+        results.append(r)
+
+    async def on_reject(c: WakeCandidate, reason: str) -> None:
+        rejected.append(c.endpoint_id)
+
+    arb = WakeArbiter(lambda ep: CTX.get(ep), handler, window_s=0.1, suppress_s=2.0, on_reject=on_reject)
+    arb.submit(cand("living", t=10.0))
+    await asyncio.sleep(0.2)
+    arb.submit(cand("kitchen", t=10.9))  # same utterance, slower network path
+    await asyncio.sleep(0.2)
+    assert [r.winner.endpoint_id for r in results] == ["living"]
+    assert rejected == ["kitchen"]
+    arb.submit(cand("kitchen", t=14.0))  # a genuinely later wakeword is accepted
+    await asyncio.sleep(0.2)
+    assert [r.winner.endpoint_id for r in results] == ["living", "kitchen"]

@@ -227,6 +227,9 @@ class SayParams(BaseModel):
     text: str = Field(max_length=500)
     voice: str = Field("en_US-lessac-medium", description="Piper-Stimme des simulierten Benutzers")
     delay_s: float = Field(0.0, ge=0, le=60)
+    also_devices: list[str] = Field(default_factory=list,
+                                    description="Weitere simulierte Geräte, die dieselbe Äußerung gleichzeitig hören")
+    also_gain: float = Field(0.4, ge=0, le=2, description="Lautstärke in den weiteren Räumen")
 
 
 class SimulatedPlugin(Plugin):
@@ -249,5 +252,9 @@ class SimulatedPlugin(Plugin):
         import soxr
 
         pcm16 = soxr.resample(pcm, voice.config.sample_rate, SR).astype(np.int16)
-        room.user_says(time.monotonic() + p.delay_s, pcm16)
+        start = time.monotonic() + p.delay_s
+        room.user_says(start, pcm16)
+        for other in p.also_devices:
+            if other in ROOMS:
+                ROOMS[other].user_says(start, pcm16, gain=p.also_gain)
         return ToolResult.success({"duration_s": round(pcm16.size / SR, 2)}, message="gesprochen")

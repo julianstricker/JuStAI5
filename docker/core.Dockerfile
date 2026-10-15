@@ -44,7 +44,7 @@ ENV PATH=/app/.venv/bin:$PATH PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
     JUSTAI_MODELS_DIR=/models JUSTAI_DATA_DIR=/data JUSTAI_BUILTIN_PLUGINS_DIR=/app/plugins \
     JUSTAI_STATIC_DIR=/app/static HF_HUB_OFFLINE=1 HF_HOME=/models/hf
 COPY --from=builder /app/.venv /app/.venv
-COPY --from=models /models /models
+COPY --from=models --chown=10001:10001 /models /models
 COPY plugins /app/plugins
 COPY --from=frontend /src/frontend/dist /app/static
 WORKDIR /app

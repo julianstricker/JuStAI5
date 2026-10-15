@@ -34,6 +34,7 @@ class ArbitrationResult:
 
 ContextLookup = Callable[[str], ArbitrationContext | None]
 ResultHandler = Callable[[ArbitrationResult], Awaitable[None]]
+RejectHandler = Callable[[WakeCandidate, str], Awaitable[None]]
 
 
 def score(c: WakeCandidate, ctx: ArbitrationContext) -> float:
@@ -49,12 +50,19 @@ def score(c: WakeCandidate, ctx: ArbitrationContext) -> float:
 
 
 class WakeArbiter:
-    def __init__(self, lookup: ContextLookup, handler: ResultHandler, window_s: float = 0.4) -> None:
+    def __init__(self, lookup: ContextLookup, handler: ResultHandler, window_s: float = 0.8,
+                 suppress_s: float = 2.0, on_reject: RejectHandler | None = None) -> None:
         self.lookup = lookup
         self.handler = handler
         self.window_s = window_s
+        # Microphones behind different network paths hear the same utterance with
+        # different delays: late duplicates of an already decided wakeword are dropped.
+        self.suppress_s = suppress_s
+        self.on_reject = on_reject
         self._pending: dict[str, list[WakeCandidate]] = {}
         self._timers: dict[str, asyncio.Task[None]] = {}
+        self._decided: dict[str, tuple[float, str]] = {}  # group -> (time, winning endpoint)
+        self._background: set[asyncio.Task[None]] = set()
         self.decisions = 0
 
     def submit(self, candidate: WakeCandidate) -> None:
@@ -62,6 +70,15 @@ class WakeArbiter:
         if ctx is None:
             return
         group = ctx.group
+        decided = self._decided.get(group)
+        if decided is not None and candidate.endpoint_id != decided[1] \
+                and abs(candidate.t - decided[0]) < self.suppress_s:
+            if self.on_reject is not None:
+                task: asyncio.Task[None] = asyncio.ensure_future(
+                    self.on_reject(candidate, "late duplicate of an accepted wakeword"))
+                self._background.add(task)
+                task.add_done_callback(self._background.discard)
+            return
         bucket = self._pending.setdefault(group, [])
         # One candidate per endpoint and window (keep the best).
         existing = next((c for c in bucket if c.endpoint_id == candidate.endpoint_id), None)
@@ -84,6 +101,7 @@ class WakeArbiter:
         result = self.decide(candidates)
         if result is not None:
             self.decisions += 1
+            self._decided[group] = (result.winner.t, result.winner.endpoint_id)
             await self.handler(result)
 
     def decide(self, candidates: list[WakeCandidate]) -> ArbitrationResult | None:

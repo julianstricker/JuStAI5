@@ -47,11 +47,17 @@ class Go2rtcClient:
         return data
 
     async def set_stream(self, name: str, sources: list[str]) -> None:
-        """Create or replace a stream with the given sources."""
-        params: list[tuple[str, str | int | float | bool | None]] = [("name", name)]
-        params += [("src", s) for s in sources]
+        """Create or replace a stream (in memory only).
+
+        ``PATCH`` is used on purpose: go2rtc's ``PUT`` also writes the stream - with
+        its credentials - into go2rtc.yaml. ``PATCH`` accepts one source per stream.
+        """
+        if not sources:
+            raise ValueError("stream needs a source")
+        if len(sources) > 1:
+            log.warning("go2rtc stream uses only the first source", stream=name)
         try:
-            r = await self._http.put("/api/streams", params=params)
+            r = await self._http.patch("/api/streams", params={"name": name, "src": sources[0]})
         except httpx.HTTPError as exc:
             raise Unavailable(f"go2rtc unreachable: {exc}") from exc
         if r.status_code >= 400:

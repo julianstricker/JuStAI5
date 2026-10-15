@@ -185,7 +185,7 @@ function DiscoveryModal({ onAdd, onClose }: { onAdd: (d: Discovered) => void; on
 
 function DeviceDrawer({ device, onClose }: { device: Device; onClose: () => void }) {
   const isAdmin = useIsAdmin();
-  const [snapKey, setSnapKey] = useState(Date.now());
+  const [snapKey, setSnapKey] = useState(() => Date.now());
   const [live, setLive] = useState(false);
   const drivers = useQuery({ queryKey: ["drivers"], queryFn: () => api.get<Driver[]>("/api/devices/drivers") });
   const driver = drivers.data?.find((d) => d.id === device.driver_id);

@@ -74,6 +74,30 @@ class AISettings(BaseModel):
         return self.roles.get(role) or RoleConfig()
 
 
+def fill_empty_roles(settings: AISettings, available: dict[str, set[str]]) -> bool:
+    """Give roles without a provider chain a default from newly available providers.
+
+    ``available`` maps provider kind (llm, realtime) to provider ids. Roles that an
+    admin configured are never changed. Returns True if something was filled in.
+    """
+    defaults = default_ai_settings(has_google_key="gemini" in available.get("llm", set()))
+    changed = False
+    for role, cfg in defaults.roles.items():
+        current = settings.roles.get(role)
+        if current is not None and current.chain:
+            continue
+        usable = [ref for ref in cfg.chain
+                  if ref.provider in available.get("realtime" if role == ModelRole.REALTIME else
+                                                   {"stt": "stt", "tts": "tts", "embedding": "embedding"}.get(
+                                                       role.value, "llm"), set())]
+        if usable:
+            settings.roles[role] = cfg.model_copy(update={"chain": usable})
+            changed = True
+            if role == ModelRole.REALTIME and settings.conversation_mode == ConversationMode.PIPELINE:
+                settings.conversation_mode = ConversationMode.REALTIME
+    return changed
+
+
 def default_ai_settings(has_google_key: bool = False) -> AISettings:
     """Sensible defaults: everything local; Gemini realtime when a key is configured."""
     roles: dict[ModelRole, RoleConfig] = {

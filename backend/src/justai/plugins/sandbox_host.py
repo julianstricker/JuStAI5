@@ -100,7 +100,10 @@ class SandboxClient:
 
         async def handler(args: _AnyArgs, ctx: ToolContext) -> ToolResult:
             payload = args.model_dump()
-            jsonschema.validate(payload, schema)
+            try:
+                jsonschema.validate(payload, schema)
+            except jsonschema.ValidationError as exc:
+                return ToolResult.failure("invalid_arguments", f"Ungültige Parameter: {exc.message}")
             r = await self._http.post(f"/plugins/{plugin_id}/tools/{name}", json={
                 "args": payload, "context": ctx.model_dump(mode="json"), "timeout_s": timeout})
             data = r.json()

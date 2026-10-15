@@ -49,7 +49,9 @@ export const liveFeed = new LiveFeed();
 export function useLiveEvents(limit = 200, filter?: (e: JEvent) => boolean): JEvent[] {
   const [events, setEvents] = useState<JEvent[]>([]);
   const filterRef = useRef(filter);
-  filterRef.current = filter;
+  useEffect(() => {
+    filterRef.current = filter;
+  }, [filter]);
   useEffect(
     () =>
       liveFeed.subscribe((m) => {

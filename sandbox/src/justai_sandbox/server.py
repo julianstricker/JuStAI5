@@ -61,7 +61,9 @@ def _limits(cpu_s: int, mem_mb: int) -> Any:
 
 def _env(extra: dict[str, str] | None = None) -> dict[str, str]:
     env = {"PATH": "/usr/local/bin:/usr/bin:/bin", "HOME": "/tmp", "PYTHONDONTWRITEBYTECODE": "1",
-           "LANG": "C.UTF-8", "NO_PROXY": "*"}
+           "LANG": "C.UTF-8", "NO_PROXY": "*",
+           # Single-threaded math libraries: thread pools would exceed the address-space limit.
+           "OPENBLAS_NUM_THREADS": "1", "OMP_NUM_THREADS": "1", "MKL_NUM_THREADS": "1"}
     env.update(extra or {})
     return env
 
@@ -128,11 +130,11 @@ async def start_plugin(request: Request) -> JSONResponse:
     directory = WORK / "plugins" / f"{plugin_id}-{uuid.uuid4().hex[:8]}"
     directory.mkdir(parents=True)
     _write_files(directory, body["files"])
-    mem = int(body.get("memory_mb", 256))
+    mem = max(256, int(body.get("memory_mb", 256)))
     proc = await asyncio.create_subprocess_exec(
         sys.executable, "-I", "-m", "justai_sandbox.host", str(directory),
         stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=None,
-        cwd=str(directory), env=_env(), preexec_fn=_limits(cpu_s=3600, mem_mb=mem + 200))
+        cwd=str(directory), env=_env(), preexec_fn=_limits(cpu_s=3600, mem_mb=mem + 512))
     plugin = PluginProcess(plugin_id, proc, body["gateway_token"], directory)
     PLUGINS[plugin_id] = plugin
     try:

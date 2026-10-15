@@ -79,6 +79,7 @@ markers = [
     "db: needs a PostgreSQL database (JUSTAI_TEST_DATABASE_URL)",
     "models: needs downloaded ML models (slow)",
     "hardware: needs real devices on the network",
+    "e2e: runs against a live instance (JUSTAI_E2E_URL)",
 ]
 
 [tool.mypy]

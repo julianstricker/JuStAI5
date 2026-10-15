@@ -155,3 +155,16 @@ async def test_stream_falls_back_when_provider_hangs_and_cools_it_down() -> None
 
 async def _collect_text(stream):  # type: ignore[no-untyped-def]
     return [ev.text async for ev in stream if ev.kind == "text"]
+
+
+def test_fill_empty_roles_only_fills_unconfigured_roles() -> None:
+    from justai.ai.config import ConversationMode, default_ai_settings, fill_empty_roles
+
+    s = default_ai_settings(has_google_key=False)  # local only, no LLM roles
+    s.roles[ModelRole.REASONING] = RoleConfig(chain=[ModelRef(provider="oai:ollama", model="qwen")])
+    changed = fill_empty_roles(s, {"llm": {"gemini"}, "realtime": {"gemini"}})
+    assert changed
+    assert s.role(ModelRole.CONVERSATION).chain[0].provider == "gemini"
+    assert s.role(ModelRole.REASONING).chain[0].model == "qwen"  # admin choice kept
+    assert s.conversation_mode == ConversationMode.REALTIME
+    assert not fill_empty_roles(s, {"llm": {"gemini"}, "realtime": {"gemini"}})

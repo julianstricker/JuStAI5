@@ -37,9 +37,12 @@ export function Chart({ spec }: { spec: ChartSpec }) {
       {
         width: el.clientWidth || 600,
         height: 280,
+        legend: { live: false }, // series names only; no cursor values on a wall display
         scales: { x: { time: spec.x_type === "time" } },
         axes: [
           {
+            // Categories: one tick per data point (no fractional splits with repeated labels).
+            splits: spec.x_type === "category" ? () => xs : undefined,
             values:
               spec.x_type === "category"
                 ? (_u: uPlot, splits: number[]) => splits.map((v) => String(labels[Math.round(v)] ?? ""))

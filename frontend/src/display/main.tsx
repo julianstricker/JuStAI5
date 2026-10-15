@@ -3,7 +3,7 @@
 import "@mantine/core/styles.css";
 
 import { Box, Center, MantineProvider, Stack, Text, Title } from "@mantine/core";
-import { StrictMode, useEffect, useRef, useState } from "react";
+import { Component, type ReactNode, StrictMode, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 
 import { type PresentationDocument, Renderer } from "@/shared/render/Renderer";
@@ -14,11 +14,13 @@ const CAPABILITIES = ["display.text", "display.image", "display.dashboard", "dis
 type Inbound =
   | { type: "pairing"; code: string }
   | { type: "paired"; token: string; name: string; room: string | null }
-  | { type: "ready"; name: string; room: string | null }
+  | { type: "ready"; name: string; room: string | null; build?: string }
   | { type: "show"; presentation_id: string; document: PresentationDocument }
   | { type: "close"; presentation_id: string }
   | { type: "indicator"; listening: boolean; conversation: boolean; cloud: boolean }
   | { type: "error"; message: string };
+
+let loadedBuild: string | undefined;
 
 function useDisplayConnection() {
   const [state, setState] = useState<{ code?: string; name?: string; room?: string | null; error?: string; connected: boolean }>({ connected: false });
@@ -45,7 +47,12 @@ function useDisplayConnection() {
           localStorage.setItem(TOKEN_KEY, msg.token);
           setState((s) => ({ ...s, code: undefined, name: msg.name, room: msg.room }));
         }
-        if (msg.type === "ready") setState((s) => ({ ...s, code: undefined, name: msg.name, room: msg.room }));
+        if (msg.type === "ready") {
+          // A different build after reconnecting means JuStAI5 was updated: load the new client.
+          if (msg.build && loadedBuild && msg.build !== loadedBuild) window.location.reload();
+          loadedBuild = msg.build ?? loadedBuild;
+          setState((s) => ({ ...s, code: undefined, name: msg.name, room: msg.room }));
+        }
         if (msg.type === "show") setCurrent({ id: msg.presentation_id, document: msg.document });
         if (msg.type === "close") setCurrent((c) => (c?.id === msg.presentation_id ? null : c));
         if (msg.type === "indicator") setIndicator(msg);
@@ -70,14 +77,40 @@ function useDisplayConnection() {
   return { state, current, indicator, send };
 }
 
+/** Catches rendering errors of one presentation so the display keeps working and reports the failure. */
+class PresentationBoundary extends Component<{ onError: () => void; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch() {
+    this.props.onError();
+  }
+
+  render() {
+    return this.state.failed ? <Text c="dimmed">Inhalt konnte nicht dargestellt werden.</Text> : this.props.children;
+  }
+}
+
 function DisplayApp() {
   const { state, current, indicator, send } = useDisplayConnection();
+  const renderFailed = useRef<string | null>(null);
 
   // Acknowledge only after React committed the presentation to the DOM.
   useEffect(() => {
-    if (current) {
-      requestAnimationFrame(() => send({ type: "ack", presentation_id: current.id, status: "displayed" }));
+    if (!current) return;
+    if (document.visibilityState === "hidden") {
+      // Screen off or page in the background: nobody can see it, say so instead of claiming success.
+      send({ type: "ack", presentation_id: current.id, status: "failed", reason: "hidden" });
+      return;
     }
+    requestAnimationFrame(() =>
+      renderFailed.current === current.id
+        ? send({ type: "ack", presentation_id: current.id, status: "failed", reason: "render_error" })
+        : send({ type: "ack", presentation_id: current.id, status: "displayed" }),
+    );
   }, [current]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
@@ -88,10 +121,12 @@ function DisplayApp() {
         </Text>
       )}
       {current ? (
-        <Renderer
-          document={current.document}
-          onInteract={(action) => send({ type: "interaction", presentation_id: current.id, ...action })}
-        />
+        <PresentationBoundary key={current.id} onError={() => (renderFailed.current = current.id)}>
+          <Renderer
+            document={current.document}
+            onInteract={(action) => send({ type: "interaction", presentation_id: current.id, ...action })}
+          />
+        </PresentationBoundary>
       ) : state.code ? (
         <Center h="90vh">
           <Stack align="center">

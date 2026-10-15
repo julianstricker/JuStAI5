@@ -36,6 +36,10 @@ log = get_logger(__name__)
 
 DRIVER_ID = "browser-display"
 ACK_TIMEOUT_S = 8.0
+ACK_REASONS = {
+    "hidden": "Display ist nicht sichtbar (Bildschirm aus oder Seite im Hintergrund)",
+    "render_error": "Display konnte den Inhalt nicht darstellen",
+}
 
 
 @dataclass
@@ -46,7 +50,7 @@ class Connection:
     user_agent: str
     pairing_code: str | None = None
     since: float = field(default_factory=time.time)
-    acks: dict[str, asyncio.Future[str]] = field(default_factory=dict)
+    acks: dict[str, asyncio.Future[tuple[str, str | None]]] = field(default_factory=dict)
     current: str | None = None
 
     async def send(self, msg: dict[str, Any]) -> None:
@@ -97,6 +101,7 @@ class DisplayService:
         self.pending: dict[str, Connection] = {}  # pairing code -> connection
         self._timers: dict[str, asyncio.Task[None]] = {}
         self._indicator_task: asyncio.Task[None] | None = None
+        self._build: str | None = None
 
     async def start(self) -> None:
         self.c.providers.register("device_driver", BrowserDisplayDriver(self), "core")
@@ -149,6 +154,13 @@ class DisplayService:
                     with contextlib.suppress(Exception):
                         await self.c.devices.reload(conn.device_id)
 
+    def build_id(self) -> str:
+        """Identifies the deployed display client; clients reload when it changes (updates)."""
+        if self._build is None:
+            page = self.c.settings.static_dir / "display.html"
+            self._build = hashlib.sha256(page.read_bytes()).hexdigest()[:12] if page.exists() else "dev"
+        return self._build
+
     async def _device_for_token(self, token: str) -> Device | None:
         async with self.c.db.session() as s:
             devices = (await s.scalars(select(Device).where(Device.driver_id == DRIVER_ID))).all()
@@ -172,7 +184,8 @@ class DisplayService:
                 config={**device.config, "capabilities": conn.capabilities}), [])
         await self.c.devices.reload(device.id)
         rooms = {r.id: r.name for r in await self.c.rooms.list()}
-        await conn.send({"type": "ready", "name": device.name, "room": rooms.get(device.room_id or "")})
+        await conn.send({"type": "ready", "name": device.name, "room": rooms.get(device.room_id or ""),
+                         "build": self.build_id()})
         await self.c.bus.publish(Event(type="display.connected", payload={"device_id": device.id},
                                        source=EventSource(kind="display", device_id=device.id,
                                                           room_id=device.room_id)))
@@ -197,7 +210,8 @@ class DisplayService:
         if kind == "ack":
             fut = conn.acks.pop(str(msg.get("presentation_id")), None)
             if fut is not None and not fut.done():
-                fut.set_result(str(msg.get("status", "displayed")))
+                reason = msg.get("reason")
+                fut.set_result((str(msg.get("status", "displayed")), str(reason)[:200] if reason else None))
         elif kind == "interaction" and conn.device_id:
             await self._interaction(conn, msg)
 
@@ -226,8 +240,8 @@ class DisplayService:
             s.add(pres)
             await s.flush()
             pres_id = pres.id
-        status = await self._send(device_id, pres_id, normalized)
-        pres = await self._set_status(pres_id, status)
+        status, error = await self._send(device_id, pres_id, normalized)
+        pres = await self._set_status(pres_id, status, error)
         if status == "displayed" and duration:
             self._timers[pres_id] = asyncio.create_task(self._auto_close(device_id, pres_id, duration))
         await self.c.audit.record(source, "display.present", device_id, presentation=pres_id, status=status)
@@ -249,28 +263,32 @@ class DisplayService:
 
         return {**doc, "components": [walk(c) for c in doc["components"]]}
 
-    async def _send(self, device_id: str, pres_id: str, document: dict[str, Any]) -> str:
+    async def _send(self, device_id: str, pres_id: str, document: dict[str, Any]) -> tuple[str, str | None]:
+        """Send a document and wait for the display's acknowledgement -> (status, error)."""
         conn = self.connections.get(device_id)
         if conn is None:
-            return "failed"
-        fut: asyncio.Future[str] = asyncio.get_running_loop().create_future()
+            return "failed", "Display nicht verbunden"
+        fut: asyncio.Future[tuple[str, str | None]] = asyncio.get_running_loop().create_future()
         conn.acks[pres_id] = fut
+        error: str | None = None
         try:
             await conn.send({"type": "show", "presentation_id": pres_id, "document": document})
             await self._set_status(pres_id, "sent")
-            status = await asyncio.wait_for(fut, timeout=ACK_TIMEOUT_S)
+            status, reason = await asyncio.wait_for(fut, timeout=ACK_TIMEOUT_S)
+            if status != "displayed":
+                status, error = "failed", ACK_REASONS.get(reason or "", reason or "Darstellung fehlgeschlagen")
         except TimeoutError:
-            status = "failed"
+            status, error = "failed", "keine Bestätigung vom Display"
         except Exception as exc:
             log.warning("display send failed", device=device_id, error=str(exc))
-            status = "failed"
+            status, error = "failed", "Senden fehlgeschlagen"
         finally:
             conn.acks.pop(pres_id, None)
         if status == "displayed":
             previous, conn.current = conn.current, pres_id
             if previous and previous != pres_id:
                 await self._set_status(previous, "closed")
-        return status
+        return status, error
 
     async def update(self, pres_id: str, document: dict[str, Any]) -> Presentation:
         async with self.c.db.session() as s:
@@ -278,12 +296,12 @@ class DisplayService:
         if pres is None or pres.status == "closed":
             raise NotFound("presentation not active")
         normalized, _ = self.components.normalize(document)
-        status = await self._send(pres.display_device_id, pres_id, normalized)
+        status, error = await self._send(pres.display_device_id, pres_id, normalized)
         async with self.c.db.session() as s:
             row = await s.get(Presentation, pres_id)
             if row:
                 row.document = normalized
-        return await self._set_status(pres_id, "updated" if status == "displayed" else "failed")
+        return await self._set_status(pres_id, "updated" if status == "displayed" else "failed", error)
 
     async def close(self, device_id: str, pres_id: str) -> None:
         conn = self.connections.get(device_id)
@@ -373,7 +391,9 @@ class DisplayService:
                 rt = self.c.devices.get(device_id)
                 room = rt.room_id if rt else None
                 listening = any(ep.room_id == room and ep.has_input for ep in self.c.audio.endpoints.values())
-                sessions = [s for s in self.c.conversations.active() if s.ctx.room_id == room]
+                # Only spoken conversations: typed admin chats do not listen in the room.
+                sessions = [s for s in self.c.conversations.active()
+                            if s.ctx.room_id == room and s.endpoint_id is not None]
                 with contextlib.suppress(Exception):
                     await conn.send({"type": "indicator", "listening": listening,
                                      "conversation": bool(sessions),

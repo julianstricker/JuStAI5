@@ -76,7 +76,7 @@ class DisplayExtension:
             except ValidationFailed as exc:
                 return ToolResult.failure("invalid_document", exc.message, data=exc.details)
             if pres.status != "displayed":
-                return ToolResult.failure("not_displayed", "Das Display hat die Anzeige nicht bestätigt",
+                return ToolResult.failure("not_displayed", f"Nicht angezeigt: {pres.error or 'keine Bestätigung'}",
                                           data={"presentation_id": pres.id, "status": pres.status})
             return ToolResult.success({"presentation_id": pres.id, "status": pres.status},
                                       message="Auf dem Display angezeigt (bestätigt)")

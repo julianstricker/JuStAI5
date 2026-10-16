@@ -8,10 +8,10 @@ und **nicht getestet**.
 
 | Suite | Ort | Braucht | Ergebnis |
 | --- | --- | --- | --- |
-| Unit | `backend/tests/unit` | nichts | 112 bestanden |
+| Unit | `backend/tests/unit` | nichts | 116 bestanden |
 | Audio mit echten Modellen | `backend/tests/audio` | Modelle (`JUSTAI_TEST_MODELS_DIR`) | 5 bestanden |
 | Datenbank | `backend/tests/db` | PostgreSQL + pgvector (`JUSTAI_TEST_DATABASE_URL`) | 3 bestanden |
-| End-to-End | `backend/tests/e2e` | laufende Instanz (`JUSTAI_E2E_URL`, `JUSTAI_E2E_PASSWORD`), Gemini | 9 Tests (siehe Hinweis) |
+| End-to-End | `backend/tests/e2e` | laufende Instanz (`JUSTAI_E2E_URL`, `JUSTAI_E2E_PASSWORD`), Gemini | 11 Tests (siehe Hinweis) |
 | Beispiel-Plugin | `plugins/example-weather/tests` | nichts | 5 bestanden |
 | Frontend | `frontend` | Node | `tsc` und ESLint fehlerfrei |
 | Statische Analyse | ganzes Repo | – | ruff fehlerfrei, mypy `--strict` fehlerfrei (Backend, SDK, Sandbox) |
@@ -51,6 +51,10 @@ Eine Test-Datenbank startet man z. B. mit
   (Ähnlichkeit 0,75), andere Stimme nicht. Der Ablauf „im Gespräch anlegen lassen“
   hat beim ersten Lauf funktioniert; Wiederholungen scheiterten am erschöpften
   Gemini-Kontingent (429), nicht an der Funktion.
+  Geräte-App: ein skriptgesteuertes Browser-Gerät koppelt sich mit Mikrofon,
+  Lautsprecher und Kamera, bekommt automatisch einen Endpoint mit 4 Rollen,
+  liefert Snapshots; „Hey Jarvis“ und eine Frage über das WebSocket-Mikrofon
+  starten ein Gespräch, die Antwort kommt als Audio beim Gerät an.
 
 **Hinweis zu E2E:** Die Suite nutzt das konfigurierte Cloud-LLM (Gemini). Am
 2026-10-15 lieferte Gemini zeitweise gleichzeitig 429 (Kontingent erschöpft) für
@@ -98,6 +102,11 @@ Legende: ✅ nachgewiesen · 🟡 teilweise (was fehlt, steht dabei) · ⏳ offe
   Wiedergabe stumm, damit ist Unterbrechen physikalisch unmöglich. Für einen Test
   braucht es ein Gerät mit echtem Full-Duplex (z. B. USB-Freisprecheinrichtung).
 * **Display auf einem Fernseher**: bisher nur im Desktop-Browser geprüft.
+* **Geräte-App auf echten Handys/Tablets**: Setup-Seite, Kopplung und
+  Einstellungskarte im Desktop-Browser geprüft, der Medienweg per E2E-Test. Echo-
+  Unterdrückung des Browsers, Hintergrundverhalten mobiler Browser und die
+  Zertifikatsinstallation auf Android/iOS sind noch nicht auf echten Geräten
+  getestet.
 
 ## Durch Live-Tests gefundene und behobene Fehler
 

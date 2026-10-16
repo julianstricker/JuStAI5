@@ -9,7 +9,7 @@ Modellentscheidungen bei Ausgabe und Rechten.
 
 | Maßnahme | Umsetzung |
 | --- | --- |
-| Nur ein Port nach außen | `core:8080` (UI/API). Postgres, go2rtc und Sandbox sind von außen nicht erreichbar. |
+| Zwei Ports nach außen | `core:8080` (HTTP, UI/API) und `core:8443` (HTTPS, gleiche Anwendung, für die Geräte-App). Postgres, go2rtc und Sandbox sind von außen nicht erreichbar. |
 | Datenbanknetz intern | `db` ist `internal: true` |
 | Sandbox ohne Netz | `sandbox` ist `internal: true`: kein Internet, kein LAN, nur der Core. Geprüft: Postgres, go2rtc, LAN und Internet sind aus der Sandbox nicht erreichbar. |
 | Sandbox gehärtet | read-only Root-FS, `tmpfs /tmp`, `cap_drop: ALL`, `no-new-privileges`, pids/mem/cpu-Limits, eigener UID (10002), rlimits pro Plugin-Prozess |
@@ -20,6 +20,29 @@ Modellentscheidungen bei Ausgabe und Rechten.
 Für den Zugriff aus dem Internet: JuStAI5 nicht direkt freigeben, sondern über VPN
 (z. B. WireGuard) oder einen Reverse-Proxy mit TLS. Dann `JUSTAI_PUBLIC_URL` auf
 `https://…` setzen, damit Cookies als `Secure` markiert werden.
+
+## HTTPS mit lokaler Zertifizierungsstelle
+
+Für die Geräte-App (Mikrofon und Kamera im Browser) spricht der Core auf Port
+8443 HTTPS (`backend/src/justai/tls.py`):
+
+* Beim ersten Start entsteht in `/data/tls` eine eigene Zertifizierungsstelle
+  (ECDSA P-256, 10 Jahre, `pathLen 0`). Ihr privater Schlüssel verlässt den
+  Container nicht (Datei `0600`) und gehört zur Datensicherung.
+* Das Serverzertifikat enthält `localhost`, `127.0.0.1`, `justai.local`,
+  `JUSTAI_TLS_NAMES` und die in der UI hinzugefügten Adressen; Laufzeit 825 Tage
+  (Apple-Grenze), automatische Neuausstellung 30 Tage vor Ablauf bzw. wenn sich
+  die Namen ändern. Neue Adressen werden ohne Neustart geladen.
+* `GET /api/tls/ca.crt` (öffentlich, nur das CA-Zertifikat), `GET /api/tls/status`
+  und `POST /api/tls/names` (nur Admins). Der SHA-256-Fingerabdruck steht in der
+  Admin-UI zum Vergleich auf dem Gerät.
+* Wer das CA-Zertifikat installiert, vertraut damit allen Zertifikaten, die
+  diese CA ausstellt. Deshalb: CA-Schlüssel nicht weitergeben, Zertifikat nur auf
+  eigenen Geräten installieren. `JUSTAI_TLS_ENABLED=false` schaltet HTTPS ab.
+
+Gekoppelte Geräte-Apps authentisieren sich mit ihrem zufälligen Token (im Core nur
+der Hash). Ein Browser-Gerät kann nur Display-, Audio- und Kamera-Fähigkeiten
+anmelden. Medien laufen nur über die Verbindung des gekoppelten Geräts.
 
 ## Authentifizierung (Admin-UI/API)
 

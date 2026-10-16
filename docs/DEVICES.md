@@ -86,7 +86,10 @@ Abschaltbar mit `JUSTAI_ENABLE_SIMULATED_DEVICES=false`.
 
 ### Browser-Display (`browser-display`)
 
-Wird beim Koppeln eines Display-Clients angelegt ([DISPLAYS.md](DISPLAYS.md)).
+Wird beim Koppeln eines Display-Clients oder der Geräte-App angelegt
+([DISPLAYS.md](DISPLAYS.md#geräte-app-handy-tablet-pc-als-mikrofon-lautsprecher-kamera)).
+Mit der Geräte-App liefert es je nach Auswahl Mikrofon, Lautsprecher und Kamera
+und ist damit wie eine Kamera mit Mikrofon in einem Endpoint verwendbar.
 
 ## Deaktivieren statt Löschen
 

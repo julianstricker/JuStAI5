@@ -16,6 +16,62 @@ Renderer: `frontend/src/shared/render/`.
 
 Entfernen des Geräts in der Admin-UI macht das Token ungültig.
 
+## Geräte-App (Handy, Tablet, PC als Mikrofon, Lautsprecher, Kamera)
+
+Unter `https://HOST:8443/app` läuft derselbe Client als installierbare Web-App
+(PWA). Damit wird ein beliebiges Gerät zu einem vollwertigen JuStAI5-Gerät:
+
+| Funktion | Weg |
+| --- | --- |
+| Mikrofon | `getUserMedia` mit Echo-Unterdrückung, Rauschunterdrückung und AGC des Browsers → AudioWorklet → PCM16, 16 kHz, 20-ms-Rahmen → Wakeword, Gespräche, Sprecherkennung |
+| Lautsprecher | Sprachausgabe des Output Routers als PCM16, 16 kHz → AudioWorklet mit 60 ms Jitterpuffer |
+| Kamera | vordere oder hintere Kamera, alle 500 ms ein JPEG (max. 960 px breit) → Vision, Gesichtserkennung, Snapshot, Live-Ansicht (MJPEG `GET /api/devices/{id}/live.mjpeg`) |
+| Bildschirm | wie jedes Display (Darstellungen, Indikator „hört zu“) |
+
+**Einrichten**
+
+1. Admin-UI → *Einstellungen* → *Geräte-App*: Wird die Admin-UI über eine
+   Adresse geöffnet, die noch nicht im HTTPS-Zertifikat steht (z. B. die
+   LAN-IP des Servers), dort **Hinzufügen** klicken. Das Zertifikat wird neu
+   ausgestellt und ohne Neustart geladen.
+2. Das **JuStAI5-Zertifikat** (lokale Zertifizierungsstelle) auf dem Gerät
+   installieren; die Schritte für Android, iPhone/iPad, Windows und macOS stehen
+   in derselben Karte. Ohne Installation genügt meist, die Browser-Warnung zu
+   bestätigen; als App installieren lässt sich die Seite dann nicht.
+3. Auf dem Gerät `https://HOST:8443/app` öffnen, Mikrofon, Lautsprecher und
+   Kamera (aus/vorne/hinten) wählen, *Starten*. Danach über das Browser-Menü
+   „App installieren“ bzw. „Zum Home-Bildschirm“.
+4. Den angezeigten Code unter *Displays & Geräte-App* freigeben und einen Raum
+   wählen. Mit Mikrofon **und** Lautsprecher legt JuStAI5 im Raum automatisch
+   einen Endpoint an (Rollen Mikrofon, Lautsprecher, ggf. Kamera und Display,
+   Arbitrierungsgruppe des Raums). Werden Mikrofon und Lautsprecher erst später
+   eingeschaltet, entsteht der Endpoint beim nächsten Verbinden.
+
+Die Auswahl lässt sich über das Zahnrad oben rechts ändern; das Gerät meldet sich
+dann mit den neuen Fähigkeiten an. Browser starten Audio erst nach einer
+Berührung: Nach dem Öffnen erscheint deshalb „Tippen zum Starten“. Solange die App
+offen ist, verhindert eine Wake-Lock-Sperre, dass der Bildschirm ausgeht. Läuft
+die Seite im Hintergrund, schicken Browser keine Kamerabilder mehr, und mobile
+Browser beenden oft auch das Mikrofon. Für ein dauerhaftes Raumgerät deshalb ein
+Tablet mit Netzteil und App im Vordergrund verwenden.
+
+Warum HTTPS: Browser erlauben Mikrofon, Kamera, Service Worker und die
+Installation als App nur auf sicheren Ursprüngen (HTTPS oder `localhost`). Der
+reine Display-Client unter `http://HOST:8080/display` braucht das nicht.
+
+**Medien im WebSocket** (`display/media.py`): binäre Nachrichten mit einem
+Typ-Byte am Anfang.
+
+| Byte | Richtung | Inhalt |
+| --- | --- | --- |
+| `0x01` | Client → Core | Mikrofon, PCM16 LE, mono, 16 kHz |
+| `0x02` | Client → Core | Kamerabild, JPEG (≤ 2 MB) |
+| `0x11` | Core → Client | Lautsprecher, PCM16 LE, mono, 16 kHz |
+
+Ein Browser-Gerät darf nur die Fähigkeiten `display.*`, `audio.input`,
+`audio.output`, `video.input` und `camera.snapshot` anmelden. Kamerabilder, die
+älter als 10 s sind, gelten als nicht verfügbar.
+
 ## Protokoll (WebSocket, JSON)
 
 | Richtung | Nachricht |

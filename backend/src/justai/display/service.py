@@ -221,6 +221,11 @@ class DisplayService:
 
             await self.c.device_records.update(device.id, DevicePatch(
                 config={**device.config, "capabilities": conn.capabilities}), [])
+            # Microphone/speaker switched on later in the app: give it an endpoint if it has none.
+            in_use = any(ref.device_id == device.id for e in await self.c.endpoints.list() for ref in e.devices)
+            if not in_use:
+                await self._create_endpoint(device.id, device.name, device.room_id, set(conn.capabilities))
+                await self.c.refresh_topology()
         await self.c.devices.reload(device.id)
         rooms = {r.id: r.name for r in await self.c.rooms.list()}
         await conn.send({"type": "ready", "name": device.name, "room": rooms.get(device.room_id or ""),

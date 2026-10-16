@@ -93,6 +93,7 @@ def _mount_frontend(app: FastAPI, static_dir: Path) -> None:
 
     @app.get("/display", include_in_schema=False)
     @app.get("/display/{_path:path}", include_in_schema=False)
+    @app.get("/app", include_in_schema=False)  # the installable device app (same client)
     async def display_client(_path: str = "") -> FileResponse:
         return FileResponse(static_dir / "display.html")
 

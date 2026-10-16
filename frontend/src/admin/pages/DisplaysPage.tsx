@@ -1,11 +1,32 @@
-import { Alert, Badge, Button, Card, Code, Group, JsonInput, Modal, Select, SimpleGrid, Stack, Table, Text, TextInput, Title } from "@mantine/core";
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Code,
+  Group,
+  JsonInput,
+  Modal,
+  Select,
+  SimpleGrid,
+  Stack,
+  Table,
+  Text,
+  TextInput,
+  Title,
+} from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { api } from "@/shared/api";
 import type { Room } from "@/shared/types";
 
-import { PageHeader, StatusBadge, fmtTime, useAction } from "../components/common";
+import {
+  PageHeader,
+  StatusBadge,
+  fmtTime,
+  useAction,
+} from "../components/common";
 
 interface DisplayInfo {
   device_id: string;
@@ -40,27 +61,71 @@ const TEST_DOC = {
     { type: "heading", text: "Hallo vom Assistenten" },
     { type: "stat", label: "Temperatur", value: 21.5, unit: "°C", trend: "up" },
     { type: "clock" },
-    { type: "chart", kind: "line", title: "Beispiel", series: [{ name: "Werte", points: [["Mo", 3], ["Di", 5], ["Mi", 4], ["Do", 7]] }] },
+    {
+      type: "chart",
+      kind: "line",
+      title: "Beispiel",
+      series: [
+        {
+          name: "Werte",
+          points: [
+            ["Mo", 3],
+            ["Di", 5],
+            ["Mi", 4],
+            ["Do", 7],
+          ],
+        },
+      ],
+    },
   ],
   duration_s: 60,
 };
 
-function PairModal({ pending, onClose }: { pending: Pending; onClose: () => void }) {
-  const rooms = useQuery({ queryKey: ["rooms"], queryFn: () => api.get<Room[]>("/api/rooms") });
+function PairModal({
+  pending,
+  onClose,
+}: {
+  pending: Pending;
+  onClose: () => void;
+}) {
+  const rooms = useQuery({
+    queryKey: ["rooms"],
+    queryFn: () => api.get<Room[]>("/api/rooms"),
+  });
   const [name, setName] = useState("Display");
   const [room, setRoom] = useState<string | null>(null);
-  const approve = useAction(() => api.post(`/api/displays/pairing/${pending.code}/approve`, { name, room_id: room }), {
-    invalidate: [["displays"], ["display-pending"], ["devices"]],
-    success: "Display gekoppelt",
-  });
+  const approve = useAction(
+    () =>
+      api.post(`/api/displays/pairing/${pending.code}/approve`, {
+        name,
+        room_id: room,
+      }),
+    {
+      invalidate: [["displays"], ["display-pending"], ["devices"]],
+      success: "Display gekoppelt",
+    },
+  );
   return (
-    <Modal opened onClose={onClose} title={`Display koppeln (Code ${pending.code})`}>
+    <Modal
+      opened
+      onClose={onClose}
+      title={`Display koppeln (Code ${pending.code})`}
+    >
       <Stack>
         <Text size="xs" c="dimmed">
           {pending.user_agent}
         </Text>
-        <TextInput label="Name" value={name} onChange={(e) => setName(e.currentTarget.value)} />
-        <Select label="Raum" data={(rooms.data ?? []).map((r) => ({ value: r.id, label: r.name }))} value={room} onChange={setRoom} />
+        <TextInput
+          label="Name"
+          value={name}
+          onChange={(e) => setName(e.currentTarget.value)}
+        />
+        <Select
+          label="Raum"
+          data={(rooms.data ?? []).map((r) => ({ value: r.id, label: r.name }))}
+          value={room}
+          onChange={setRoom}
+        />
         <Button
           disabled={!room}
           onClick={async () => {
@@ -76,28 +141,60 @@ function PairModal({ pending, onClose }: { pending: Pending; onClose: () => void
 }
 
 export function DisplaysPage() {
-  const displays = useQuery({ queryKey: ["displays"], queryFn: () => api.get<DisplayInfo[]>("/api/displays"), refetchInterval: 3000 });
-  const pending = useQuery({ queryKey: ["display-pending"], queryFn: () => api.get<Pending[]>("/api/displays/pending"), refetchInterval: 3000 });
-  const presentations = useQuery({ queryKey: ["presentations"], queryFn: () => api.get<Presentation[]>("/api/displays/presentations"), refetchInterval: 5000 });
-  const rooms = useQuery({ queryKey: ["rooms"], queryFn: () => api.get<Room[]>("/api/rooms") });
+  const displays = useQuery({
+    queryKey: ["displays"],
+    queryFn: () => api.get<DisplayInfo[]>("/api/displays"),
+    refetchInterval: 3000,
+  });
+  const pending = useQuery({
+    queryKey: ["display-pending"],
+    queryFn: () => api.get<Pending[]>("/api/displays/pending"),
+    refetchInterval: 3000,
+  });
+  const presentations = useQuery({
+    queryKey: ["presentations"],
+    queryFn: () => api.get<Presentation[]>("/api/displays/presentations"),
+    refetchInterval: 5000,
+  });
+  const rooms = useQuery({
+    queryKey: ["rooms"],
+    queryFn: () => api.get<Room[]>("/api/rooms"),
+  });
   const [pairing, setPairing] = useState<Pending | null>(null);
   const [doc, setDoc] = useState(JSON.stringify(TEST_DOC, null, 2));
   const [target, setTarget] = useState<string | null>(null);
-  const test = useAction((id: string) => api.post(`/api/displays/${id}/present`, { document: JSON.parse(doc) }), {
-    invalidate: [["presentations"]],
-    success: "Darstellung gesendet",
-  });
-  const close = useAction(({ device, pres }: { device: string; pres: string }) => api.post(`/api/displays/${device}/close/${pres}`), {
-    invalidate: [["presentations"], ["displays"]],
-  });
-  const roomName = (id: string | null) => rooms.data?.find((r) => r.id === id)?.name ?? "–";
+  const test = useAction(
+    (id: string) =>
+      api.post(`/api/displays/${id}/present`, { document: JSON.parse(doc) }),
+    {
+      invalidate: [["presentations"]],
+      success: "Darstellung gesendet",
+    },
+  );
+  const close = useAction(
+    ({ device, pres }: { device: string; pres: string }) =>
+      api.post(`/api/displays/${device}/close/${pres}`),
+    {
+      invalidate: [["presentations"], ["displays"]],
+    },
+  );
+  const roomName = (id: string | null) =>
+    rooms.data?.find((r) => r.id === id)?.name ?? "–";
   const url = `${location.origin}/display`;
 
   return (
     <Stack>
-      <PageHeader title="Displays" description="Bildschirme als Ausgabegeräte. Inhalte sind strukturierte Komponenten – kein beliebiges HTML." />
+      <PageHeader
+        title="Displays & Geräte-App"
+        description="Bildschirme und Geräte mit der JuStAI5-App. Inhalte sind strukturierte Komponenten – kein beliebiges HTML."
+      />
       <Alert color="blue">
-        Neues Display: auf dem Fernseher, Tablet oder PC im Browser <Code>{url}</Code> öffnen. Der angezeigte Code erscheint hier zur Freigabe.
+        Nur Bildschirm: im Browser <Code>{url}</Code> öffnen. Handy, Tablet oder
+        PC auch als Mikrofon, Lautsprecher und Kamera: die Geräte-App über HTTPS
+        öffnen (<Code>{`https://${location.hostname}:8443/app`}</Code>,
+        Anleitung unter Einstellungen). Der angezeigte Code erscheint hier zur
+        Freigabe; mit Mikrofon und Lautsprecher legt JuStAI5 im gewählten Raum
+        automatisch einen Endpoint an.
       </Alert>
       {!!pending.data?.length && (
         <Card withBorder>
@@ -136,9 +233,19 @@ export function DisplaysPage() {
             {d.presentation && (
               <Group mt="xs">
                 <Text size="sm">
-                  Zeigt: {d.presentation.title ?? d.presentation.id} <StatusBadge status={d.presentation.status} />
+                  Zeigt: {d.presentation.title ?? d.presentation.id}{" "}
+                  <StatusBadge status={d.presentation.status} />
                 </Text>
-                <Button size="compact-xs" variant="subtle" onClick={() => close.mutate({ device: d.device_id, pres: d.presentation!.id })}>
+                <Button
+                  size="compact-xs"
+                  variant="subtle"
+                  onClick={() =>
+                    close.mutate({
+                      device: d.device_id,
+                      pres: d.presentation!.id,
+                    })
+                  }
+                >
                   Schließen
                 </Button>
               </Group>
@@ -150,9 +257,27 @@ export function DisplaysPage() {
         <Card withBorder>
           <Stack>
             <Title order={5}>Testdarstellung</Title>
-            <Select label="Display" data={(displays.data ?? []).map((d) => ({ value: d.device_id, label: d.name }))} value={target} onChange={setTarget} />
-            <JsonInput autosize minRows={12} value={doc} onChange={setDoc} formatOnBlur />
-            <Button disabled={!target} onClick={() => target && test.mutate(target)} loading={test.isPending}>
+            <Select
+              label="Display"
+              data={(displays.data ?? []).map((d) => ({
+                value: d.device_id,
+                label: d.name,
+              }))}
+              value={target}
+              onChange={setTarget}
+            />
+            <JsonInput
+              autosize
+              minRows={12}
+              value={doc}
+              onChange={setDoc}
+              formatOnBlur
+            />
+            <Button
+              disabled={!target}
+              onClick={() => target && test.mutate(target)}
+              loading={test.isPending}
+            >
               Senden
             </Button>
           </Stack>
@@ -178,7 +303,9 @@ export function DisplaysPage() {
           </Table>
         </Card>
       </SimpleGrid>
-      {pairing && <PairModal pending={pairing} onClose={() => setPairing(null)} />}
+      {pairing && (
+        <PairModal pending={pairing} onClose={() => setPairing(null)} />
+      )}
     </Stack>
   );
 }

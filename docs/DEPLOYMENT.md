@@ -48,6 +48,9 @@ Aufbewahrung) wird in der Admin-UI gepflegt und liegt in der Datenbank.
 | Variable | Standard | |
 | --- | --- | --- |
 | `JUSTAI_HTTP_PORT` | 8080 | Port auf dem Host |
+| `JUSTAI_HTTPS_PORT` | 8443 | HTTPS-Port auf dem Host (Geräte-App) |
+| `JUSTAI_TLS_ENABLED` | true | HTTPS mit lokaler Zertifizierungsstelle |
+| `JUSTAI_TLS_NAMES` | – | zusätzliche Namen/Adressen fürs Zertifikat, z. B. `["192.168.0.10","justai.fritz.box"]` (auch in der UI ergänzbar) |
 | `JUSTAI_PUBLIC_URL` | http://localhost:8080 | bei `https://` werden Cookies `Secure` |
 | `JUSTAI_ADMIN_USERNAME` / `JUSTAI_ADMIN_PASSWORD` | admin / zufällig | nur wenn noch kein Benutzer existiert |
 | `GOOGLE_API_KEY` | – | aktiviert Gemini (auch in der UI eintragbar) |

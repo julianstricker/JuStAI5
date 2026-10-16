@@ -36,6 +36,9 @@ docker compose exec core cat /data/initial_admin_password.txt
 
 * Display-Client (z. B. auf einem Fernseher/Tablet öffnen und in der Admin-UI unter
   *Displays* mit dem angezeigten Code koppeln): <http://HOST:8080/display>
+* Geräte-App: Handy, Tablet oder PC als Mikrofon, Lautsprecher, Kamera und
+  Bildschirm, installierbar als App: <https://HOST:8443/app> (Einrichtung unter
+  *Einstellungen → Geräte-App*, siehe [docs/DISPLAYS.md](docs/DISPLAYS.md))
 
 Wakeword, Spracherkennung, Sprachausgabe, Embeddings und Bildanalyse laufen lokal
 (openWakeWord, faster-whisper, Piper, fastembed, OpenCV). **Für die Antworten braucht

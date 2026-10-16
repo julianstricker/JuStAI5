@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import builtins
 import contextlib
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -21,7 +23,21 @@ if TYPE_CHECKING:
 
 log = get_logger(__name__)
 MANUAL_OVERRIDE_S = 20.0
+# Room sweep in field-of-view units relative to home (C200: 95 deg wide, 54 deg high).
+SWEEP_PAN = (-1.6, -0.8, 0.0, 0.8, 1.6)
+SWEEP_TILT = (0.0, -0.45)
+PAN_NAMES = {-1.6: "ganz links", -0.8: "links", 0.0: "Mitte", 0.8: "rechts", 1.6: "ganz rechts"}
+MAX_SWEEP_VIEWS = 12
 HOME_PRESET_NAMES = ("home", "start", "standard", "default")
+
+
+@dataclass(frozen=True)
+class View:
+    """One viewing direction of a sweep."""
+
+    label: str
+    offset: tuple[float, float] | None = None
+    preset_id: str | None = None
 
 
 @dataclass
@@ -189,45 +205,49 @@ class PtzService:
             except Exception as exc:
                 log.warning("ptz tracking command failed", device=session.device_id, error=str(exc))
 
-    async def scan(self, device_id: str, label: str, *, steps: int = 6, settle_s: float = 2.5) -> dict[str, Any]:
-        """Systematic visual search: visit presets (or pan steps) and run the detector."""
-        vision = self.c.extensions.get("vision")
-        if vision is None:
-            raise Unavailable("vision not available")
+    async def sweep(self, device_id: str, capture: Callable[[str], Awaitable[None]], *,
+                    settle_s: float = 2.0) -> builtins.list[View]:
+        """Look systematically around the whole room: calls capture(label) at each view.
+
+        Uses the camera's own viewpoints if at least three presets exist (besides "home");
+        otherwise a snake path over SWEEP_PAN x SWEEP_TILT relative to home (about +-150
+        degrees on a Tapo C200, straight ahead and tilted down for tables and floor).
+        """
         if device_id in self.tracking:
             await self.stop_tracking(device_id)
-        presets = await self.presets(device_id)
-        found: list[dict[str, Any]] = []
-        positions: list[str] = []
-        if presets:
-            for preset in presets[:steps]:
+        views: builtins.list[View] = []
+        presets = [p for p in await self.presets(device_id) if p.name.lower() not in HOME_PRESET_NAMES]
+        if len(presets) >= 3:
+            for preset in presets[:MAX_SWEEP_VIEWS]:
                 await self.goto_preset(device_id, preset.id, manual=False)
-                positions.append(preset.name)
                 await asyncio.sleep(settle_s)
-                result = await vision.engine.analyze_device(device_id)
-                hits = [d for d in result["detections"] if d.label == label]
-                if hits:
-                    found.append({"position": preset.name, "count": len(hits),
-                                  "score": round(max(d.score for d in hits), 2)})
-        else:
-            step_size = 0.8  # most of one field of view per step
+                views.append(View(preset.name, preset_id=preset.id))
+                await capture(preset.name)
+            return views
+        try:
             await self.home(device_id)
-            await asyncio.sleep(settle_s)
-            for i in range(steps):
-                direction = step_size if i < steps // 2 else -step_size
-                if i == steps // 2:
-                    await self.home(device_id)
-                    await asyncio.sleep(settle_s)
-                await self.move(device_id, direction, 0.0, manual=False)
-                positions.append(f"{'rechts' if direction > 0 else 'links'} {i % (steps // 2) + 1}")
+        except Conflict:
+            self._offset[device_id] = [0.0, 0.0]  # no home known: the current view is the centre
+        await asyncio.sleep(settle_s)
+        for row, tilt in enumerate(SWEEP_TILT):
+            pans = SWEEP_PAN if row % 2 == 0 else tuple(reversed(SWEEP_PAN))
+            for pan in pans:
+                await self.goto_offset(device_id, pan, tilt)
                 await asyncio.sleep(settle_s)
-                result = await vision.engine.analyze_device(device_id)
-                hits = [d for d in result["detections"] if d.label == label]
-                if hits:
-                    found.append({"position": positions[-1], "count": len(hits),
-                                  "score": round(max(d.score for d in hits), 2)})
-                    break
-        return {"label": label, "visited": positions, "found": found}
+                label = PAN_NAMES[pan] + (", unten" if tilt < 0 else "")
+                views.append(View(label, offset=(pan, tilt)))
+                await capture(label)
+        return views
+
+    async def goto_offset(self, device_id: str, pan: float, tilt: float) -> None:
+        off = self._offset.setdefault(device_id, [0.0, 0.0])
+        await self.move(device_id, pan - off[0], tilt - off[1], manual=False)
+
+    async def goto_view(self, device_id: str, view: View) -> None:
+        if view.preset_id is not None:
+            await self.goto_preset(device_id, view.preset_id, manual=False)
+        elif view.offset is not None:
+            await self.goto_offset(device_id, *view.offset)
 
     async def _event(self, device_id: str, type: str, payload: dict[str, Any]) -> None:
         rt = self.c.devices.get(device_id)

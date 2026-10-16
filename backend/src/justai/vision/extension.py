@@ -151,6 +151,23 @@ class VisionExtension:
                 return d.id, room_id
         raise Unavailable("in diesem Raum ist keine Kamera verfügbar")
 
+    async def masked_snapshot(self, device_id: str, width: int = 1280) -> bytes | None:
+        """Current camera image as JPEG with the privacy zones blacked out (None: unreadable)."""
+        jpeg = await self.c.devices.snapshot(device_id, width=width)
+        zones = [z.points for z in self.engine.config(device_id).privacy_zones]
+        image = cv2.imdecode(np.frombuffer(jpeg, np.uint8), cv2.IMREAD_COLOR)
+        if image is None:
+            return None
+        if zones:
+            from justai.vision.frames import apply_privacy_mask
+
+            _, buf = cv2.imencode(".jpg", apply_privacy_mask(cast(Image, image), zones))
+            return bytes(buf.tobytes())
+        return jpeg
+
+    async def room_local_only(self, room_id: str | None) -> bool:
+        return await self._room_local_only(room_id)
+
     async def _room_local_only(self, room_id: str | None) -> bool:
         if not room_id:
             return False
@@ -184,16 +201,9 @@ class VisionExtension:
 
         async def look(p: LookParams, ctx: ToolContext) -> ToolResult:
             device_id, room_id = await self.resolve_camera(p, ctx)
-            jpeg = await c.devices.snapshot(device_id, width=1280)
-            zones = [z.points for z in self.engine.config(device_id).privacy_zones]
-            image = cv2.imdecode(np.frombuffer(jpeg, np.uint8), cv2.IMREAD_COLOR)
-            if image is None:
+            jpeg = await self.masked_snapshot(device_id)
+            if jpeg is None:
                 return ToolResult.failure("no_image", "Das Kamerabild konnte nicht gelesen werden")
-            if zones:
-                from justai.vision.frames import apply_privacy_mask
-
-                _, buf = cv2.imencode(".jpg", apply_privacy_mask(cast(Image, image), zones))
-                jpeg = buf.tobytes()
             flags = DataFlags(images=True, personal=True, local_only=await self._room_local_only(room_id))
             result = await c.ai.chat(ModelRole.VISION, [
                 ChatMessage(role=Role.SYSTEM, content=(

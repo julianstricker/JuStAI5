@@ -56,12 +56,30 @@ Zustände: `searching`, `following`, `holding`, `home`, `paused`. Das Tracking
 bleibt am aktuellen Ziel, statt zwischen Personen zu springen. Events:
 `ptz.tracking.started/stopped`.
 
-## Gebietssuche
+## Raum absuchen
 
-`vision.search_area` („Schau mal, ob der Hund im Garten ist“): Die Kamera fährt die
-Presets ab oder, ohne Presets, schrittweise nach rechts und links von Home aus.
-An jeder Position läuft nach einer Beruhigungszeit (2,5 s) der Objektdetektor.
-Das Ergebnis enthält die besuchten Positionen und die Treffer.
+`vision.search_area` („Such im Poolhaus nach meinen Schlüsseln“):
+
+1. **Schwenk über den ganzen Raum**: von Home aus 5 Richtungen (ganz links … ganz
+   rechts, ±1,6 Bildbreiten ≈ ±150° bei der C200) auf zwei Höhen (geradeaus und
+   ~25° nach unten für Tische und Boden), als Schlangenlinie: 10 Bilder. Gibt es
+   mindestens drei eigene Kamera-Presets (außer „home“), werden stattdessen diese
+   angefahren.
+2. **Auswertung**: Für Klassen des lokalen Detektors (Person, Hund, Auto …) sucht
+   YOLOX lokal. Für alles andere (Schlüssel, Brille, Handy …) bekommt das
+   Vision-Modell **alle Bilder in einer Anfrage** und nennt Bild und Stelle („auf dem
+   Schreibtisch rechts neben dem Laptop-Ständer“). Datenschutzregeln des Raums gelten
+   (Bilder nicht in die Cloud → lokales Vision-Modell oder Ablehnung).
+3. **Ergebnis**: Bei einem Fund richtet sich die Kamera auf die Stelle aus, sonst
+   kehrt sie nach Home zurück.
+
+Dauer mit der C200: knapp 50 s (Motor plus 2 s Beruhigung je Richtung, eine
+Modellanfrage). Live geprüft: „Schlüssel“ gefunden (auf dem Schreibtisch, im Bild
+bestätigt), „ein Fenster“ gefunden.
+
+Vorher fand die Suche nichts: Sie nutzte nur den lokalen Detektor, der keine
+Schlüssel kennt, und fuhr bei einem einzigen Preset nur eine Richtung an, wobei sie
+die Bewegungen des Assistenten jedes Mal durch „Home“ zurücknahm.
 
 ## Teststatus
 

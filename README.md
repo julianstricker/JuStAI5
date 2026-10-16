@@ -97,4 +97,23 @@ docs/           Dokumentation und ADRs
 Was mit echter Hardware geprüft wurde und was nur simuliert ist, steht ehrlich in
 [docs/TESTING.md](docs/TESTING.md).
 
-Lizenz: noch nicht festgelegt.
+## Lizenz
+
+Copyright (C) 2026 Julian Stricker
+
+JuStAI5 steht unter der [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0). Du darfst
+den Code nutzen, ändern und weitergeben. Wer eine geänderte Version als Dienst im Netzwerk
+anbietet, muss den Quelltext seiner Änderungen ebenfalls unter der AGPL bereitstellen.
+
+Ausnahmen:
+
+- Das Plugin-SDK ([sdk/python](sdk/python)) steht unter der MIT-Lizenz, damit Plugins beliebig
+  lizenziert werden können.
+- Die mitgelieferten Plugins geben ihre Lizenz in der jeweiligen `plugin.yaml` an.
+
+Drittkomponenten behalten ihre eigenen Lizenzen. Das gilt auch für die Modelle, die
+`scripts/fetch_models.py` lädt (zum Beispiel die vortrainierten openWakeWord-Wake-Words und
+die Piper-Stimmen). Prüfe deren Bedingungen, bevor du sie kommerziell einsetzt.
+
+Beiträge sind derzeit nicht vorgesehen. Der Rechteinhaber behält sich vor, den Code zusätzlich
+unter anderen Bedingungen zu lizenzieren.

@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     env: str = "production"  # production | development | test
     host: str = "0.0.0.0"
     port: int = 8080
+    # HTTPS (needed by browsers for microphone/camera of the device app); own local CA.
+    https_port: int = 8443
+    tls_enabled: bool = True
+    tls_names: list[str] = Field(default_factory=list)  # extra names/addresses for the certificate
     public_url: str = "http://localhost:8080"
     log_level: str = "INFO"
     log_json: bool = True

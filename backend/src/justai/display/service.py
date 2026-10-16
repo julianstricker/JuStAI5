@@ -11,6 +11,7 @@ import asyncio
 import builtins
 import contextlib
 import hashlib
+import json
 import secrets
 import time
 from dataclasses import dataclass, field
@@ -19,13 +20,20 @@ from typing import TYPE_CHECKING, Any
 
 from fastapi import WebSocket
 from justai_sdk.events import Event, EventSource
-from justai_sdk.ports.devices import BaseDeviceHandle, DeviceHealth, ProbeResult
+from justai_sdk.ports.devices import BaseDeviceHandle, Capability, DeviceHealth, ProbeResult
 from sqlalchemy import select
 
 from justai.common.errors import NotFound, RoutingDenied, Unavailable
 from justai.db.models import Device, Presentation
 from justai.devices.service import DeviceIn
 from justai.display.components import ComponentRegistry
+from justai.display.media import (
+    BrowserCamera,
+    BrowserMicSource,
+    BrowserSpeakerSink,
+    DeviceMedia,
+    allowed_capabilities,
+)
 from justai.logging import get_logger
 from justai.output.router import OutputKind, OutputRequest
 
@@ -58,9 +66,25 @@ class Connection:
 
 
 class BrowserDisplayHandle(BaseDeviceHandle):
+    """A paired browser: always a screen, optionally microphone, speaker and camera (device app)."""
+
     def __init__(self, device_id: str, caps: set[str], service: DisplayService) -> None:
         super().__init__(device_id, caps)
         self.service = service
+        self.state = service.media_for(device_id)
+
+    def audio_source(self) -> BrowserMicSource | None:
+        return BrowserMicSource(self.state) if Capability.AUDIO_INPUT in self._capabilities else None
+
+    def audio_sink(self) -> BrowserSpeakerSink | None:
+        return BrowserSpeakerSink(self.service, self.device_id) \
+            if Capability.AUDIO_OUTPUT in self._capabilities else None
+
+    def video_source(self) -> BrowserCamera | None:
+        return BrowserCamera(self.state) if Capability.VIDEO_INPUT in self._capabilities else None
+
+    async def snapshot(self) -> bytes | None:
+        return self.state.fresh_jpeg()
 
     async def health(self) -> DeviceHealth:
         return DeviceHealth(online=self.device_id in self.service.connections,
@@ -102,6 +126,13 @@ class DisplayService:
         self._timers: dict[str, asyncio.Task[None]] = {}
         self._indicator_task: asyncio.Task[None] | None = None
         self._build: str | None = None
+        self._media: dict[str, DeviceMedia] = {}
+
+    def media_for(self, device_id: str) -> DeviceMedia:
+        media = self._media.get(device_id)
+        if media is None:
+            media = self._media[device_id] = DeviceMedia()
+        return media
 
     async def start(self) -> None:
         self.c.providers.register("device_driver", BrowserDisplayDriver(self), "core")
@@ -123,7 +154,7 @@ class DisplayService:
             if hello.get("type") != "hello":
                 await ws.close(code=4400)
                 return
-            caps = [str(x) for x in hello.get("capabilities") or [] if str(x).startswith("display.")]
+            caps = allowed_capabilities(list(hello.get("capabilities") or []))
             conn = Connection(ws=ws, device_id=None, capabilities=caps,
                               user_agent=str(hello.get("user_agent", ""))[:300])
             token = hello.get("token")
@@ -138,8 +169,15 @@ class DisplayService:
                 self.pending[code] = conn
                 await conn.send({"type": "pairing", "code": code})
             while True:
-                msg = await ws.receive_json()
-                await self._on_message(conn, msg)
+                raw = await ws.receive()
+                if raw.get("type") == "websocket.disconnect":
+                    return
+                if raw.get("bytes"):
+                    if conn.device_id:  # media only from paired devices
+                        self.media_for(conn.device_id).on_binary(raw["bytes"])
+                    continue
+                if raw.get("text"):
+                    await self._on_message(conn, json.loads(raw["text"]))
         except Exception as exc:
             if not isinstance(exc, (asyncio.CancelledError,)) and "disconnect" not in type(exc).__name__.lower():
                 log.info("display connection closed", error=str(exc))
@@ -172,6 +210,7 @@ class DisplayService:
 
     async def _attach(self, conn: Connection, device: Device) -> None:
         conn.device_id = device.id
+        self.media_for(device.id).reset_mic()
         old = self.connections.get(device.id)
         if old is not None and old is not conn:
             with contextlib.suppress(Exception):
@@ -202,8 +241,25 @@ class DisplayService:
         conn.pairing_code = None
         await conn.send({"type": "paired", "token": token, "name": name, "room": None})
         await self._attach(conn, device)
+        await self._create_endpoint(device.id, name, room_id, set(conn.capabilities))
         await self.c.refresh_topology()
         return device.id
+
+    async def _create_endpoint(self, device_id: str, name: str, room_id: str | None, caps: set[str]) -> None:
+        """A device app with microphone and speaker becomes a ready-to-use endpoint in its room."""
+        if room_id is None or Capability.AUDIO_INPUT not in caps or Capability.AUDIO_OUTPUT not in caps:
+            return
+        from justai.endpoints.service import DeviceRole, EndpointDeviceRef, EndpointIn
+
+        roles = [DeviceRole.MIC, DeviceRole.SPEAKER]
+        if Capability.VIDEO_INPUT in caps:
+            roles.append(DeviceRole.CAMERA)
+        if any(c.startswith("display.") for c in caps):
+            roles.append(DeviceRole.DISPLAY)
+        await self.c.endpoints.create(EndpointIn(
+            name=name, room_id=room_id, arbitration_group=f"room-{room_id}",
+            devices=[EndpointDeviceRef(device_id=device_id, role=r) for r in roles]))
+        log.info("endpoint created for device app", device=device_id, roles=[str(r) for r in roles])
 
     async def _on_message(self, conn: Connection, msg: dict[str, Any]) -> None:
         kind = msg.get("type")

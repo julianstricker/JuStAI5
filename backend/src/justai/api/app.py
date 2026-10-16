@@ -37,6 +37,16 @@ def create_app(settings: Settings | None = None, *, start_container: bool = True
 
     app = FastAPI(title="JuStAI5", version=__version__, lifespan=lifespan,
                   docs_url="/api/docs", openapi_url="/api/openapi.json", redoc_url=None)
+    app.state.tls = None
+    if settings.tls_enabled:
+        from justai.tls import LocalTls
+
+        try:
+            local_tls = LocalTls(settings.data_dir, settings.tls_names)
+            local_tls.ensure()
+            app.state.tls = local_tls
+        except Exception as exc:
+            log.warning("https disabled: certificate setup failed", error=str(exc))
 
     from justai.api.security import SecurityHeadersMiddleware
 
@@ -61,9 +71,10 @@ def create_app(settings: Settings | None = None, *, start_container: bool = True
         plugins,
         rooms,
         system,
+        tls,
     )
 
-    for module in (auth, rooms, devices, endpoints, plugins, ai, conversations, system):
+    for module in (auth, rooms, devices, endpoints, plugins, ai, conversations, system, tls):
         app.include_router(module.router)
     for router in extensions.routers():
         app.include_router(router)

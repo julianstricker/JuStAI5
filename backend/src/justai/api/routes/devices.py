@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -150,6 +151,30 @@ async def live(device_id: str, p: User, c: C) -> StreamingResponse:
 
     await c.audit.record(p.actor, "camera.live_view", device_id)
     return StreamingResponse(body(), media_type="video/mp4", headers={"Cache-Control": "no-store"})
+
+
+@router.get("/{device_id}/live.mjpeg")
+async def live_mjpeg(device_id: str, p: User, c: C) -> StreamingResponse:
+    """Live view for cameras without a go2rtc stream (device app): latest frames as MJPEG."""
+    if "camera.read" not in p.permissions:
+        raise NotFound("not allowed")
+    rt = c.devices.require(device_id)
+    if rt.handle is None:
+        raise Unavailable("device not connected")
+    handle = rt.handle
+
+    async def body() -> AsyncIterator[bytes]:
+        last: bytes | None = None
+        while True:
+            jpeg = await handle.snapshot()
+            if jpeg and jpeg is not last:
+                last = jpeg
+                yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + jpeg + b"\r\n"
+            await asyncio.sleep(0.2)
+
+    await c.audit.record(p.actor, "camera.live_view", device_id)
+    return StreamingResponse(body(), media_type="multipart/x-mixed-replace; boundary=frame",
+                             headers={"Cache-Control": "no-store"})
 
 
 @router.post("/{device_id}/test-tone")

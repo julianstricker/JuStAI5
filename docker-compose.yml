@@ -60,6 +60,7 @@ services:
       - secrets:/run/secrets-shared:ro
     ports:
       - "${JUSTAI_HTTP_PORT:-8080}:8080"
+      - "${JUSTAI_HTTPS_PORT:-8443}:8443"   # device app (microphone/camera need HTTPS)
     networks: [db, media, sandbox]
     extra_hosts:
       - "host.docker.internal:host-gateway"

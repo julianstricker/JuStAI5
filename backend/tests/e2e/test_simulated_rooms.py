@@ -446,3 +446,89 @@ def test_realtime_mode_conversation_with_language_and_vocabulary(world: World) -
     user = " ".join(t["text"] for t in s["transcript"] if t["role"] == "user").lower()
     assert "frankreich" in user, f"German speech not transcribed as German: {user!r}"
     api.post(f"/api/conversations/{s['id']}/end")
+
+
+def test_device_app_streams_microphone_camera_and_receives_speech(world: World) -> None:
+    """A phone/tablet/PC running the device app: pairing, auto endpoint, camera, mic -> answer audio."""
+    import asyncio
+    import json
+    import os
+
+    import numpy as np
+    import websockets
+
+    models = os.environ.get("JUSTAI_TEST_MODELS_DIR")
+    if not models:
+        pytest.skip("JUSTAI_TEST_MODELS_DIR needed to synthesise the test speech")
+    from piper import PiperVoice
+
+    def speech(text: str) -> np.ndarray:
+        voice = PiperVoice.load(f"{models}/piper/en_US-lessac-medium.onnx")
+        pcm = np.concatenate([c.audio_int16_array for c in voice.synthesize(text)])
+        idx = np.arange(0, pcm.size, voice.config.sample_rate / 16000).astype(int)
+        return pcm[idx[idx < pcm.size]]
+
+    api = world.api
+    ws_url = BASE.replace("http", "ws", 1) + "/api/display/ws"  # type: ignore[union-attr]
+    room = world.rooms["Kueche"]
+    jpeg = bytes.fromhex("ffd8ffe000104a46494600010100000100010000ffdb004300") + bytes(64) + b"\xff\xd9"
+
+    async def device() -> dict[str, Any]:
+        caps = ["display.text", "audio.input", "audio.output", "video.input", "camera.snapshot"]
+        async with websockets.connect(ws_url, max_size=None) as ws:
+            await ws.send(json.dumps({"type": "hello", "token": None, "user_agent": "e2e-app", "capabilities": caps}))
+            code = json.loads(await ws.recv())["code"]
+            device_id = (await asyncio.to_thread(api.post, f"/api/displays/pairing/{code}/approve",
+                                                 json={"name": "E2E Handy", "room_id": room})).json()["device_id"]
+            received = {"speaker_bytes": 0}
+
+            async def reader() -> None:
+                async for msg in ws:
+                    if isinstance(msg, bytes) and msg[:1] == b"\x11":
+                        received["speaker_bytes"] += len(msg) - 1
+
+            reader_task = asyncio.create_task(reader())
+
+            async def stream(pcm: np.ndarray) -> None:
+                for i in range(0, pcm.size, 320):  # 20 ms frames in real time
+                    frame = pcm[i:i + 320]
+                    if frame.size < 320:
+                        frame = np.pad(frame, (0, 320 - frame.size))
+                    await ws.send(b"\x01" + frame.astype("<i2").tobytes())
+                    await asyncio.sleep(0.02)
+
+            await ws.send(b"\x02" + jpeg)
+            for _ in range(40):  # device online, endpoint wired
+                eps = (await asyncio.to_thread(api.get, "/api/endpoints")).json()
+                ep = next((e for e in eps if any(d["device_id"] == device_id for d in e["devices"])), None)
+                if ep and ep.get("runtime"):
+                    break
+                await asyncio.sleep(0.5)
+            assert ep, "no endpoint was created for the device app"
+            roles = sorted(d["role"] for d in ep["devices"])
+            snap = await asyncio.to_thread(api.get, f"/api/devices/{device_id}/snapshot.jpg")
+            silence = np.zeros(16000, np.int16)
+            await stream(np.concatenate([silence, speech("Hey Jarvis!"), silence]))
+            await stream(np.concatenate([speech("What is the capital of Spain? Answer in one short sentence."),
+                                         np.zeros(16000 * 2, np.int16)]))
+            for _ in range(60):
+                if received["speaker_bytes"] > 16000:  # > 0.5 s of answer audio
+                    break
+                await stream(np.zeros(16000, np.int16))  # keep the microphone running
+            sessions = (await asyncio.to_thread(api.get, "/api/conversations/active")).json()
+            session = next((s for s in sessions if s["endpoint_id"] == ep["id"]), None)
+            reader_task.cancel()
+            if session:
+                await asyncio.to_thread(api.post, f"/api/conversations/{session['id']}/end")
+            await asyncio.to_thread(api.delete, f"/api/endpoints/{ep['id']}")
+            await asyncio.to_thread(api.delete, f"/api/devices/{device_id}")
+            return {"roles": roles, "snapshot": snap.status_code == 200 and snap.content == jpeg,
+                    "speaker_bytes": received["speaker_bytes"], "session": session}
+
+    result = asyncio.run(device())
+    assert result["roles"] == ["camera", "display", "mic", "speaker"]
+    assert result["snapshot"], "camera frame not available as snapshot"
+    assert result["session"], "wakeword over the device app did not start a conversation"
+    user = " ".join(t["text"] for t in result["session"]["transcript"] if t["role"] == "user").lower()
+    assert "spain" in user, user
+    assert result["speaker_bytes"] > 16000, "no answer audio reached the device"

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import base64
 import builtins
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -24,7 +25,7 @@ from sqlalchemy import delete, func, select, update
 
 from justai.common.errors import Conflict, NotFound, ValidationFailed
 from justai.db.engine import Database
-from justai.db.models import Automation, Consent, FaceEmbedding, Person, Sighting, User
+from justai.db.models import Automation, Consent, FaceEmbedding, Person, Sighting, User, VoiceEmbedding
 from justai.events.bus import EventBus
 from justai.logging import get_logger
 
@@ -87,6 +88,7 @@ class IdentityService:
         self.bus = bus
         self._gallery: builtins.list[tuple[str, str, np.ndarray]] = []  # (person_id, name, matrix)
         self.store_thumbnails = True
+        self.on_voice_changed: Callable[[], Awaitable[None]] | None = None  # reload voice profiles
 
     # --------------------------------------------------------------- gallery
     async def reload_gallery(self) -> None:
@@ -167,8 +169,10 @@ class IdentityService:
             person = await s.get(Person, person_id)
             if person is None:
                 raise NotFound("person not found")
-            await s.delete(person)  # cascades to faces, consents, private memories
+            await s.delete(person)  # cascades to faces, voices, consents, private memories
         await self.reload_gallery()
+        if self.on_voice_changed is not None:
+            await self.on_voice_changed()
 
     # ---------------------------------------------------------------- consent
     async def set_consent(self, person_id: str, kind: str, granted: bool,
@@ -183,7 +187,11 @@ class IdentityService:
                 person.biometric_consent_at = datetime.now(UTC) if granted else None
                 if not granted:
                     await s.execute(delete(FaceEmbedding).where(FaceEmbedding.person_id == person_id))
+            if kind == "voice" and not granted:
+                await s.execute(delete(VoiceEmbedding).where(VoiceEmbedding.person_id == person_id))
         await self.reload_gallery()
+        if kind == "voice" and self.on_voice_changed is not None:
+            await self.on_voice_changed()
 
     # -------------------------------------------------------------- enrolment
     async def enroll_images(self, person_id: str, images: builtins.list[np.ndarray], analyzer: FaceAnalyzer,
@@ -267,6 +275,8 @@ class IdentityService:
                 raise NotFound("person not found")
             await s.execute(update(FaceEmbedding).where(FaceEmbedding.person_id == from_id)
                             .values(person_id=into_id))
+            await s.execute(update(VoiceEmbedding).where(VoiceEmbedding.person_id == from_id)
+                            .values(person_id=into_id))
             await s.execute(update(Sighting).where(Sighting.person_id == from_id)
                             .values(person_id=into_id))
             await s.execute(update(Automation).where(Automation.owner_person_id == from_id)
@@ -275,6 +285,8 @@ class IdentityService:
             source.merged_into = into_id
             source.recognition_enabled = False
         await self.reload_gallery()
+        if self.on_voice_changed is not None:
+            await self.on_voice_changed()
 
     async def export(self, person_id: str) -> dict[str, Any]:
         """Data export (GDPR art. 15/20): profile, consents, biometric data, sightings."""
@@ -282,6 +294,7 @@ class IdentityService:
         async with self.db.session() as s:
             consents = (await s.scalars(select(Consent).where(Consent.person_id == person_id))).all()
             faces = (await s.scalars(select(FaceEmbedding).where(FaceEmbedding.person_id == person_id))).all()
+            voices = (await s.scalars(select(VoiceEmbedding).where(VoiceEmbedding.person_id == person_id))).all()
             sightings = (await s.scalars(select(Sighting).where(Sighting.person_id == person_id)
                                          .order_by(Sighting.last_seen.desc()).limit(1000))).all()
         return {
@@ -294,6 +307,9 @@ class IdentityService:
                                  "quality": f.quality, "embedding": list(map(float, f.embedding)),
                                  "thumbnail_jpeg_base64": base64.b64encode(f.thumbnail).decode()
                                  if f.thumbnail else None} for f in faces],
+            "voice_embeddings": [{"id": v.id, "model": v.model, "created_at": v.created_at.isoformat(),
+                                  "seconds": v.seconds, "source": v.source,
+                                  "embedding": list(map(float, v.embedding))} for v in voices],
             "sightings": [{"camera": x.camera_device_id, "room": x.room_id, "first_seen": x.first_seen.isoformat(),
                            "last_seen": x.last_seen.isoformat()} for x in sightings],
         }

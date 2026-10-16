@@ -39,7 +39,12 @@ def _ext(c: Any) -> Any:
 
 @router.get("")
 async def people(_: User, c: C) -> list[dict[str, Any]]:
-    return await _ext(c).identity.list()  # type: ignore[no-any-return]
+    rows: list[dict[str, Any]] = await _ext(c).identity.list()
+    voices = c.conversations.voices
+    counts = await voices.counts() if voices is not None else {}
+    for row in rows:
+        row["voice_count"] = counts.get(row["id"], 0)
+    return rows
 
 
 @router.post("")

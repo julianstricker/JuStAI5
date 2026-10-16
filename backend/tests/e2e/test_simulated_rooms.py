@@ -317,3 +317,112 @@ def test_speak_automation_starts_a_dialog_in_the_assistant_voice(world: World) -
         api.post(f"/api/conversations/{s['id']}/end")
     finally:
         api.delete(f"/api/automations/{auto['id']}")
+
+
+def test_voice_profile_enrolled_in_conversation_identifies_the_speaker_later(world: World) -> None:
+    api = world.api
+    ok(api.patch(f"/api/endpoints/{world.endpoints['Wohnzimmer']}", json={"config": {
+        "conversation": {"mode": "pipeline", "inactivity_timeout_s": 10, "resume_window_s": 0},
+        "audio": {"duplex": "half", "output_latency_ms": 900}}}))
+    name = "Annika"
+    before_ids = {p["id"] for p in ok(api.get("/api/people"))}
+    time.sleep(2)
+
+    def new_with_voice() -> dict[str, Any] | None:
+        return next((p for p in ok(api.get("/api/people"))
+                     if p["id"] not in before_ids and p.get("voice_count")), None)
+
+    def assistant_count() -> int:
+        s = world.session("Wohnzimmer")
+        return sum(1 for t in (s or {}).get("transcript", []) if t["role"] == "assistant")
+
+    def say_and_wait(text: str, voice: str = "en_US-lessac-medium") -> None:
+        before = assistant_count()
+        world.say("Wohnzimmer", text, voice=voice)
+        assert wait_for(lambda: assistant_count() > before, 60), f"no answer to: {text}"
+        time.sleep(1.5)
+
+    try:
+        world.say("Wohnzimmer", "Hey Jarvis!")
+        assert wait_for(lambda: world.session("Wohnzimmer"), 15)
+        time.sleep(1.0)
+        say_and_wait(f"Hello, my name is {name}. Please save my voice profile so that you recognise "
+                     "me by my voice from now on. I agree to that.")
+        if not new_with_voice():
+            say_and_wait("Yes, I confirm. Please save my voice profile now.")
+        person = wait_for(new_with_voice, 20)
+        assert person, "voice profile was not stored"
+        s = world.session("Wohnzimmer")
+        if s:
+            api.post(f"/api/conversations/{s['id']}/end")
+        assert wait_for(lambda: world.session("Wohnzimmer") is None, 30)
+
+        def started_person(voice: str) -> str | None:
+            world.say("Wohnzimmer", "Hey Jarvis!", voice=voice)
+            sess = wait_for(lambda: world.session("Wohnzimmer"), 15)
+            assert sess, "wakeword did not start a session"
+            api.post(f"/api/conversations/{sess['id']}/end")
+            assert wait_for(lambda: world.session("Wohnzimmer") is None, 30)
+            events = ok(api.get("/api/events", params={"type": "conversation.session.started", "limit": 5}))
+            ev = next(e for e in events if e["payload"].get("endpoint_id") == world.endpoints["Wohnzimmer"])
+            return ev["payload"].get("person_id")
+
+        assert started_person("en_US-lessac-medium") == person["id"], "same voice not recognised"
+        assert started_person("it_IT-paola-medium") != person["id"], "other voice taken for the person"
+    finally:
+        for p in ok(api.get("/api/people")):
+            if p["id"] not in before_ids:
+                api.delete(f"/api/people/{p['id']}")
+
+
+def test_voice_profile_core_without_llm(world: World) -> None:
+    """Enrol from real conversation speech, then identify on the wake phrase (no LLM needed)."""
+    api = world.api
+    ok(api.patch(f"/api/endpoints/{world.endpoints['Wohnzimmer']}", json={"config": {
+        "conversation": {"mode": "pipeline", "inactivity_timeout_s": 20, "resume_window_s": 0},
+        "audio": {"duplex": "half", "output_latency_ms": 900}}}))
+    before_ids = {p["id"] for p in ok(api.get("/api/people"))}
+    time.sleep(2)
+
+    def wake(voice: str) -> dict[str, Any]:
+        world.say("Wohnzimmer", "Hey Jarvis!", voice=voice)
+        s = wait_for(lambda: world.session("Wohnzimmer"), 15)
+        assert s, "wakeword did not start a session"
+        return s
+
+    def end_session() -> None:
+        s = world.session("Wohnzimmer")
+        if s:
+            api.post(f"/api/conversations/{s['id']}/end")
+        assert wait_for(lambda: world.session("Wohnzimmer") is None, 30)
+
+    def started_person() -> str | None:
+        events = ok(api.get("/api/events", params={"type": "conversation.session.started", "limit": 5}))
+        ev = next(e for e in events if e["payload"].get("endpoint_id") == world.endpoints["Wohnzimmer"])
+        return ev["payload"].get("person_id")
+
+    try:
+        session = wake("en_US-lessac-medium")
+        time.sleep(1.0)
+        world.say("Wohnzimmer", "Today I would like to tell you a little about my garden, the roses and "
+                  "the old apple tree that my grandfather planted many years ago.")
+        time.sleep(11.0)  # the simulator plays the sentence in real time
+        result = ok(api.post("/api/tools/identity.register_voice/execute", json={
+            "args": {"name": "Voice Test Person"}, "session_id": session["id"], "confirmed": True}))
+        assert result["ok"], result
+        person = next(p for p in ok(api.get("/api/people")) if p["id"] not in before_ids)
+        assert person["voice_count"] >= 2
+        end_session()
+
+        wake("en_US-lessac-medium")
+        time.sleep(1.5)
+        assert started_person() == person["id"], "same voice was not recognised"
+        end_session()
+        wake("it_IT-paola-medium")
+        time.sleep(1.5)
+        assert started_person() != person["id"], "another voice was taken for the person"
+        end_session()
+    finally:
+        for p in ok(api.get("/api/people")):
+            if p["id"] not in before_ids:
+                api.delete(f"/api/people/{p['id']}")

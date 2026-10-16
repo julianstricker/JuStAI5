@@ -13,7 +13,7 @@ import contextlib
 import json
 import time
 from collections import deque
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Coroutine
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -137,12 +137,24 @@ class ConversationSession:
         self.voice_audio: list[np.ndarray] = []
         self._voice_samples = 0
         self.resumed_from: str | None = None
+        # Called once when enough speech for a voice identification has been collected.
+        self.on_voice_ready: Callable[[ConversationSession], Coroutine[Any, Any, None]] | None = None
+        self._voice_ready_sent = False
         self.sm.on_change(self._state_changed)
 
     def add_voice(self, pcm: np.ndarray) -> None:
         if self._voice_samples < 12 * SR:
             self.voice_audio.append(pcm)
             self._voice_samples += pcm.size
+        if not self._voice_ready_sent and self._voice_samples >= 3 * SR and self.on_voice_ready is not None:
+            self._voice_ready_sent = True
+            spawn(self.on_voice_ready(self), name=f"voice-id:{self.id}")
+
+    def set_person(self, person_id: str, name: str) -> None:
+        """The speaker became known during the conversation (voice, introduction, face)."""
+        self.ctx.person_id, self.ctx.person_name = person_id, name
+        if isinstance(self.driver, PipelineDriver):
+            self.driver.note_person(name)
 
     def ignore_audio_until(self, t: float) -> None:
         self._ignore_until = max(self._ignore_until, t)
@@ -658,6 +670,14 @@ class PipelineDriver:
             self.messages[1] = note
         else:
             self.messages.insert(1, note)
+
+    def note_person(self, name: str) -> None:
+        system = self.messages[0]
+        content = str(system.content or "")
+        unknown = "Die sprechende Person ist nicht sicher identifiziert."
+        updated = content.replace(unknown, f"Du sprichst mit {name}.") if unknown in content \
+            else content + f"\nDu sprichst mit {name}."
+        self.messages[0] = ChatMessage(role=Role.SYSTEM, content=updated)
 
     def _trimmed(self) -> list[ChatMessage]:
         if len(self.messages) <= MAX_HISTORY:

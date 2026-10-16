@@ -32,6 +32,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from justai.db.base import Base, TimestampMixin
 
 FACE_EMBEDDING_DIM = 128  # OpenCV SFace
+VOICE_EMBEDDING_DIM = 256  # WeSpeaker ResNet34
 MEMORY_EMBEDDING_DIM = 384  # paraphrase-multilingual-MiniLM-L12-v2
 
 
@@ -338,6 +339,21 @@ class FaceEmbedding(Base):
     quality: Mapped[dict[str, Any]] = _jsonb()
     source: Mapped[str] = mapped_column(String(32), default="enrollment")
     thumbnail: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class VoiceEmbedding(Base):
+    """Voice profile sample of a person (only with consent kind "voice")."""
+
+    __tablename__ = "voice_embeddings"
+
+    id: Mapped[str] = _id("voice")
+    person_id: Mapped[str] = mapped_column(ForeignKey("people.id", ondelete="CASCADE"), index=True)
+    model: Mapped[str] = mapped_column(String(64))
+    embedding: Mapped[list[float]] = mapped_column(Vector(VOICE_EMBEDDING_DIM))
+    seconds: Mapped[float] = mapped_column(Float, default=0.0)  # speech used for this sample
+    source: Mapped[str] = mapped_column(String(32), default="enrollment")
+    session_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

@@ -10,8 +10,8 @@ und **nicht getestet**.
 | --- | --- | --- | --- |
 | Unit | `backend/tests/unit` | nichts | 112 bestanden |
 | Audio mit echten Modellen | `backend/tests/audio` | Modelle (`JUSTAI_TEST_MODELS_DIR`) | 5 bestanden |
-| Datenbank | `backend/tests/db` | PostgreSQL + pgvector (`JUSTAI_TEST_DATABASE_URL`) | 2 bestanden |
-| End-to-End | `backend/tests/e2e` | laufende Instanz (`JUSTAI_E2E_URL`, `JUSTAI_E2E_PASSWORD`), Gemini | 7 bestanden |
+| Datenbank | `backend/tests/db` | PostgreSQL + pgvector (`JUSTAI_TEST_DATABASE_URL`) | 3 bestanden |
+| End-to-End | `backend/tests/e2e` | laufende Instanz (`JUSTAI_E2E_URL`, `JUSTAI_E2E_PASSWORD`), Gemini | 9 Tests (siehe Hinweis) |
 | Beispiel-Plugin | `plugins/example-weather/tests` | nichts | 5 bestanden |
 | Frontend | `frontend` | Node | `tsc` und ESLint fehlerfrei |
 | Statische Analyse | ganzes Repo | – | ruff fehlerfrei, mypy `--strict` fehlerfrei (Backend, SDK, Sandbox) |
@@ -46,7 +46,11 @@ Eine Test-Datenbank startet man z. B. mit
   parallele Gespräche, Display-Kopplung mit Bestätigung, proaktive Automation,
   Gespräch fortsetzen (gleiche Stimme 0,82 → fortgesetzt, Rückfrage „wie viele Einwohner
   hat sie?“ richtig auf Rom bezogen; andere Stimme 0,26 → neues Gespräch),
-  Sprech-Automation startet einen Dialog.
+  Sprech-Automation startet einen Dialog, Stimmprofil: aus echter Gesprächssprache
+  angelegt (3 Proben), beim nächsten „Hey Jarvis“ mit gleicher Stimme erkannt
+  (Ähnlichkeit 0,75), andere Stimme nicht. Der Ablauf „im Gespräch anlegen lassen“
+  hat beim ersten Lauf funktioniert; Wiederholungen scheiterten am erschöpften
+  Gemini-Kontingent (429), nicht an der Funktion.
 
 **Hinweis zu E2E:** Die Suite nutzt das konfigurierte Cloud-LLM (Gemini). Am
 2026-10-15 lieferte Gemini zeitweise gleichzeitig 429 (Kontingent erschöpft) für

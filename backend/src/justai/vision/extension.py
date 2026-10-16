@@ -19,7 +19,7 @@ from sqlalchemy import delete, func, select
 
 from justai.ai.config import ModelRole
 from justai.ai.router import DataFlags
-from justai.common.errors import NotFound, Unavailable
+from justai.common.errors import NotFound, Unavailable, ValidationFailed
 from justai.db.models import Device, Person, Sighting, VisionWatch
 from justai.endpoints.service import DeviceRole
 from justai.identity.service import IdentityService, PersonIn
@@ -70,6 +70,10 @@ class RegisterFaceParams(CameraTarget):
     name: str = Field(description="Name der Person, deren Gesicht registriert werden soll")
 
 
+class VoiceParams(BaseModel):
+    name: str | None = Field(None, description="Name der sprechenden Person (leer = bereits erkannte Person)")
+
+
 def _identified_by(similarity: float | None, person: Person | None) -> str:
     if similarity:
         return "face"
@@ -101,6 +105,9 @@ class VisionExtension:
 
         self.c.bus.subscribe("conversation.session.*", slow_down, name="vision-priority")
         self.c.conversations.person_resolver = self._person_at_endpoint
+        voices = self.c.conversations.voices
+        if voices is not None:
+            self.identity.on_voice_changed = voices.reload
 
     async def _person_at_endpoint(self, endpoint_id: str) -> tuple[str, str] | None:
         """The one identified person the endpoint camera sees right now (None if 0 or several)."""
@@ -389,6 +396,56 @@ class VisionExtension:
                                           + "; ".join(result.reasons[:3]), data=result.__dict__)
             return ToolResult.success(result.__dict__,
                                       message=f"{result.added} Aufnahmen von {person.name} gespeichert")
+
+        async def register_voice(p: VoiceParams, ctx: ToolContext) -> ToolResult:
+            voices = c.conversations.voices
+            session = c.conversations.get(ctx.session_id) if ctx.session_id else None
+            if voices is None:
+                return ToolResult.failure("unavailable", "Stimmerkennung ist nicht installiert")
+            if session is None or session.endpoint_id is None:
+                return ToolResult.failure("no_voice", "Ein Stimmprofil geht nur in einem gesprochenen Gespräch")
+            person = None
+            if p.name:
+                person = await self.identity.find_by_name(p.name) or await self.identity.create(PersonIn(name=p.name))
+            elif ctx.person_id:
+                person = await self.identity.get(ctx.person_id)
+            if person is None:
+                return ToolResult.failure("speaker_unknown", "Frage zuerst nach dem Namen der Person.")
+            # Consent: this tool requires confirmation, i.e. the person agreed in their last utterance.
+            await self.identity.set_consent(person.id, "voice", True, {
+                "session_id": ctx.session_id, "via": "voice", "confirmed": ctx.confirmed,
+                "room_id": ctx.room_id, "at": time.time()})
+            try:
+                added = await voices.enroll(person.id, session.voice_audio, session_id=ctx.session_id)
+            except ValidationFailed as exc:
+                return ToolResult.failure("too_little_speech", f"{exc.message}. Bitte die Person, noch ein paar "
+                                          "Sätze zu sagen, und versuche es dann erneut (Zustimmung liegt vor).")
+            c.conversations.identify(session.id, person.id, person.name)
+            return ToolResult.success({"samples": added},
+                                      message=f"Stimmprofil von {person.name} gespeichert ({added} Proben)")
+
+        reg.register(ToolDefinition(
+            name="identity.register_voice",
+            description="Speichert die Stimme der sprechenden Person, damit der Assistent sie künftig am "
+                        "Wakeword erkennt. NUR nach ausdrücklicher Zustimmung; nutzt das in diesem Gespräch "
+                        "Gesprochene (mind. 4 s), es wird keine Aufnahme gespeichert.",
+            parameters=VoiceParams, category="identity", requires_confirmation=True, timeout_s=30,
+            side_effect=SideEffect.WRITE, permissions=[Permission.BIOMETRIC_ENROLL]), register_voice)
+
+        async def forget_voice(p: VoiceParams, ctx: ToolContext) -> ToolResult:
+            person = await self.identity.find_by_name(p.name) if p.name else (
+                await self.identity.get(ctx.person_id) if ctx.person_id else None)
+            if person is None:
+                return ToolResult.failure("speaker_unknown", "Unbekannte Person")
+            await self.identity.set_consent(person.id, "voice", False, {
+                "session_id": ctx.session_id, "via": "voice", "at": time.time()})
+            return ToolResult.success({}, message=f"Stimmprofil von {person.name} gelöscht")
+
+        reg.register(ToolDefinition(
+            name="identity.forget_voice",
+            description="Löscht das Stimmprofil einer Person und widerruft die Einwilligung.",
+            parameters=VoiceParams, category="identity", requires_confirmation=True,
+            side_effect=SideEffect.WRITE, permissions=[Permission.BIOMETRIC_ENROLL]), forget_voice)
 
         reg.register(ToolDefinition(
             name="identity.register_face",

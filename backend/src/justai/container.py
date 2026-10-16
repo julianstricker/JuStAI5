@@ -111,6 +111,9 @@ class Container:
 
             try:
                 self.conversations.voice = SpeakerEmbedder(speaker_model)
+                from justai.identity.voice import VoiceProfiles
+
+                self.conversations.voices = VoiceProfiles(self.db, self.conversations.voice)
             except Exception as exc:
                 log.warning("speaker model not usable, no voice comparison", error=str(exc))
 
@@ -186,6 +189,8 @@ class Container:
         await self.plugins.start()
         await self.topology.refresh()
         await self.devices.start()
+        if self.conversations.voices is not None:
+            await self.conversations.voices.reload()
         self.supervisor.start("go2rtc-streams", self.go2rtc.keep_streams)
         await self.audio.start()
         for ext in self.extensions.values():

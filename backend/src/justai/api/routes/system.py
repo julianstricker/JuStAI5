@@ -37,6 +37,7 @@ class ToolCallIn(BaseModel):
     args: dict[str, Any] = {}
     room_id: str | None = None
     endpoint_id: str | None = None
+    session_id: str | None = None  # run in the context of an active conversation
     confirmed: bool = False
 
 
@@ -146,9 +147,13 @@ async def tools(_: User, c: C) -> list[dict[str, Any]]:
 @router.post("/api/tools/{name}/execute")
 async def execute_tool(name: str, body: ToolCallIn, p: Admin, c: C) -> dict[str, Any]:
     """Diagnostics: run a tool with the admin's permissions in a chosen room context."""
+    session = c.conversations.get(body.session_id) if body.session_id else None
+    if body.session_id and session is None:
+        raise NotFound("session not active")
     ctx = ToolContext(call_id=f"admin-{int(time.time() * 1000)}", origin=InvocationOrigin.ADMIN,
-                      user_id=p.user_id, room_id=body.room_id, endpoint_id=body.endpoint_id,
-                      permissions=p.permissions, confirmed=body.confirmed)
+                      user_id=p.user_id, room_id=body.room_id or (session.ctx.room_id if session else None),
+                      endpoint_id=body.endpoint_id or (session.endpoint_id if session else None),
+                      session_id=body.session_id, permissions=p.permissions, confirmed=body.confirmed)
     result = await c.executor.execute(name, body.args, ctx)
     return result.model_dump(mode="json")
 

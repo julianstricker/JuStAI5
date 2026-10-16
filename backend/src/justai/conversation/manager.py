@@ -36,6 +36,7 @@ from justai.db.models import ConversationSession as SessionRow
 from justai.db.models import Person, TranscriptTurn, User
 from justai.endpoints.service import ConversationMode, DeviceRole, EndpointService
 from justai.events.bus import EventBus
+from justai.identity.voice import VoiceProfiles
 from justai.logging import get_logger
 from justai.rooms.service import RoomService
 from justai.system.jobs import JobQueue
@@ -120,6 +121,7 @@ class ConversationManager:
         # Conversation continuation ("Hey Jarvis" again a few minutes later).
         self._recent: dict[str, _Recent] = {}
         self.voice: SpeakerEmbedder | None = None  # set by the container if the model exists
+        self.voices: VoiceProfiles | None = None  # enrolled voice profiles (with consent)
         # Who does the endpoint camera see right now? (set by the vision extension)
         self.person_resolver: Callable[[str], Awaitable[tuple[str, str] | None]] | None = None
         audio.set_wake_handler(self._on_wake, lambda ep: ep in self._by_endpoint)
@@ -166,6 +168,9 @@ class ConversationManager:
             endpoint = await self.endpoints.get(endpoint_id)
             audio_port = self.audio.get(endpoint_id)
             seen = await self._visible_person(endpoint_id)
+            heard = await self._voice_person(wake_audio)
+            if heard is not None:
+                seen = heard  # the voice tells who is *speaking*; the camera only who is there
             if person_id is None and seen is not None:
                 person_id = seen[0]
             resume = await self._resume_candidate(endpoint_id, endpoint.config.conversation, wake_audio,
@@ -191,6 +196,8 @@ class ConversationManager:
                 self._recent.pop(endpoint_id, None)
             if wake_audio is not None:
                 session.add_voice(wake_audio)
+            if session.ctx.person_id is None and self.voices is not None and self.voices.enrolled:
+                session.on_voice_ready = self._identify_late
             self._by_endpoint[endpoint_id] = session
         await session.start(instruction)
         for hook in self._start_hooks:
@@ -254,6 +261,28 @@ class ConversationManager:
             person = await s.get(Person, person_id)
             user = await s.scalar(select(User).where(User.person_id == person_id))
         return (person.name if person else None), (user.role if user and not user.disabled else None)
+
+    async def _voice_person(self, audio: np.ndarray | None) -> tuple[str, str] | None:
+        if audio is None or self.voices is None or not self.voices.enrolled:
+            return None
+        try:
+            match = await self.voices.identify(audio)
+        except Exception as exc:
+            log.warning("voice identification failed", error=str(exc))
+            return None
+        if match is None:
+            return None
+        log.info("speaker recognised by voice", person=match.person_id, similarity=match.similarity,
+                 margin=match.margin)
+        return match.person_id, match.name
+
+    async def _identify_late(self, session: ConversationSession) -> None:
+        """Second chance with more speech when the wake phrase alone was not clear enough."""
+        if session.ctx.person_id is not None or session.sm.ended:
+            return
+        heard = await self._voice_person(np.concatenate(session.voice_audio))
+        if heard is not None and session.ctx.person_id is None:
+            session.set_person(*heard)
 
     async def _visible_person(self, endpoint_id: str) -> tuple[str, str] | None:
         if self.person_resolver is None:
@@ -355,5 +384,4 @@ class ConversationManager:
         """Bind a recognised/declared person to a running session."""
         session = self._by_id.get(session_id)
         if session is not None:
-            session.ctx.person_id = person_id
-            session.ctx.person_name = person_name
+            session.set_person(person_id, person_name)

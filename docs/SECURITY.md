@@ -93,7 +93,7 @@ Tool-Ausführung wird protokolliert (Parameter redigiert).
 | Cloud-KI | global abschaltbar; pro Rolle `local_only`/`prefer_local`/`any`; getrennte Schalter für Kamerabilder, Gesprächsaudio und persönliche Erinnerungen; pro Raum `cloud_media_allowed`. Ein Wechsel von lokal zu Cloud wird nie still gemacht: Event `ai.provider.fallback` und Audit-Eintrag. |
 | Sichtbarkeit | Displays zeigen, ob im Raum gerade zugehört oder gesprochen wird und ob ein Cloud-Realtime-Modell aktiv ist. Die Admin-UI zeigt das für alle Räume. |
 | Kameras | Privatsphärenzonen werden vor jeder Analyse geschwärzt; Vision pro Raum abschaltbar; keine Speicherung von Kamerabildern zu Sichtungen |
-| Biometrie | nur mit dokumentierter Einwilligung; Widerruf löscht alle Merkmale; Export möglich; Ähnlichkeitswerte werden nie als Wahrscheinlichkeit dargestellt ([VISION.md](VISION.md)) |
+| Biometrie | Gesicht und Stimme nur mit dokumentierter Einwilligung (getrennt je Merkmal); Widerruf löscht alle Merkmale dieser Art; Export möglich; Ähnlichkeitswerte werden nie als Wahrscheinlichkeit dargestellt ([VISION.md](VISION.md#stimmprofile)) |
 | Gedächtnis | Herkunft sichtbar, private Erinnerungen nur für ihre Person, Vergessen dauerhaft ([MEMORY.md](MEMORY.md)) |
 | Audio | Es wird kein Audio gespeichert. Ausnahme: ausdrücklich angeforderte Diagnoseaufnahmen (max. 30 s, Download) |
 | Stimmvergleich | Für „Gespräch fortsetzen?“ wird aus Wakeword und Sprache eines Gesprächs ein Stimm-Fingerabdruck berechnet: nur im Arbeitsspeicher, keiner Person zugeordnet, nach dem Fortsetzungsfenster verworfen; die Sprachdaten selbst werden direkt nach der Berechnung gelöscht. Abschaltbar pro Endpoint (`speaker_check`). |
@@ -124,8 +124,8 @@ PTZ-Tracking, Display-Darstellungen.
 
 * Gesprochene Befehle sind nicht authentifiziert. Wer im Raum spricht, hat die
   Rechte des Endpoints. Für sensible Räume `default_role: guest` wählen.
-* Gesichtserkennung lässt sich mit Fotos täuschen (keine Lebenderkennung). Deshalb
-  dient sie nur der Personalisierung, nie der Autorisierung.
+* Gesichtserkennung lässt sich mit Fotos täuschen (keine Lebenderkennung), Stimmerkennung
+  mit Aufnahmen. Deshalb dienen beide nur der Personalisierung, nie der Autorisierung.
 * Die Sandbox ist eine Container-Isolation mit rlimits, keine VM. Für Code
   unbekannter Herkunft ist das eine Schutzschicht, kein Freibrief.
 * Der Brute-Force-Schutz hält seinen Zustand im Speicher; ein Neustart setzt ihn zurück.

@@ -109,6 +109,26 @@ im Gespräch angelegt („Ich bin Julian“, Tool `identity.introduce`).
 * Haustiere: Gibt es genau ein registriertes Tier einer Art, wird ein erkannter
   Hund oder eine erkannte Katze diesem Tier zugeordnet (Annahme, als solche gekennzeichnet).
 
+## Stimmprofile
+
+Neben dem Gesicht kann eine Person auch an der Stimme erkannt werden: Das
+Gesicht zeigt, wer im Raum ist, die Stimme, wer gerade spricht.
+
+* **Anlegen im Gespräch**: „Merk dir meine Stimme“ (Tool `identity.register_voice`,
+  Bestätigungspflicht, Recht `biometric.enroll`). Der Assistent nutzt das in diesem
+  Gespräch Gesprochene (mindestens 4 s; sonst bittet er um ein paar Sätze mehr) und
+  speichert daraus mehrere Stimmproben (Embeddings, keine Aufnahmen; max. 10 pro
+  Person, die neuesten bleiben). Einwilligung „voice“ wird mit Nachweis erfasst.
+* **Erkennung**: am „Hey Jarvis“ zu Beginn jedes Gesprächs; reicht das nicht, noch
+  einmal nach ~3 s Sprache. Ein Name wird nur genannt bei Ähnlichkeit ≥ 0,55 und
+  Abstand ≥ 0,08 zur nächstbesten Person. Die Stimme hat Vorrang vor der Kamera.
+* **Löschen**: „Vergiss meine Stimme“ (`identity.forget_voice`), *Personen →
+  Stimmprofil löschen*, Widerruf der Einwilligung oder Löschen der Person entfernen
+  alle Proben. Zusammenführen überträgt sie, Export enthält sie.
+* Ein erkanntes Gesicht oder eine erkannte Stimme personalisiert das Gespräch (eigene
+  Erinnerungen, Ansprache), gibt aber nie Admin-Rechte. Eine Stimme lässt sich mit
+  einer Aufnahme nachahmen; sie ist keine Authentifizierung.
+
 ## Getestet
 
 * Unit: Tracker, Bewegung, Privatsphärenmaske, Zustandsklassifikation,

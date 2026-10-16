@@ -132,7 +132,17 @@ class ConversationSession:
         self._ending = False
         self.text_listeners: list[Callable[[str, str], Awaitable[None]]] = []
         self._ignore_until = 0.0
+        # The speaker's voice (wake phrase + user speech, max. 12 s) for "same speaker?"
+        # checks when a later wakeword could continue this conversation. Memory only.
+        self.voice_audio: list[np.ndarray] = []
+        self._voice_samples = 0
+        self.resumed_from: str | None = None
         self.sm.on_change(self._state_changed)
+
+    def add_voice(self, pcm: np.ndarray) -> None:
+        if self._voice_samples < 12 * SR:
+            self.voice_audio.append(pcm)
+            self._voice_samples += pcm.size
 
     def ignore_audio_until(self, t: float) -> None:
         self._ignore_until = max(self._ignore_until, t)
@@ -167,7 +177,8 @@ class ConversationSession:
         await self.driver.start()
         self._watchdog = asyncio.create_task(self._watch(), name=f"session-watch:{self.id}")
         await self.publish("conversation.session.started", {
-            "endpoint_id": self.endpoint_id, "trigger": self.ctx.trigger, "mode": self.mode})
+            "endpoint_id": self.endpoint_id, "trigger": self.ctx.trigger, "mode": self.mode,
+            "resumed_from": self.resumed_from, "person_id": self.ctx.person_id})
         if initial_instruction:
             self.sm.try_transition(SessionState.PROCESSING, "proactive")
             await self.driver.inject(initial_instruction)
@@ -208,6 +219,8 @@ class ConversationSession:
             return  # tail of the wakeword itself
         if frame.speech and not frame.gated:
             self.sm.activity(frame.t)
+            if self.state == SessionState.LISTENING:
+                self.add_voice(frame.pcm)
         if self.driver is not None and not frame.gated and self.state in (
                 SessionState.LISTENING, SessionState.PROCESSING, SessionState.SPEAKING):
             self.driver.push_frame(frame)

@@ -97,6 +97,9 @@ class Speak(_M):
     type: Literal["speak"] = "speak"
     text: str
     room: str = "trigger"
+    start_conversation: bool = Field(
+        True, description="speak in the assistant's voice and listen for an answer (dialog); "
+                          "false: plain announcement")
 
 
 class ShowOnDisplay(_M):

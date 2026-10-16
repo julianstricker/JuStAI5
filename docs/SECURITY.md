@@ -96,6 +96,7 @@ Tool-Ausführung wird protokolliert (Parameter redigiert).
 | Biometrie | nur mit dokumentierter Einwilligung; Widerruf löscht alle Merkmale; Export möglich; Ähnlichkeitswerte werden nie als Wahrscheinlichkeit dargestellt ([VISION.md](VISION.md)) |
 | Gedächtnis | Herkunft sichtbar, private Erinnerungen nur für ihre Person, Vergessen dauerhaft ([MEMORY.md](MEMORY.md)) |
 | Audio | Es wird kein Audio gespeichert. Ausnahme: ausdrücklich angeforderte Diagnoseaufnahmen (max. 30 s, Download) |
+| Stimmvergleich | Für „Gespräch fortsetzen?“ wird aus Wakeword und Sprache eines Gesprächs ein Stimm-Fingerabdruck berechnet: nur im Arbeitsspeicher, keiner Person zugeordnet, nach dem Fortsetzungsfenster verworfen; die Sprachdaten selbst werden direkt nach der Berechnung gelöscht. Abschaltbar pro Endpoint (`speaker_check`). |
 | Personenbezogene Ausgaben | nicht auf Displays in gemeinsam genutzten Räumen |
 
 ### Aufbewahrung

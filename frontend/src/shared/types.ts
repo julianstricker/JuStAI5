@@ -104,6 +104,8 @@ export interface EndpointConfig {
     default_role: string;
     follow_up_listening: boolean;
     send_video: boolean;
+    resume_window_s: number;
+    speaker_check: boolean;
   };
 }
 

@@ -52,7 +52,30 @@ conversation:
   default_role: resident  # Rechte anonymer Sprecher an diesem Endpoint
   follow_up_listening: true
   send_video: false       # Kamerabilder an Realtime-Provider, die das können
+  resume_window_s: 300    # neues Wakeword innerhalb 5 min setzt das letzte Gespräch fort (0 = nie)
+  speaker_check: true     # ... aber nur, wenn Stimme/Kamera nicht auf eine andere Person deuten
 ```
+
+### Gespräche fortsetzen
+
+Endet ein Gespräch durch Inaktivität und fällt innerhalb von `resume_window_s` wieder
+das Wakeword am selben Endpoint, knüpft der Assistent an das letzte Gespräch an (der
+bisherige Verlauf steht im Kontext). Nicht fortgesetzt wird, wenn …
+
+* das Gespräch bewusst beendet wurde („Tschüss“, Admin),
+* die Kamera des Endpoints jetzt eine andere erkannte Person sieht als vorher,
+* die Stimme im Wakeword klar nicht zur Stimme des letzten Gesprächs passt.
+
+Der Stimmvergleich nutzt ein Sprecher-Modell (WeSpeaker ResNet34). Die
+Stimm-Fingerabdrücke existieren nur im Arbeitsspeicher, werden keiner Person
+zugeordnet und nach Ablauf des Fensters verworfen; aufgezeichnete Sprache wird nach
+dem Berechnen sofort gelöscht. Messwerte: gleiche Stimme 0,68–0,82, andere Stimme
+0,26–0,34 (Schwelle 0,45; auch in 8-kHz-Kameraqualität). Ist kein Vergleich möglich
+(z. B. zu wenig Sprache), wird innerhalb des Fensters fortgesetzt.
+
+Zu Beginn jedes Gesprächs übernimmt der Assistent außerdem die Person, die die
+Kamera des Endpoints in der letzten Minute als Einzige erkannt hat („Du sprichst mit
+Julian“).
 
 Weitere Felder: `room_id`, `arbitration_group` (Standard `default`), `priority`, `language`, `enabled`.
 

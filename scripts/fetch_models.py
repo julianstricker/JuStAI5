@@ -33,6 +33,11 @@ FILES: list[tuple[str, str, str]] = [
      "c2a311e8fa1338de89c31b3b46dc4dffd4af2f9a8d6ddead48893c2d301b1f18"),
     ("openwakeword/hey_rhasspy_v0.1.onnx", OWW + "hey_rhasspy_v0.1.onnx",
      "5a9b3ed3be2910e35780e097905aa9f35a9c10038df47914cf2b3ec4d670f6ea"),
+    # Speaker embeddings (WeSpeaker ResNet34, VoxCeleb) for "same speaker?" checks.
+    ("speaker/wespeaker_en_voxceleb_resnet34.onnx",
+     "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-recongition-models/"
+     "wespeaker_en_voxceleb_resnet34.onnx",
+     "5ef208a9da1453335308a6b6f4e6dfbd7e183a38b604de0a57664f45d257fe94"),
     ("piper/de_DE-thorsten-medium.onnx", PIPER + "de/de_DE/thorsten/medium/de_DE-thorsten-medium.onnx",
      "7e64762d8e5118bb578f2eea6207e1a35a8e0c30595010b666f983fc87bb7819"),
     ("piper/de_DE-thorsten-medium.onnx.json", PIPER + "de/de_DE/thorsten/medium/de_DE-thorsten-medium.onnx.json",

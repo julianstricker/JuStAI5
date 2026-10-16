@@ -92,6 +92,7 @@ class CameraState:
     boost_until: float = 0.0  # run detection on every frame (PTZ tracking)
     unknown_face_at: float = 0.0
     recognized_at: dict[str, float] = field(default_factory=dict)
+    person_seen: dict[str, tuple[float, str]] = field(default_factory=dict)  # id -> (t, name)
 
 
 TrackListener = Callable[[str, float, list[Track], tuple[int, int]], None]
@@ -294,6 +295,7 @@ class VisionEngine:
         for tr in state.tracker.confirmed():
             if tr.person_id:
                 self._person_seen[tr.person_id] = now_wall
+                state.person_seen[tr.person_id] = (t, tr.person_name or "")
         for tr in state.tracker.confirmed():
             if t - tr.last_persisted > 60:
                 await self._persist(state, tr)
@@ -414,6 +416,18 @@ class VisionEngine:
                         "camera_id": state.device_id, "similarity": round(match.similarity, 3),
                         "match_level": match.level, "track_id": track.id, "away_s": away_s})
                 self._person_seen[match.person_id] = time.time()
+
+    def visible_people(self, device_id: str, max_age_s: float = 60.0) -> list[tuple[str, str]]:
+        """People identified on this camera within max_age_s: [(person_id, name)].
+
+        A person sitting still is only re-detected every heartbeat (20 s) and re-identified
+        after that, so "seen within the last minute" is the useful notion of "is here".
+        """
+        state = self.cameras.get(device_id)
+        if state is None:
+            return []
+        now = time.monotonic()
+        return [(pid, name) for pid, (t, name) in state.person_seen.items() if now - t <= max_age_s]
 
     async def _away_seconds(self, person_id: str, current_track: str) -> int:
         """Seconds since the person was last seen on any camera (before the current track).

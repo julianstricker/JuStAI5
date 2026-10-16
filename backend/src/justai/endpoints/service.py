@@ -67,6 +67,10 @@ class EndpointConversationConfig(BaseModel):
     default_role: str = "resident"  # permissions of anonymous speakers here
     follow_up_listening: bool = True
     send_video: bool = False  # stream camera frames to realtime providers that support it
+    # A wakeword within this time after the last conversation continues it (0 = never) ...
+    resume_window_s: float = Field(300.0, ge=0.0, le=3600.0)
+    # ... unless voice (wake phrase) or camera show that someone else is speaking.
+    speaker_check: bool = True
 
 
 class EndpointConfig(BaseModel):

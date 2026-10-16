@@ -63,8 +63,8 @@ Zeitangaben gelten in der Zeitzone aus *Einstellungen → System* (Standard
 
 | Typ | Wirkung |
 | --- | --- |
-| `assistant.invoke` | startet eine **proaktive Gesprächssession ohne Wakeword** im Raum (`trigger` = Raum des auslösenden Events). Bevorzugt wird der Endpoint, dessen Kamera das Event ausgelöst hat. Die Anweisung geht an das Modell, und mit `start_conversation` hört die Session danach zu. |
-| `speak` | Text im Raum ausgeben (über den Output Router) |
+| `assistant.invoke` | startet eine **proaktive Gesprächssession ohne Wakeword** im Raum (`trigger` = Raum des auslösenden Events). Bevorzugt wird der Endpoint, dessen Kamera das Event ausgelöst hat. Die Anweisung geht an das Modell; mit `start_conversation: true` (Standard) hört die Session danach normal zu, mit `false` nur noch 4 s. |
+| `speak` | Text im Raum sagen. Standard (`start_conversation: true`): in der Stimme des Assistenten als Beginn eines Gesprächs; die Person kann direkt antworten. `false`: reine Durchsage über die lokale Sprachausgabe. |
 | `display.show` | Dokument auf dem Display im Raum zeigen |
 | `tool` | Tool mit Argumenten aufrufen (Rechte der Automation) |
 | `event.emit` | eigenes Event veröffentlichen |

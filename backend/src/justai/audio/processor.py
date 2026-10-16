@@ -58,6 +58,7 @@ class WakeCandidate:
     snr_db: float
     vad: float
     during_playback: bool
+    audio: Int16Array | None = None  # the wake phrase (processed), for speaker comparison
 
 
 @dataclass
@@ -124,6 +125,7 @@ class EndpointAudioProcessor:
         self._last_wake_t = 0.0
         self._delay = DelayEstimator(max_delay_s=3.5)
         self._raw_hist: deque[tuple[float, Int16Array]] = deque(maxlen=200)  # 2 s raw
+        self._proc_hist: deque[Int16Array] = deque(maxlen=160)  # 1.6 s processed (wake phrase)
         self._last_delay_run = 0.0
         self._erle_hist: deque[float] = deque(maxlen=300)
         self._levels: deque[float] = deque(maxlen=120)  # raw levels of the last 1.2 s (dBFS)
@@ -212,6 +214,7 @@ class EndpointAudioProcessor:
             if echo_window else None
         processed = self._aec.process(raw, ref)
 
+        self._proc_hist.append(processed)
         level = dbfs(processed)
         raw_db = dbfs(raw)
         self._levels.append(raw_db)
@@ -346,4 +349,5 @@ class EndpointAudioProcessor:
             phrase_level = float(np.percentile(self._levels, 90)) if self._levels else level
             out.wakes.append(WakeCandidate(
                 self.endpoint_id, best.model, best.score, t, phrase_level,
-                phrase_level - self._raw_noise_db, vad, echo_window))
+                phrase_level - self._raw_noise_db, vad, echo_window,
+                audio=np.concatenate(self._proc_hist) if self._proc_hist else None))

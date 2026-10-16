@@ -78,9 +78,10 @@ class World:
             self.endpoints[name] = ep["id"]
         assert wait_for(lambda: all(ok(api.get(f"/api/endpoints/{e}"))["runtime"] for e in self.endpoints.values()), 20)
 
-    def say(self, room: str, text: str, also: list[str] | None = None) -> None:
+    def say(self, room: str, text: str, also: list[str] | None = None,
+            voice: str = "en_US-lessac-medium") -> None:
         result = ok(self.api.post("/api/tools/simulator.say/execute", json={
-            "args": {"device_id": self.devices[room], "text": text, "voice": "en_US-lessac-medium",
+            "args": {"device_id": self.devices[room], "text": text, "voice": voice,
                      "also_devices": [self.devices[r] for r in also or []], "also_gain": 0.5}}))
         assert result["ok"], result
 
@@ -267,3 +268,52 @@ def test_automation_greets_recognised_person_in_the_trigger_room(world: World) -
     finally:
         api.delete(f"/api/automations/{auto['id']}")
         api.delete(f"/api/people/{person['id']}")
+
+
+def test_wakeword_shortly_after_continues_the_conversation_only_for_the_same_voice(world: World) -> None:
+    api = world.api
+    ok(api.patch(f"/api/endpoints/{world.endpoints['Wohnzimmer']}", json={"config": {
+        "conversation": {"mode": "pipeline", "inactivity_timeout_s": 8, "resume_window_s": 300,
+                         "speaker_check": True},
+        "audio": {"duplex": "half", "output_latency_ms": 900}}}))
+    time.sleep(2)
+
+    def run_turn(text: str, voice: str) -> dict[str, Any]:
+        world.say("Wohnzimmer", "Hey Jarvis!", voice=voice)
+        s = wait_for(lambda: world.session("Wohnzimmer"), 15)
+        assert s, "wakeword did not start a session"
+        time.sleep(1.0)
+        world.say("Wohnzimmer", text, voice=voice)
+        assert wait_for(lambda: (x := world.session("Wohnzimmer")) and any(
+            t["role"] == "assistant" for t in x["transcript"]), 60), "no answer"
+        assert wait_for(lambda: world.session("Wohnzimmer") is None, 45), "session did not end"
+        events = ok(api.get("/api/events", params={"type": "conversation.session.started", "limit": 20}))
+        return next(e["payload"] for e in events if e["payload"].get("endpoint_id") == world.endpoints["Wohnzimmer"])
+
+    first = run_turn("What is the capital of Italy? One short sentence.", "en_US-lessac-medium")
+    assert first.get("resumed_from") is None
+    second = run_turn("And how many people live there? One short sentence.", "en_US-lessac-medium")
+    assert second.get("resumed_from"), "same voice within the window should continue"
+    third = run_turn("What is two plus three? Number only.", "it_IT-paola-medium")
+    assert third.get("resumed_from") is None, "another voice must start a new conversation"
+
+
+def test_speak_automation_starts_a_dialog_in_the_assistant_voice(world: World) -> None:
+    api = world.api
+    auto = ok(api.post("/api/automations", json={
+        "name": "E2E speak", "definition": {
+            "trigger": {"type": "event", "event": "manual.test", "match": {"e2e": "speak"}},
+            "actions": [{"type": "speak", "text": "Hallo, hier ist ein Test.", "room": "trigger"}]}}))
+    try:
+        ok(api.post("/api/events", json={"type": "manual.test", "room_id": world.rooms["Wohnzimmer"],
+                                          "payload": {"e2e": "speak"}}))
+        s = wait_for(lambda: (x := world.session("Wohnzimmer")) and any(
+            t["role"] == "assistant" for t in x["transcript"]) and x, 60)
+        assert s, "speak action did not start a conversation"
+        said = " ".join(t["text"] for t in s["transcript"] if t["role"] == "assistant")
+        assert "Test" in said
+        # It keeps listening: the person can answer within the inactivity time.
+        assert s["state"] in ("listening", "speaking", "processing")
+        api.post(f"/api/conversations/{s['id']}/end")
+    finally:
+        api.delete(f"/api/automations/{auto['id']}")

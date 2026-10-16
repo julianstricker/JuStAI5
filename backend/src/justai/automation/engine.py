@@ -58,6 +58,10 @@ if TYPE_CHECKING:
 
 log = get_logger(__name__)
 MAX_CHAIN_HOPS = 4
+# Automations that only announce something still give the person a moment to react.
+ANNOUNCE_LISTEN_S = 4.0
+SAY_EXACTLY = ("Sage jetzt wörtlich diesen Text und nichts weiter: „{text}“ "
+               "Antwortet die Person danach, führe das Gespräch normal weiter.")
 
 
 def _get_path(data: dict[str, Any], path: str) -> Any:
@@ -392,6 +396,13 @@ class AutomationEngine:
                     return e.id
         return candidates[0].id
 
+    async def _converse(self, endpoint_id: str, instruction: str, person_id: str | None,
+                        listen: bool) -> None:
+        session = await self.c.conversations.start(endpoint_id, trigger="automation",
+                                                   instruction=instruction, person_id=person_id)
+        if not listen:
+            session.sm.inactivity_timeout_s = min(session.sm.inactivity_timeout_s, ANNOUNCE_LISTEN_S)
+
     async def _execute(self, auto: Automation, action: Any, event: Event | None,
                        note: Any) -> None:
         c = self.c
@@ -403,15 +414,21 @@ class AutomationEngine:
             if endpoint_id is None:
                 raise ValueError("no interaction endpoint with a speaker in the target room")
             person_id = (event.payload.get("person_id") if event else None) or auto.owner_person_id
-            await c.conversations.start(endpoint_id, trigger="automation", instruction=action.instruction,
-                                        person_id=person_id)
+            await self._converse(endpoint_id, action.instruction, person_id, action.start_conversation)
             note(f"Assistent in {room_id} aktiviert")
         elif isinstance(action, Speak):
             room_id = self._room(action.room, event)
-            speech = c.extensions["speech"]
-            decision = speech.resolve(target_room_id=room_id, system=True)
-            await speech.say(action.text, decision)
-            note(f"Gesagt in {room_id}: {action.text[:60]}")
+            endpoint_id = await self._endpoint_for_room(room_id, event) if room_id else None
+            if action.start_conversation and endpoint_id is not None:
+                # Same voice as in conversations, and the person can answer right away.
+                person_id = (event.payload.get("person_id") if event else None) or auto.owner_person_id
+                await self._converse(endpoint_id, SAY_EXACTLY.format(text=action.text), person_id, True)
+                note(f"Gesprochen (Gespräch) in {room_id}: {action.text[:60]}")
+            else:
+                speech = c.extensions["speech"]
+                decision = speech.resolve(target_room_id=room_id, system=True)
+                await speech.say(action.text, decision)
+                note(f"Gesagt in {room_id}: {action.text[:60]}")
         elif isinstance(action, ShowOnDisplay):
             room_id = self._room(action.room, event)
             display = c.extensions.get("display")

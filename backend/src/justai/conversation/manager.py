@@ -9,22 +9,27 @@ from __future__ import annotations
 
 import asyncio
 import builtins
-from collections.abc import Callable, Coroutine
+import time
+from collections.abc import Awaitable, Callable, Coroutine
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
+import numpy as np
 from justai_sdk.events import new_id
 from sqlalchemy import select
 
 from justai.ai.config import ConversationMode as GlobalMode
 from justai.ai.router import AIRouter
 from justai.audio.arbitration import ArbitrationResult
+from justai.audio.dsp import SR
 from justai.audio.engine import AudioEngine
 from justai.audio.processor import WakeCandidate
+from justai.audio.speaker import SpeakerEmbedder, similarity
 from justai.auth.rbac import conversation_permissions
 from justai.common.errors import NotFound, Unavailable
 from justai.common.tasks import spawn
-from justai.conversation.context import ConversationContext
+from justai.conversation.context import PREVIOUS_TURNS, ConversationContext
 from justai.conversation.session import ConversationSession, SessionDeps
 from justai.db.engine import Database
 from justai.db.models import ConversationSession as SessionRow
@@ -77,6 +82,22 @@ class SessionRepository:
             return list(rows.all())
 
 
+# Below this voice similarity the wake phrase is clearly someone else (same speaker: 0.75-0.87,
+# other speakers: 0.03-0.38 in tests, also at 8 kHz camera quality).
+OTHER_SPEAKER_SIMILARITY = 0.45
+# Conversations ended on purpose ("Tschüss", admin) are not continued.
+NO_RESUME_REASONS = frozenset({"assistant", "manual", "shutdown"})
+
+
+@dataclass
+class _Recent:
+    session_id: str
+    ended_at: float  # monotonic
+    turns: list[tuple[str, str]]
+    person_id: str | None
+    voice: np.ndarray | None
+
+
 class ConversationManager:
     def __init__(self, *, db: Database, bus: EventBus, audio: AudioEngine, endpoints: EndpointService,
                  rooms: RoomService, router: AIRouter, registry: ToolRegistry,
@@ -96,6 +117,11 @@ class ConversationManager:
         self._by_id: dict[str, ConversationSession] = {}
         self._locks: dict[str, asyncio.Lock] = {}
         self._start_hooks: list[Callable[[ConversationSession], Coroutine[Any, Any, None]]] = []
+        # Conversation continuation ("Hey Jarvis" again a few minutes later).
+        self._recent: dict[str, _Recent] = {}
+        self.voice: SpeakerEmbedder | None = None  # set by the container if the model exists
+        # Who does the endpoint camera see right now? (set by the vision extension)
+        self.person_resolver: Callable[[str], Awaitable[tuple[str, str] | None]] | None = None
         audio.set_wake_handler(self._on_wake, lambda ep: ep in self._by_endpoint)
 
     # ------------------------------------------------------------------ queries
@@ -122,14 +148,14 @@ class ConversationManager:
             existing.sm.activity()  # wakeword during an active session keeps it alive
             return
         try:
-            session = await self.start(candidate.endpoint_id, trigger="wakeword")
+            session = await self.start(candidate.endpoint_id, trigger="wakeword", wake_audio=candidate.audio)
             # openWakeWord fires while "Jarvis" is still being spoken; skip its tail.
             session.ignore_audio_until(candidate.t + 0.35)
         except Exception as exc:
             log.error("session start failed", endpoint=candidate.endpoint_id, error=str(exc))
 
     async def start(self, endpoint_id: str, *, trigger: str, instruction: str | None = None,
-                    person_id: str | None = None) -> ConversationSession:
+                    person_id: str | None = None, wake_audio: np.ndarray | None = None) -> ConversationSession:
         lock = self._locks.setdefault(endpoint_id, asyncio.Lock())
         async with lock:
             existing = self._by_endpoint.get(endpoint_id)
@@ -139,6 +165,14 @@ class ConversationManager:
                 return existing
             endpoint = await self.endpoints.get(endpoint_id)
             audio_port = self.audio.get(endpoint_id)
+            seen = await self._visible_person(endpoint_id)
+            if person_id is None and seen is not None:
+                person_id = seen[0]
+            resume = await self._resume_candidate(endpoint_id, endpoint.config.conversation, wake_audio,
+                                                  seen[0] if seen else None) \
+                if trigger == "wakeword" else None
+            if resume is not None and person_id is None:
+                person_id = resume.person_id
             session = await self._create(
                 trigger=trigger, endpoint_id=endpoint_id, endpoint_name=endpoint.name,
                 room_id=endpoint.room_id, person_id=person_id, audio=audio_port,
@@ -150,6 +184,13 @@ class ConversationManager:
                 max_utt_s=endpoint.config.conversation.max_utterance_s,
                 has_camera=bool(endpoint.primary(DeviceRole.CAMERA)),
                 has_display=bool(endpoint.primary(DeviceRole.DISPLAY)))
+            if resume is not None:
+                session.ctx.previous = list(resume.turns)
+                session.ctx.previous_age_s = time.monotonic() - resume.ended_at
+                session.resumed_from = resume.session_id
+                self._recent.pop(endpoint_id, None)
+            if wake_audio is not None:
+                session.add_voice(wake_audio)
             self._by_endpoint[endpoint_id] = session
         await session.start(instruction)
         for hook in self._start_hooks:
@@ -214,12 +255,63 @@ class ConversationManager:
             user = await s.scalar(select(User).where(User.person_id == person_id))
         return (person.name if person else None), (user.role if user and not user.disabled else None)
 
+    async def _visible_person(self, endpoint_id: str) -> tuple[str, str] | None:
+        if self.person_resolver is None:
+            return None
+        try:
+            return await self.person_resolver(endpoint_id)
+        except Exception as exc:
+            log.debug("person resolver failed", endpoint=endpoint_id, error=str(exc))
+            return None
+
+    async def _resume_candidate(self, endpoint_id: str, cfg: Any, wake_audio: np.ndarray | None,
+                                seen_person: str | None) -> _Recent | None:
+        """The previous conversation at this endpoint, if a new wakeword should continue it."""
+        recent = self._recent.get(endpoint_id)
+        if recent is None or cfg.resume_window_s <= 0 \
+                or time.monotonic() - recent.ended_at > cfg.resume_window_s:
+            return None
+        if cfg.speaker_check:
+            if seen_person and recent.person_id and seen_person != recent.person_id:
+                log.info("new conversation: camera sees another person", endpoint=endpoint_id)
+                return None
+            if self.voice is not None and wake_audio is not None and recent.voice is not None:
+                emb = await asyncio.to_thread(self.voice.embed, wake_audio)
+                if emb is not None:
+                    sim = similarity(emb, recent.voice)
+                    log.info("speaker comparison", endpoint=endpoint_id, similarity=round(sim, 2))
+                    if sim < OTHER_SPEAKER_SIMILARITY:
+                        return None
+        return recent
+
+    def _remember_for_resume(self, session: ConversationSession, reason: str) -> _Recent | None:
+        endpoint_id = session.endpoint_id
+        if endpoint_id is None:
+            return None
+        if reason in NO_RESUME_REASONS or not session.user_turns:
+            self._recent.pop(endpoint_id, None)
+            return None
+        turns = list(session.ctx.previous) + [(e.role, e.text) for e in session.transcript
+                                              if e.role in ("user", "assistant") and e.text.strip()]
+        recent = _Recent(session.id, time.monotonic(), turns[-2 * PREVIOUS_TURNS:], session.ctx.person_id, None)
+        self._recent[endpoint_id] = recent
+        return recent
+
+    async def _add_voice(self, recent: _Recent, audio: list[np.ndarray]) -> None:
+        """Voice fingerprint of the finished conversation (computed after it was recorded)."""
+        if self.voice is not None and sum(a.size for a in audio) >= SR:
+            recent.voice = await asyncio.to_thread(self.voice.embed, np.concatenate(audio))
+
     async def _ended(self, session: ConversationSession, reason: str) -> None:
         self._by_id.pop(session.id, None)
         if session.endpoint_id and self._by_endpoint.get(session.endpoint_id) is session:
             del self._by_endpoint[session.endpoint_id]
+        recent = self._remember_for_resume(session, reason)
+        audio, session.voice_audio = session.voice_audio, []  # raw speech is not kept longer
         await self.repo.finish(session.id, reason, person_id=session.ctx.person_id,
                                language=session.ctx.language)
+        if recent is not None and audio:
+            spawn(self._add_voice(recent, audio), name=f"voice:{session.id}")
         if session.user_turns:
             await self.jobs.enqueue("memory.extract", {"session_id": session.id},
                                     dedup_key=f"memory.extract:{session.id}", delay_s=2)

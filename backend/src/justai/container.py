@@ -105,6 +105,14 @@ class Container:
             db=self.db, bus=self.bus, audio=self.audio, endpoints=self.endpoints, rooms=self.rooms,
             router=self.ai, registry=self.tools, executor=self.executor, jobs=self.jobs,
             recall=_LazyRecall(self))
+        speaker_model = settings.models_dir / "speaker" / "wespeaker_en_voxceleb_resnet34.onnx"
+        if speaker_model.exists():
+            from justai.audio.speaker import SpeakerEmbedder
+
+            try:
+                self.conversations.voice = SpeakerEmbedder(speaker_model)
+            except Exception as exc:
+                log.warning("speaker model not usable, no voice comparison", error=str(exc))
 
         # plugins
         from justai.plugins.backend import CoreServicesBackend

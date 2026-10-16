@@ -100,6 +100,16 @@ class VisionExtension:
             self.engine.background_slowdown = 2.0 if self.c.conversations.active() else 1.0
 
         self.c.bus.subscribe("conversation.session.*", slow_down, name="vision-priority")
+        self.c.conversations.person_resolver = self._person_at_endpoint
+
+    async def _person_at_endpoint(self, endpoint_id: str) -> tuple[str, str] | None:
+        """The one identified person the endpoint camera sees right now (None if 0 or several)."""
+        endpoint = await self.c.endpoints.get(endpoint_id)
+        camera = endpoint.primary(DeviceRole.CAMERA)
+        if not camera:
+            return None
+        people = self.engine.visible_people(camera)
+        return people[0] if len(people) == 1 else None
 
     async def stop(self) -> None:
         await self.states.stop()

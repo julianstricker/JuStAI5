@@ -89,6 +89,8 @@ const DEFAULT_CONFIG: EndpointConfig = {
     default_role: "resident",
     follow_up_listening: true,
     send_video: false,
+    resume_window_s: 300,
+    speaker_check: true,
   },
 };
 
@@ -503,6 +505,30 @@ function EndpointModal({
                   onChange={(v) =>
                     upd("conversation", {
                       end_of_utterance_silence_ms: Number(v),
+                    })
+                  }
+                />
+              </Group>
+              <Group grow align="flex-end">
+                <NumberInput
+                  label="Gespräch fortsetzen innerhalb (min)"
+                  description="Neues Wakeword knüpft an das letzte Gespräch an; 0 = immer neu"
+                  min={0}
+                  max={60}
+                  value={Math.round(
+                    (config.conversation.resume_window_s ?? 300) / 60,
+                  )}
+                  onChange={(v) =>
+                    upd("conversation", { resume_window_s: Number(v) * 60 })
+                  }
+                />
+                <Switch
+                  label="Nur bei gleichem Sprecher fortsetzen"
+                  description="Stimme (Wakeword) und Kamera; nichts wird gespeichert"
+                  checked={config.conversation.speaker_check ?? true}
+                  onChange={(e) =>
+                    upd("conversation", {
+                      speaker_check: e.currentTarget.checked,
                     })
                   }
                 />

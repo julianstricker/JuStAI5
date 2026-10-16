@@ -426,3 +426,23 @@ def test_voice_profile_core_without_llm(world: World) -> None:
         for p in ok(api.get("/api/people")):
             if p["id"] not in before_ids:
                 api.delete(f"/api/people/{p['id']}")
+
+
+def test_realtime_mode_conversation_with_language_and_vocabulary(world: World) -> None:
+    """The mode used in production (Gemini Live): wakeword, German question, answer in the room."""
+    api = world.api
+    ok(api.patch(f"/api/endpoints/{world.endpoints['Wohnzimmer']}", json={"config": {
+        "conversation": {"mode": "realtime", "inactivity_timeout_s": 10, "resume_window_s": 0},
+        "audio": {"duplex": "half", "output_latency_ms": 900}}}))
+    time.sleep(2)
+    world.say("Wohnzimmer", "Hey Jarvis!")
+    assert wait_for(lambda: world.session("Wohnzimmer"), 15), "wakeword did not start a session"
+    time.sleep(1.5)
+    world.say("Wohnzimmer", "Wie heißt die Hauptstadt von Frankreich? Antworte in einem kurzen Satz.",
+              voice="de_DE-thorsten-medium")
+    s = wait_for(lambda: (x := world.session("Wohnzimmer")) and any(
+        t["role"] == "assistant" and "paris" in t["text"].lower() for t in x["transcript"]) and x, 60)
+    assert s, f"no realtime answer: {world.session('Wohnzimmer')}"
+    user = " ".join(t["text"] for t in s["transcript"] if t["role"] == "user").lower()
+    assert "frankreich" in user, f"German speech not transcribed as German: {user!r}"
+    api.post(f"/api/conversations/{s['id']}/end")

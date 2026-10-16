@@ -85,6 +85,9 @@ class ProcessorStats:
     frames: int = 0
     gated_frames: int = 0
     suppressed_wakes: int = 0
+    # Speech-like frames dropped by the half-duplex echo gate. On cameras that mute their
+    # microphone while speaking (C200) this is mostly the user talking too early.
+    gated_speech_frames: int = 0
     processing_ms: float = 0.0
 
 
@@ -241,6 +244,8 @@ class EndpointAudioProcessor:
         st.gated, st.echo_window, st.speech = gated, echo_window, self._speech
         if gated:
             st.gated_frames += 1
+            if echo_window and vad >= 0.6 and raw_db > self._raw_noise_db + 12:
+                st.gated_speech_frames += 1
         out.frames.append(ProcessedFrame(t, processed, vad, self._speech, gated, echo_window))
         self._run_wakeword(t, processed, level, vad, echo_window, out)
 

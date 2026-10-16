@@ -41,6 +41,29 @@ Gemini-Standards. Vom Admin konfigurierte Rollen bleiben unverändert.
 
 Pro Endpoint kann der Modus überschrieben werden (`conversation.mode`).
 
+### Spracherkennung
+
+* **Sprachen**: Die konfigurierten Sprachen (Hauptsprache zuerst) gehen als erwartete
+  Sprachen an die Erkennung, an Gemini Live als `language_codes`. Vorher erkannte die
+  automatische Spracherkennung kurze Schnipsel oft als Spanisch oder Hindi. In der
+  Pipeline wird ein Ergebnis in einer nicht erlaubten Sprache in der Gesprächssprache
+  neu erkannt.
+* **Vokabular**: Name des Assistenten, „Jarvis“, Räume und Namen von Personen und
+  Tieren gehen als bevorzugte Begriffe an die Erkennung (Gemini `custom_vocabulary`,
+  faster-whisper `initial_prompt`).
+* **Pausen**: Gemini beendet den Benutzerbeitrag erst nach 1,0 s Stille mit
+  unempfindlicher Ende-Erkennung (Plugin-Einstellung `vad_silence_ms`). Vorher wurde
+  eine Denkpause von 0,7 s als Satzende gewertet. Der Assistent begann zu antworten,
+  und bei Halbduplex-Kameras fiel der Rest des Satzes in die Echosperre.
+* **Messung**: Jedes Gespräch speichert, wie viel sprachähnlicher Ton in die
+  Echosperre fiel (`gated_speech_ms` im Gesprächsverlauf, Log „speech during echo
+  gate“). Viel davon heißt: Die Sperre ist für dieses Gerät zu lang.
+
+Prüfstand (`scripts`-unabhängig, im Container): deutsche Testsätze in
+Kameraqualität (8 kHz, Raumrauschen) erkennt Gemini Live mit und ohne diese
+Einstellungen zu ~99 % richtig. Die Fehler im echten Betrieb entstehen also vor allem
+durch abgeschnittene oder zerteilte Sätze, nicht durch die Erkennung selbst.
+
 ## Fallback und Ausfälle
 
 * Fällt der primäre Provider aus (Fehler, Timeout, kein erstes Token nach 25 s), wird

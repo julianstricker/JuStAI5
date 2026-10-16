@@ -140,7 +140,17 @@ class ConversationSession:
         # Called once when enough speech for a voice identification has been collected.
         self.on_voice_ready: Callable[[ConversationSession], Coroutine[Any, Any, None]] | None = None
         self._voice_ready_sent = False
+        self.gated_speech_at_start = self._gated_speech_frames()
         self.sm.on_change(self._state_changed)
+
+    def _gated_speech_frames(self) -> int:
+        processor = getattr(self.audio, "processor", None)
+        return int(getattr(getattr(processor, "stats", None), "gated_speech_frames", 0))
+
+    @property
+    def gated_speech_ms(self) -> int:
+        """Speech-like audio the echo gate dropped during this conversation (10 ms frames)."""
+        return (self._gated_speech_frames() - self.gated_speech_at_start) * 10
 
     def add_voice(self, pcm: np.ndarray) -> None:
         if self._voice_samples < 12 * SR:
@@ -370,8 +380,12 @@ class RealtimeDriver:
 
     async def start(self) -> None:
         specs = self.s.deps.registry.specs(self.s.permissions)
+        settings = self.s.deps.settings
+        primary = self.s.ctx.language or settings.default_language
         config = RealtimeConfig(model="", instructions=self.system_prompt, tools=specs,
-                                language=self.s.ctx.language)
+                                language=primary,
+                                languages=[primary, *[x for x in settings.languages if x != primary]],
+                                vocabulary=self.s.ctx.vocabulary)
         self.rt, cand = await self.s.deps.router.connect_realtime(config)
         log.info("realtime connected", session=self.s.id, provider=cand.ref.provider,
                  model=cand.ref.model)
@@ -547,8 +561,15 @@ class PipelineDriver:
     async def _handle_audio(self, pcm: np.ndarray) -> None:
         s = self.s
         try:
-            result = await s.deps.router.transcribe(AudioChunk(pcm.astype(np.int16), SR),
-                                                    language=None)
+            chunk = AudioChunk(pcm.astype(np.int16), SR)
+            prompt = ", ".join(s.ctx.vocabulary) + "." if s.ctx.vocabulary else None
+            result = await s.deps.router.transcribe(chunk, language=None, prompt=prompt)
+            allowed = s.deps.settings.languages
+            if result.language and allowed and result.language not in allowed:
+                # Short or unclear utterances get detected as random languages: retry in the
+                # session language instead of answering gibberish.
+                result = await s.deps.router.transcribe(
+                    chunk, language=s.ctx.language or s.deps.settings.default_language, prompt=prompt)
         except Exception as exc:
             log.warning("stt failed", session=s.id, error=str(exc))
             s.sm.try_transition(SessionState.LISTENING, "stt_failed")

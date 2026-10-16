@@ -60,7 +60,7 @@ class SessionRepository:
             s.add(TranscriptTurn(session_id=session_id, role=role, text=text, meta=meta))
 
     async def finish(self, session_id: str, reason: str, *, person_id: str | None,
-                     language: str | None) -> None:
+                     language: str | None, meta: dict[str, Any] | None = None) -> None:
         async with self.db.session() as s:
             row = await s.get(SessionRow, session_id)
             if row is None:
@@ -69,6 +69,8 @@ class SessionRepository:
             row.end_reason = reason
             row.person_id = person_id or row.person_id
             row.language = language or row.language
+            if meta:
+                row.meta = {**(row.meta or {}), **meta}
 
     async def list(self, limit: int = 50) -> builtins.list[SessionRow]:
         async with self.db.session() as s:
@@ -222,6 +224,7 @@ class ConversationManager:
         settings = await self.router.settings()
         rooms = await self.rooms.list()
         room = next((r for r in rooms if r.id == room_id), None)
+        vocabulary = await self._vocabulary(settings.assistant_name, [r.name for r in rooms])
         person_name, person_role = await self._person(person_id)
         mode = await self._mode(endpoint_mode, audio is not None)
         session_id = new_id("sess")
@@ -229,7 +232,7 @@ class ConversationManager:
             session_id=session_id, endpoint_name=endpoint_name, room_id=room_id,
             room_name=room.name if room else None, person_id=person_id, person_name=person_name,
             language=language or settings.default_language, rooms=[r.name for r in rooms],
-            has_camera=has_camera, has_display=has_display, trigger=trigger)
+            has_camera=has_camera, has_display=has_display, trigger=trigger, vocabulary=vocabulary)
         deps = SessionDeps(router=self.router, registry=self.registry, executor=self.executor,
                            bus=self.bus, store=self.repo, recall=self.recall, settings=settings)
         session = ConversationSession(
@@ -253,6 +256,13 @@ class ConversationManager:
             log.warning("realtime provider unavailable, using pipeline")
             return "pipeline"
         return wanted
+
+    async def _vocabulary(self, assistant_name: str, rooms: builtins.list[str]) -> builtins.list[str]:
+        """Words speech recognition tends to get wrong: names of the assistant, people, pets, rooms."""
+        async with self.db.session() as s:
+            names = (await s.scalars(select(Person.name).where(Person.merged_into.is_(None)))).all()
+        words = [assistant_name, "Jarvis", *rooms, *names]
+        return list(dict.fromkeys(w.strip() for w in words if w and w.strip()))[:100]
 
     async def _person(self, person_id: str | None) -> tuple[str | None, str | None]:
         if not person_id:
@@ -337,8 +347,12 @@ class ConversationManager:
             del self._by_endpoint[session.endpoint_id]
         recent = self._remember_for_resume(session, reason)
         audio, session.voice_audio = session.voice_audio, []  # raw speech is not kept longer
+        gated_ms = session.gated_speech_ms
+        if gated_ms:
+            log.info("speech during echo gate", session=session.id, endpoint=session.endpoint_id,
+                     gated_speech_ms=gated_ms, user_turns=session.user_turns)
         await self.repo.finish(session.id, reason, person_id=session.ctx.person_id,
-                               language=session.ctx.language)
+                               language=session.ctx.language, meta={"gated_speech_ms": gated_ms})
         if recent is not None and audio:
             spawn(self._add_voice(recent, audio), name=f"voice:{session.id}")
         if session.user_turns:

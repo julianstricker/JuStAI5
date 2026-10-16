@@ -35,6 +35,7 @@ class ConversationContext:
     # Continuation of an earlier conversation at this endpoint (role, text), oldest first.
     previous: list[tuple[str, str]] = field(default_factory=list)
     previous_age_s: float | None = None
+    vocabulary: list[str] = field(default_factory=list)  # names to bias speech recognition
 
 
 def build_system_prompt(settings: AISettings, ctx: ConversationContext, memories: list[str],

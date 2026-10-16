@@ -32,7 +32,8 @@ async def history(_: User, c: C, limit: int = 50) -> list[dict[str, Any]]:
     return [{"id": r.id, "endpoint_id": r.endpoint_id, "room_id": r.room_id,
              "person_id": r.person_id, "trigger": r.trigger, "mode": r.mode,
              "language": r.language, "started_at": r.started_at, "ended_at": r.ended_at,
-             "end_reason": r.end_reason} for r in await c.conversations.repo.list(limit)]
+             "end_reason": r.end_reason, "gated_speech_ms": (r.meta or {}).get("gated_speech_ms")}
+            for r in await c.conversations.repo.list(limit)]
 
 
 @router.get("/{session_id}/turns")

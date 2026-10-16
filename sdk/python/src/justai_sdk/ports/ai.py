@@ -114,6 +114,10 @@ class RealtimeConfig(BaseModel):
     instructions: str = ""
     voice: str | None = None
     language: str | None = None
+    # Expected spoken languages (ISO 639-1, primary first) and terms to bias recognition
+    # towards (names of people, pets, rooms, the assistant).
+    languages: list[str] = Field(default_factory=list)
+    vocabulary: list[str] = Field(default_factory=list)
     tools: list[ToolSpec] = Field(default_factory=list)
     input_sample_rate: int = 16000
     transcribe_input: bool = True

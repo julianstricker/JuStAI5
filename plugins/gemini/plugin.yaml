@@ -23,7 +23,7 @@ config_schema:
       description: Stimme für die Live API (z. B. Kore, Puck, Charon, Aoede)
     vad_silence_ms:
       type: integer
-      default: 700
+      default: 1000
       minimum: 300
       maximum: 3000
   additionalProperties: false

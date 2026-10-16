@@ -243,6 +243,9 @@ class GeminiRealtimeSession:
             await self._cm.__aexit__(None, None, None)
 
 
+BCP47 = {"de": "de-DE", "it": "it-IT", "en": "en-US", "fr": "fr-FR", "es": "es-ES"}
+
+
 class GeminiRealtime:
     provider_id = "gemini"
     locality = Locality.CLOUD
@@ -258,14 +261,19 @@ class GeminiRealtime:
             response_modalities=[types.Modality.AUDIO],
             system_instruction=config.instructions or None,
             tools=_tools(config.tools, blocking=True) or None,
-            speech_config=types.SpeechConfig(voice_config=types.VoiceConfig(
+            speech_config=types.SpeechConfig(language_code=config.language or None, voice_config=types.VoiceConfig(
                 prebuilt_voice_config=types.PrebuiltVoiceConfig(
                     voice_name=config.voice or self.default_voice))),
-            input_audio_transcription=types.AudioTranscriptionConfig() if config.transcribe_input else None,
+            input_audio_transcription=types.AudioTranscriptionConfig(
+                language_codes=[BCP47.get(x, x) for x in config.languages] or None,
+                custom_vocabulary=config.vocabulary or None) if config.transcribe_input else None,
             output_audio_transcription=types.AudioTranscriptionConfig() if config.transcribe_output else None,
             realtime_input_config=types.RealtimeInputConfig(
                 automatic_activity_detection=types.AutomaticActivityDetection(
-                    silence_duration_ms=self.silence_ms, prefix_padding_ms=200)),
+                    silence_duration_ms=self.silence_ms, prefix_padding_ms=300,
+                    # A short pause to think must not end the user's turn: with a half-duplex
+                    # camera the rest of the sentence would fall into the echo gate.
+                    end_of_speech_sensitivity=types.EndSensitivity.END_SENSITIVITY_LOW)),
         )
         cm = self.client.aio.live.connect(model=config.model, config=live_config)
         session = await cm.__aenter__()
@@ -298,7 +306,7 @@ class GeminiPlugin(Plugin):
         self.ctx.register_provider("llm", GeminiLLM(self.client))
         self.ctx.register_provider("realtime", GeminiRealtime(
             self.client, self.ctx.config.get("default_voice", "Kore"),
-            int(self.ctx.config.get("vad_silence_ms", 700))))
+            int(self.ctx.config.get("vad_silence_ms", 1000))))
 
     async def health(self) -> PluginHealth:
         if self.client is None:

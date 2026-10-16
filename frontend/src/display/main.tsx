@@ -286,6 +286,7 @@ function App() {
   const [running, setRunning] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [level, setLevel] = useState(0);
+  const [audioBlocked, setAudioBlocked] = useState(false);
   const media = useRef<DeviceMedia | null>(null);
   const previewRef = useRef<HTMLDivElement | null>(null);
   const renderFailed = useRef<string | null>(null);
@@ -317,7 +318,9 @@ function App() {
     setMediaError(null);
     try {
       media.current ??= new DeviceMedia((d) => sendBinaryRef.current(d));
+      media.current.onAudioState = setAudioBlocked;
       await media.current.start(f);
+      setAudioBlocked(media.current.suspended);
       if (previewRef.current && f.camera !== "off") {
         const v = media.current.video;
         v.style.width = "100%";
@@ -332,6 +335,27 @@ function App() {
       );
     }
   };
+
+  // Start by itself when the features are known (reopened app, automatic reload after an
+  // update): camera and microphone work with the permission granted before. Only audio may
+  // need a touch, then the first touch anywhere resumes it.
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (autoStarted.current || !features || setupOpen || !needsMedia) return;
+    autoStarted.current = true;
+    void start(features);
+  });
+
+  useEffect(() => {
+    if (!audioBlocked) return;
+    const resume = () => void media.current?.resume();
+    document.addEventListener("pointerdown", resume);
+    document.addEventListener("keydown", resume);
+    return () => {
+      document.removeEventListener("pointerdown", resume);
+      document.removeEventListener("keydown", resume);
+    };
+  }, [audioBlocked]);
 
   // Keep the screen on while the app runs; refresh the mic level indicator.
   useEffect(() => {
@@ -352,7 +376,10 @@ function App() {
     acquire();
     const onVisible = () => document.visibilityState === "visible" && acquire();
     document.addEventListener("visibilitychange", onVisible);
-    const timer = window.setInterval(() => setLevel(media.current?.micLevel ?? 0), 250);
+    const timer = window.setInterval(
+      () => setLevel(media.current?.micLevel ?? 0),
+      250,
+    );
     return () => {
       document.removeEventListener("visibilitychange", onVisible);
       window.clearInterval(timer);
@@ -403,6 +430,7 @@ function App() {
           localStorage.setItem(FEATURES_KEY, JSON.stringify(f));
           setFeatures(f);
           setSetupOpen(false);
+          autoStarted.current = true;
           if (f.mic || f.speaker || f.camera !== "off") void start(f);
           else void media.current?.stop().then(() => setRunning(false));
         }}
@@ -435,6 +463,11 @@ function App() {
                 ? "Gespräch (Cloud)"
                 : "Gespräch"
               : "hört auf Wakeword"}
+          </Text>
+        )}
+        {running && audioBlocked && (
+          <Text size="sm" c="orange">
+            Ton pausiert – einmal tippen
           </Text>
         )}
         <ActionIcon

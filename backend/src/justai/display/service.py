@@ -317,7 +317,9 @@ class DisplayService:
                     raise RoutingDenied("showing a camera stream needs camera.read")
                 token = self.c.auth.issue_scoped_token(component["device_id"], "display-camera",
                                                       timedelta(hours=1))
-                return {**component, "src": f"/api/display/camera/{component['device_id']}.mp4?token={token}"}
+                rt = self.c.devices.get(component["device_id"])
+                ext = "mp4" if rt is None or rt.sub_stream or rt.stream else "mjpeg"  # app cameras: MJPEG
+                return {**component, "src": f"/api/display/camera/{component['device_id']}.{ext}?token={token}"}
             if "children" in component:
                 return {**component, "children": [walk(ch) for ch in component["children"]]}
             return component

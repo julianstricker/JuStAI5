@@ -1,4 +1,5 @@
-// Live camera view from an endless fragmented-MP4 stream (proxied go2rtc).
+// Live camera view from an endless fragmented-MP4 stream (proxied go2rtc), or MJPEG
+// for cameras without a go2rtc stream (device app).
 // A plain <video autoPlay> is not reliable for this: autoplay often does not start
 // (the element sits on the first frame and looks like a snapshot), and a progressive
 // stream drifts further behind real time. This player starts playback explicitly,
@@ -14,6 +15,15 @@ export function LiveVideo({
   src: string;
   rounded?: number;
 }) {
+  // Cameras without a go2rtc stream (device app) deliver MJPEG instead of MP4.
+  return /\.mjpeg($|\?)/.test(src) ? (
+    <LiveMjpeg src={src} rounded={rounded} />
+  ) : (
+    <LiveMp4 src={src} rounded={rounded} />
+  );
+}
+
+function LiveMp4({ src, rounded }: { src: string; rounded: number }) {
   const ref = useRef<HTMLVideoElement>(null);
   const [state, setState] = useState<"connecting" | "playing" | "error">(
     "connecting",
@@ -97,22 +107,91 @@ export function LiveVideo({
         style={{ width: "100%", display: "block", borderRadius: rounded }}
       />
       {state !== "playing" && (
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#ddd",
-            fontSize: 14,
-          }}
-        >
+        <Overlay>
           {state === "error"
             ? "Livebild nicht verfügbar – neuer Versuch …"
             : "Verbinde mit Kamera …"}
-        </div>
+        </Overlay>
       )}
+    </div>
+  );
+}
+
+const NO_FRAME_HINT_MS = 8000;
+
+function LiveMjpeg({ src, rounded }: { src: string; rounded: number }) {
+  const [attempt, setAttempt] = useState(0);
+  const [state, setState] = useState<
+    "connecting" | "playing" | "waiting" | "error"
+  >("connecting");
+
+  useEffect(() => {
+    setState("connecting");
+    // The stream only carries new frames: none for a while means the device sends no camera images.
+    const hint = window.setTimeout(
+      () => setState((s) => (s === "connecting" ? "waiting" : s)),
+      NO_FRAME_HINT_MS,
+    );
+    return () => window.clearTimeout(hint);
+  }, [src, attempt]);
+
+  useEffect(() => {
+    if (state !== "error") return;
+    const retry = window.setTimeout(() => setAttempt((a) => a + 1), 3000);
+    return () => window.clearTimeout(retry);
+  }, [state]);
+
+  const url = attempt
+    ? `${src}${src.includes("?") ? "&" : "?"}r=${attempt}`
+    : src;
+  return (
+    <div
+      style={{
+        position: "relative",
+        width: "100%",
+        background: "#000",
+        borderRadius: rounded,
+        minHeight: 120,
+      }}
+    >
+      {/* Unmounting the <img> ends the HTTP stream. */}
+      <img
+        key={url}
+        src={url}
+        alt="Livebild"
+        onLoad={() => setState("playing")}
+        onError={() => setState("error")}
+        style={{ width: "100%", display: "block", borderRadius: rounded }}
+      />
+      {state !== "playing" && (
+        <Overlay>
+          {state === "error"
+            ? "Livebild nicht verfügbar – neuer Versuch …"
+            : state === "waiting"
+              ? "Kein Kamerabild – ist die Kamera in der Geräte-App eingeschaltet und die App im Vordergrund?"
+              : "Verbinde mit Kamera …"}
+        </Overlay>
+      )}
+    </div>
+  );
+}
+
+function Overlay({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        textAlign: "center",
+        padding: 16,
+        color: "#ddd",
+        fontSize: 14,
+      }}
+    >
+      {children}
     </div>
   );
 }

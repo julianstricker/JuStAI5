@@ -24,6 +24,8 @@ export class DeviceMedia {
   private cameraTimer: number | undefined;
   readonly video: HTMLVideoElement = document.createElement("video");
   micLevel = 0;
+  /** Called when the browser blocks or releases audio (autoplay rules). */
+  onAudioState: ((suspended: boolean) => void) | null = null;
 
   constructor(private send: (data: ArrayBuffer | Blob) => void) {
     this.video.muted = true;
@@ -44,8 +46,11 @@ export class DeviceMedia {
         ctx = new AudioContext({ latencyHint: "interactive" });
       }
       this.ctx = ctx;
+      ctx.onstatechange = () => this.onAudioState?.(ctx.state === "suspended");
       await ctx.audioWorklet.addModule("/app-audio-worklet.js");
-      if (ctx.state === "suspended") await ctx.resume();
+      // Without a user gesture (e.g. after the automatic reload on updates) resume() may never
+      // settle: do not wait for it, the camera must start anyway. A later tap resumes audio.
+      if (ctx.state === "suspended") void ctx.resume().catch(() => undefined);
       if (features.speaker) {
         this.playback = new AudioWorkletNode(ctx, "justai-playback", {
           outputChannelCount: [1],

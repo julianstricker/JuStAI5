@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -161,19 +160,10 @@ async def live_mjpeg(device_id: str, p: User, c: C) -> StreamingResponse:
     rt = c.devices.require(device_id)
     if rt.handle is None:
         raise Unavailable("device not connected")
-    handle = rt.handle
-
-    async def body() -> AsyncIterator[bytes]:
-        last: bytes | None = None
-        while True:
-            jpeg = await handle.snapshot()
-            if jpeg and jpeg is not last:
-                last = jpeg
-                yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + jpeg + b"\r\n"
-            await asyncio.sleep(0.2)
+    from justai.display.media import MJPEG_MEDIA_TYPE, mjpeg_frames
 
     await c.audit.record(p.actor, "camera.live_view", device_id)
-    return StreamingResponse(body(), media_type="multipart/x-mixed-replace; boundary=frame",
+    return StreamingResponse(mjpeg_frames(rt.handle.snapshot), media_type=MJPEG_MEDIA_TYPE,
                              headers={"Cache-Control": "no-store"})
 
 

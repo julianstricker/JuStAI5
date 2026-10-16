@@ -15,7 +15,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import TYPE_CHECKING
 
 import cv2
@@ -113,3 +113,19 @@ class BrowserCamera:
             return None
         image = await asyncio.to_thread(cv2.imdecode, np.frombuffer(jpeg, np.uint8), cv2.IMREAD_COLOR)
         return image if image is not None else None
+
+
+MJPEG_MEDIA_TYPE = "multipart/x-mixed-replace; boundary=frame"
+
+
+async def mjpeg_frames(snapshot: Callable[[], Awaitable[bytes | None]],
+                       interval_s: float = 0.2) -> AsyncIterator[bytes]:
+    """Live view for cameras without a go2rtc stream (device app): new frames as MJPEG parts."""
+    last: bytes | None = None
+    while True:
+        with contextlib.suppress(Exception):
+            jpeg = await snapshot()
+            if jpeg and jpeg != last:
+                last = jpeg
+                yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + jpeg + b"\r\n"
+        await asyncio.sleep(interval_s)

@@ -395,7 +395,9 @@ function DeviceDrawer({
                 <Stack>
                   {live ? (
                     device.status === "online" ? (
-                      <LiveVideo src={`/api/devices/${device.id}/live.mp4`} />
+                      <LiveVideo
+                        src={`/api/devices/${device.id}/live.${device.stream ? "mp4" : "mjpeg"}`}
+                      />
                     ) : (
                       <Text c="dimmed">
                         Kamera verbindet sich ({device.status}) – das Livebild

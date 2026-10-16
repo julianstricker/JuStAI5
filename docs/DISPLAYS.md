@@ -25,7 +25,7 @@ Unter `https://HOST:8443/app` läuft derselbe Client als installierbare Web-App
 | --- | --- |
 | Mikrofon | `getUserMedia` mit Echo-Unterdrückung, Rauschunterdrückung und AGC des Browsers → AudioWorklet → PCM16, 16 kHz, 20-ms-Rahmen → Wakeword, Gespräche, Sprecherkennung |
 | Lautsprecher | Sprachausgabe des Output Routers als PCM16, 16 kHz → AudioWorklet mit 60 ms Jitterpuffer |
-| Kamera | vordere oder hintere Kamera, alle 500 ms ein JPEG (max. 960 px breit) → Vision, Gesichtserkennung, Snapshot, Live-Ansicht (MJPEG `GET /api/devices/{id}/live.mjpeg`) |
+| Kamera | vordere oder hintere Kamera, alle 500 ms ein JPEG (max. 960 px breit) → Vision, Gesichtserkennung, Snapshot, Live-Ansicht in der Admin-UI und auf Displays (MJPEG statt MP4, da es keinen go2rtc-Stream gibt) |
 | Bildschirm | wie jedes Display (Darstellungen, Indikator „hört zu“) |
 
 **Einrichten**
@@ -48,8 +48,12 @@ Unter `https://HOST:8443/app` läuft derselbe Client als installierbare Web-App
    eingeschaltet, entsteht der Endpoint beim nächsten Verbinden.
 
 Die Auswahl lässt sich über das Zahnrad oben rechts ändern; das Gerät meldet sich
-dann mit den neuen Fähigkeiten an. Browser starten Audio erst nach einer
-Berührung: Nach dem Öffnen erscheint deshalb „Tippen zum Starten“. Solange die App
+dann mit den neuen Fähigkeiten an. Ist die Auswahl gespeichert, startet die App
+Mikrofon, Lautsprecher und Kamera beim Öffnen selbst, auch nach dem automatischen
+Neuladen bei einem JuStAI5-Update. Lässt der Browser den Ton ohne Berührung nicht
+zu, läuft die Kamera trotzdem, und oben rechts steht „Ton pausiert – einmal
+tippen“; eine Berührung irgendwo genügt. Nur wenn Mikrofon oder Kamera nicht
+starten (z. B. Zugriff noch nicht erlaubt), erscheint „Tippen zum Starten“. Solange die App
 offen ist, verhindert eine Wake-Lock-Sperre, dass der Bildschirm ausgeht. Läuft
 die Seite im Hintergrund, schicken Browser keine Kamerabilder mehr, und mobile
 Browser beenden oft auch das Mikrofon. Für ein dauerhaftes Raumgerät deshalb ein

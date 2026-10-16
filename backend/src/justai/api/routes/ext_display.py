@@ -62,6 +62,20 @@ async def camera(device_id: str, token: str, c: C) -> StreamingResponse:
     return StreamingResponse(body(), media_type="video/mp4")
 
 
+@router.get("/camera/{device_id}.mjpeg")
+async def camera_mjpeg(device_id: str, token: str, c: C) -> StreamingResponse:
+    """Camera without a go2rtc stream (device app) for a display, as MJPEG."""
+    from justai.display.media import MJPEG_MEDIA_TYPE, mjpeg_frames
+
+    subject = c.auth.verify_scoped_token(token, "display-camera")
+    if subject != device_id:
+        raise Forbidden("token not valid for this camera")
+    rt = c.devices.require(device_id)
+    assert rt.handle is not None
+    return StreamingResponse(mjpeg_frames(rt.handle.snapshot), media_type=MJPEG_MEDIA_TYPE,
+                             headers={"Cache-Control": "no-store"})
+
+
 @admin_router.get("")
 async def displays(_: User, c: C) -> list[dict[str, Any]]:
     return await _ext(c).service.list()  # type: ignore[no-any-return]

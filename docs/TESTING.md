@@ -8,7 +8,7 @@ und **nicht getestet**.
 
 | Suite | Ort | Braucht | Ergebnis |
 | --- | --- | --- | --- |
-| Unit | `backend/tests/unit` | nichts | 116 bestanden |
+| Unit | `backend/tests/unit` | nichts | 118 bestanden |
 | Audio mit echten Modellen | `backend/tests/audio` | Modelle (`JUSTAI_TEST_MODELS_DIR`) | 5 bestanden |
 | Datenbank | `backend/tests/db` | PostgreSQL + pgvector (`JUSTAI_TEST_DATABASE_URL`) | 3 bestanden |
 | End-to-End | `backend/tests/e2e` | laufende Instanz (`JUSTAI_E2E_URL`, `JUSTAI_E2E_PASSWORD`), Gemini | 11 Tests (siehe Hinweis) |
@@ -103,7 +103,10 @@ Legende: ✅ nachgewiesen · 🟡 teilweise (was fehlt, steht dabei) · ⏳ offe
   braucht es ein Gerät mit echtem Full-Duplex (z. B. USB-Freisprecheinrichtung).
 * **Display auf einem Fernseher**: bisher nur im Desktop-Browser geprüft.
 * **Geräte-App auf echten Handys/Tablets**: Setup-Seite, Kopplung und
-  Einstellungskarte im Desktop-Browser geprüft, der Medienweg per E2E-Test. Echo-
+  Einstellungskarte im Desktop-Browser geprüft, der Medienweg per E2E-Test.
+  Headless-Chrome mit simulierter Kamera/Mikrofon und strenger Autoplay-Regel:
+  nach dem Koppeln und nach einem Neuladen ohne Berührung kommen Kamerabilder und
+  Mikrofon an; das Livebild (MJPEG) läuft in der Admin-UI. Echo-
   Unterdrückung des Browsers, Hintergrundverhalten mobiler Browser und die
   Zertifikatsinstallation auf Android/iOS sind noch nicht auf echten Geräten
   getestet.
@@ -121,6 +124,7 @@ Unit-Tests abgedeckt hatten:
 | Sandbox-Testlauf je nach Zufalls-Verzeichnisname nicht importierbar | fester Pfad, `pythonpath` |
 | Generierter Klassenname umbenannt, Tests fanden ihn nicht | Alias statt Umbenennen |
 | Zweites Tool-Projekt mit gleichem Namen brach ab (Unique-Constraint) | eindeutige Plugin-IDs |
+| Geräte-App: Livebild in der Admin-UI „nicht verfügbar“ (fragte MP4 von go2rtc an, App-Kameras haben keinen Stream); nach dem automatischen Neuladen bei Updates keine Kamera/kein Mikrofon mehr, bis jemand tippt | behoben: MJPEG-Livebild, Selbststart, Ton per Berührung nachholbar; im Browser geprüft |
 | Display: doppelte Achsenbeschriftung, „Gespräch“-Anzeige durch Text-Chats, unklare Fehler bei unsichtbarer Seite, kein Neuladen nach Updates | behoben, im Browser geprüft |
 | Zeitzone der Einstellungen wurde von Automationen ignoriert; Schalter ohne Funktion in den Einstellungen | verdrahtet bzw. entfernt |
 | Kein Schutz gegen Passwort-Raten, keine Security-Header | Drosselung, CSP u. a. |

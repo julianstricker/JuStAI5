@@ -8,7 +8,7 @@ und **nicht getestet**.
 
 | Suite | Ort | Braucht | Ergebnis |
 | --- | --- | --- | --- |
-| Unit | `backend/tests/unit` | nichts | 118 bestanden |
+| Unit | `backend/tests/unit` | nichts | 119 bestanden |
 | Audio mit echten Modellen | `backend/tests/audio` | Modelle (`JUSTAI_TEST_MODELS_DIR`) | 5 bestanden |
 | Datenbank | `backend/tests/db` | PostgreSQL + pgvector (`JUSTAI_TEST_DATABASE_URL`) | 3 bestanden |
 | End-to-End | `backend/tests/e2e` | laufende Instanz (`JUSTAI_E2E_URL`, `JUSTAI_E2E_PASSWORD`), Gemini | 11 Tests (siehe Hinweis) |

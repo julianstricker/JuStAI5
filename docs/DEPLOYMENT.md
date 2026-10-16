@@ -25,8 +25,11 @@
 
 ## Installation
 
+Ausführliche Anleitung für Einsteiger (Docker installieren, API-Key, erste Geräte):
+[INSTALLATION.md](INSTALLATION.md). Kurzfassung:
+
 ```bash
-git clone <repo> justai5 && cd justai5
+git clone https://github.com/julianstricker/JuStAI5.git justai5 && cd justai5
 cp .env.example .env        # optional: Port, Admin-Passwort, Google-API-Key, Netzbereiche
 docker compose up -d --build
 docker compose exec core cat /data/initial_admin_password.txt

@@ -44,6 +44,10 @@ class CreateParams(BaseModel):
         "'here' = aktueller Raum."))
     once: bool = Field(False, description="Nur einmal ausführen (z. B. 'das nächste Mal')")
     cooldown_s: float = Field(0, description="Mindestabstand zwischen Ausführungen in Sekunden")
+    not_before: str | None = Field(None, description=(
+        "Frühester Zeitpunkt (lokale Zeit, ISO), vorher wird der Auslöser ignoriert, z. B. 'wenn du mich "
+        "ab morgen 9 Uhr siehst' -> '2026-10-17T09:00:00'"))
+    expires_at: str | None = Field(None, description="Ab diesem Zeitpunkt (lokale Zeit, ISO) deaktivieren")
 
 
 class IdParams(BaseModel):
@@ -153,7 +157,8 @@ class AutomationExtension:
             try:
                 definition = _substitute({
                     "trigger": p.trigger, "conditions": p.conditions, "actions": p.actions,
-                    "options": {"once": p.once, "cooldown_s": p.cooldown_s}}, ctx)
+                    "options": {"once": p.once, "cooldown_s": p.cooldown_s,
+                                "not_before": p.not_before or None, "expires_at": p.expires_at or None}}, ctx)
             except LookupError as exc:
                 if str(exc) == "speaker unknown":
                     return ToolResult.failure("speaker_unknown", "Ich weiß nicht, wer spricht. Bitte die "
@@ -180,7 +185,8 @@ class AutomationExtension:
         reg.register(ToolDefinition(
             name="automation.create",
             description="Legt eine dauerhafte Regel an (Trigger -> Bedingungen -> Aktionen), z. B. 'Wenn du "
-                        "mich das nächste Mal siehst, begrüße mich mit Namen'.",
+                        "mich das nächste Mal siehst, begrüße mich mit Namen' oder 'Wenn du mich ab morgen 9 Uhr "
+                        "siehst, erinnere mich an den Müll' (once + not_before).",
             parameters=CreateParams, category="automation", side_effect=SideEffect.WRITE,
             permissions=[Permission.AUTOMATION_MANAGE]), create)
 

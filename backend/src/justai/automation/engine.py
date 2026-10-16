@@ -265,9 +265,11 @@ class AutomationEngine:
         state = dict(auto.state or {})
         now = time.time()
         if not manual:
-            if opts.expires_at and opts.expires_at < datetime.now(UTC):
+            if opts.expires_at and self._aware(opts.expires_at) < datetime.now(UTC):
                 await self.service.update(auto.id, enabled=False)
                 await self.reload()
+                return False
+            if opts.not_before and datetime.now(UTC) < self._aware(opts.not_before):
                 return False
             if opts.once and state.get("run_count", 0) >= 1:
                 return False
@@ -296,6 +298,10 @@ class AutomationEngine:
             priority=opts.priority, max_attempts=opts.max_retries + 1,
             dedup_key=f"auto:{auto.id}:{event.id if event else now}")
         return True
+
+    def _aware(self, value: datetime) -> datetime:
+        """Times without a zone (as models often write them) are local system time."""
+        return value if value.tzinfo else value.replace(tzinfo=self.tz)
 
     async def run_now(self, automation_id: str) -> None:
         auto = await self.service.get(automation_id)

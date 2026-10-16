@@ -18,11 +18,23 @@ Kamera/Mikrofon ──► go2rtc ──► Audio-Engine (AEC, VAD, Wakeword, Arb
                     Lautsprecher / Display im selben Raum
 ```
 
-## Schnellstart
+**Was man damit machen kann:** „Wenn du mich das nächste Mal ab morgen um 9 Uhr
+siehst, erinnere mich, dass ich den Müll rausbringen soll.“ · „Wo sind meine
+Autoschlüssel? Such mal im Poolhaus.“ · „Wo ist Lucky?“ · „Sag mir Bescheid, wenn
+ein Auto in die Einfahrt fährt.“ · „Zeig mir den Kurs von Apple.“ Mehr:
+[docs/BEISPIELE.md](docs/BEISPIELE.md).
 
-Voraussetzung: Docker mit Compose v2 (Linux-Host empfohlen, x86_64).
+## Installation
+
+**Schritt für Schritt, ohne Vorkenntnisse:** [docs/INSTALLATION.md](docs/INSTALLATION.md)
+(Docker installieren, API-Key, Starten, Handy als Mikrofon, Kameras, Personen).
+
+Kurzfassung für alle, die Docker schon haben (Linux, x86_64, Compose ≥ 2.24):
 
 ```bash
+git clone https://github.com/julianstricker/JuStAI5.git
+cd JuStAI5
+cp .env.example .env        # GOOGLE_API_KEY=… eintragen (oder später in der Oberfläche)
 docker compose up -d --build
 ```
 
@@ -61,6 +73,8 @@ Rollen sofort belegt; oder ein lokales LLM (z. B. Ollama über das Plugin
 
 | Thema | Datei |
 | --- | --- |
+| **Installation Schritt für Schritt** | [docs/INSTALLATION.md](docs/INSTALLATION.md) |
+| **Beispiele: was man fragen kann** | [docs/BEISPIELE.md](docs/BEISPIELE.md) |
 | Architektur, Module, Datenflüsse | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | Technologie-Entscheidungen | [docs/TECH_STACK.md](docs/TECH_STACK.md), [docs/adr/](docs/adr/) |
 | Entwicklung | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) |

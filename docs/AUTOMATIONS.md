@@ -74,7 +74,9 @@ Zeitangaben gelten in der Zeitzone aus *Einstellungen → System* (Standard
 
 `once` (nach dem ersten erfolgreichen Lauf deaktivieren; erneutes Aktivieren macht
 die Regel wieder scharf), `cooldown_s`, `priority`
-(0–3), `max_retries`, `expires_at`, `max_runs_per_hour`.
+(0–3), `max_retries`, `not_before` (Auslöser vorher ignorieren, z. B. „wenn du
+mich **ab morgen 9 Uhr** siehst“), `expires_at` (danach deaktivieren),
+`max_runs_per_hour`. Zeitpunkte ohne Zeitzone gelten in der Systemzeitzone.
 
 ### Ausführung
 
@@ -113,6 +115,11 @@ kommt aus dem Trigger oder der Konfiguration, nie aus einer Modellausgabe.
   Ein (eingespeistes) `vision.person.recognized` im Wohnzimmer startet dort eine
   proaktive Session mit Begrüßung, die Küche bleibt still, `once` deaktiviert die
   Automation danach.
+* Unit: `not_before`/`expires_at` mit lokalen Zeitangaben ohne Zeitzone.
+* Live per Textchat (2026-10-16): „Wenn du mich das nächste Mal ab morgen um 9:00
+  siehst, erinnere mich bitte, dass ich den Müll rausbringen soll.“ ergibt
+  Personen-Trigger, `speak`, `once`, `not_before: 2026-10-17T09:00:00` und die
+  Abwesenheitsbedingung.
 * Manuell gegen die Docker-Instanz: „Wenn du Anna Test das nächste Mal siehst,
   begrüße sie bitte mit ihrem Namen.“ legt eine korrekte Automation an
   (Event-Trigger mit aufgelöster Personen-ID, `assistant.invoke`, `once`).

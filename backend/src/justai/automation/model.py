@@ -134,7 +134,10 @@ class Options(_M):
     cooldown_s: float = Field(0, ge=0)
     priority: int = Field(1, ge=0, le=3)
     max_retries: int = Field(2, ge=0, le=10)
-    expires_at: datetime | None = None
+    not_before: datetime | None = Field(None, description="ignore triggers before this time "
+                                        "(e.g. 'from tomorrow 9:00'); without zone: system time zone")
+    expires_at: datetime | None = Field(None, description="disable after this time; without zone: "
+                                        "system time zone")
     max_runs_per_hour: int = Field(20, ge=1, le=3600)
 
 

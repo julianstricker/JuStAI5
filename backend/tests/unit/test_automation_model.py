@@ -68,3 +68,53 @@ def test_recognition_rules_get_a_default_absence_condition() -> None:
     assert add_default_absence(explicit) == explicit
     other = {"trigger": {"type": "event", "event": "vision.object.appeared"}, "actions": raw["actions"]}
     assert add_default_absence(other) == other
+
+
+def test_not_before_and_expires_at_guard_triggers_in_local_time() -> None:
+    """'Wenn du mich ab morgen 9 Uhr siehst …': triggers before not_before are ignored; times
+    without a zone (as models write them) are system time, not a crash or UTC."""
+    import asyncio
+    from datetime import timedelta
+    from types import SimpleNamespace
+    from zoneinfo import ZoneInfo
+
+    from justai.automation.engine import AutomationEngine
+    from justai.automation.model import AutomationDefinition
+
+    tz = ZoneInfo("Europe/Rome")
+    queued: list[str] = []
+
+    class _Service:
+        async def update(self, *_: object, **__: object) -> None:
+            return None
+
+    class _Jobs:
+        async def enqueue(self, kind: str, *_: object, **__: object) -> None:
+            queued.append(kind)
+
+    engine = AutomationEngine(SimpleNamespace(conversations=SimpleNamespace(active=list)),  # type: ignore[arg-type]
+                              _Service(), bus=None, jobs=_Jobs())  # type: ignore[arg-type]
+
+    async def reload() -> None:
+        return None
+
+    engine.reload = reload  # type: ignore[method-assign]
+
+    def definition(**options: str) -> AutomationDefinition:
+        return AutomationDefinition.model_validate({
+            "trigger": {"type": "event", "event": "vision.person.recognized"},
+            "actions": [{"type": "speak", "text": "Müll rausbringen", "room": "trigger"}],
+            "options": {"once": True, **options}})
+
+    def local(delta: timedelta) -> str:  # naive local time, like the model writes it
+        return (datetime.now(tz) + delta).replace(tzinfo=None).isoformat(timespec="seconds")
+
+    def run(d: AutomationDefinition) -> bool:
+        auto = SimpleNamespace(id="a1", state={})
+        return asyncio.run(engine._maybe_queue(auto, d, None))  # type: ignore[arg-type]
+
+    assert run(definition(not_before=local(timedelta(minutes=30)))) is False
+    assert run(definition(not_before=local(timedelta(minutes=-1)))) is True
+    assert run(definition(expires_at=local(timedelta(minutes=-1)))) is False
+    assert run(definition(expires_at=local(timedelta(hours=1)))) is True
+    assert queued == ["automation.run", "automation.run"]

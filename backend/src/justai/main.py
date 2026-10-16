@@ -36,7 +36,7 @@ async def _serve() -> None:
                                              proxy_headers=True))]
     tls = getattr(app.state, "tls", None)
     if tls is not None:
-        config = uvicorn.Config(app, host=settings.host, port=settings.https_port, log_config=None,
+        config = uvicorn.Config(app, host=settings.host, port=settings.https_listen_port, log_config=None,
                                 proxy_headers=True, lifespan="off")
         config.load()
         config.ssl = tls.server_context()  # reloadable when names are added

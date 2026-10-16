@@ -5,6 +5,27 @@ Assistenten. Sie braucht keine Programmierkenntnisse, nur ein paar Befehle im
 Terminal, die man kopieren kann. Wer schon Docker hat, beginnt bei
 [Schritt 2](#schritt-2-justai5-herunterladen).
 
+## Der schnellste Weg: ein Befehl
+
+Auf einem Linux-Rechner (x86_64) im Terminal:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/julianstricker/JuStAI5/main/scripts/install.sh | bash
+```
+
+Das Installationsskript
+* prüft den Rechner und installiert Docker, falls es fehlt (fragt vorher),
+* lädt JuStAI5 in den Ordner `JuStAI5`,
+* fragt nach dem Google-API-Key ([Schritt 3](#schritt-3-den-assistenten-zum-sprechen-bringen-google-api-key)
+  erklärt, wo es ihn gibt; leer lassen geht auch) und einem Admin-Passwort,
+* erkennt die Adresse des Rechners im Heimnetz (für das HTTPS-Zertifikat und die
+  Kamerasuche) und weicht auf freie Ports aus, wenn 8080/8443 belegt sind,
+* baut und startet alles und zeigt am Ende Adresse, Benutzer und Passwort.
+
+Danach weiter mit [Schritt 6](#schritt-6-ein-handy-oder-tablet-als-mikrofon-und-lautsprecher)
+(erstes Gespräch). Wurde Docker eben erst installiert, einmal ab- und wieder
+anmelden. Wer lieber jeden Schritt selbst macht, folgt der Anleitung unten.
+
 Was am Ende läuft: ein Assistent, der auf „Hey Jarvis“ hört, über Kameras sieht,
 sich Dinge merkt und im selben Raum antwortet, in dem er angesprochen wurde.
 Beispiele, was man ihn fragen kann: [BEISPIELE.md](BEISPIELE.md).
@@ -227,15 +248,18 @@ zugeordnet, wenn eine Kamera einen Hund bzw. eine Katze sieht.
 
 ## Aktualisieren, sichern, entfernen
 
-Neue Version installieren (Einstellungen und Daten bleiben erhalten):
+Neue Version installieren (Einstellungen und Daten bleiben erhalten), im
+JuStAI5-Ordner:
 
 ```bash
 git pull
 ```
 
 ```bash
-docker compose up -d --build
+./scripts/install.sh
 ```
+
+(oder statt des Skripts `docker compose up -d --build`)
 
 Gekoppelte Handys, Tablets und Displays laden die neue Version selbst.
 

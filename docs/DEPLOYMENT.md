@@ -26,7 +26,10 @@
 ## Installation
 
 Ausführliche Anleitung für Einsteiger (Docker installieren, API-Key, erste Geräte):
-[INSTALLATION.md](INSTALLATION.md). Kurzfassung:
+[INSTALLATION.md](INSTALLATION.md). Automatisch: `scripts/install.sh` (prüft
+Plattform und Docker, legt `.env` mit LAN-Adresse, Netzbereich und freien Ports an,
+startet und wartet auf `/api/health`; erneuter Aufruf behält `.env` und baut neu).
+Von Hand:
 
 ```bash
 git clone https://github.com/julianstricker/JuStAI5.git justai5 && cd justai5
@@ -51,7 +54,7 @@ Aufbewahrung) wird in der Admin-UI gepflegt und liegt in der Datenbank.
 | Variable | Standard | |
 | --- | --- | --- |
 | `JUSTAI_HTTP_PORT` | 8080 | Port auf dem Host |
-| `JUSTAI_HTTPS_PORT` | 8443 | HTTPS-Port auf dem Host (Geräte-App) |
+| `JUSTAI_HTTPS_PORT` | 8443 | HTTPS-Port auf dem Host (Geräte-App); im Container lauscht der Core immer auf 8443 |
 | `JUSTAI_TLS_ENABLED` | true | HTTPS mit lokaler Zertifizierungsstelle |
 | `JUSTAI_TLS_NAMES` | – | zusätzliche Namen/Adressen fürs Zertifikat, z. B. `["192.168.0.10","justai.fritz.box"]` (auch in der UI ergänzbar) |
 | `JUSTAI_PUBLIC_URL` | http://localhost:8080 | bei `https://` werden Cookies `Secure` |

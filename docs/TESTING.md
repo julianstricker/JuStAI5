@@ -102,6 +102,14 @@ Legende: ✅ nachgewiesen · 🟡 teilweise (was fehlt, steht dabei) · ⏳ offe
   Wiedergabe stumm, damit ist Unterbrechen physikalisch unmöglich. Für einen Test
   braucht es ein Gerät mit echtem Full-Duplex (z. B. USB-Freisprecheinrichtung).
 * **Display auf einem Fernseher**: bisher nur im Desktop-Browser geprüft.
+* **Installationsskript** (`scripts/install.sh`, 2026-10-16, als eigenes
+  Compose-Projekt neben der laufenden Instanz): per `curl … | bash` in leerem
+  Ordner (klont von GitHub, Ports 8080/8443 belegt → 8081/8444, LAN-IP erkannt,
+  zufälliges Passwort angezeigt und Anmeldung damit erfolgreich); interaktiv in
+  einem Pseudo-Terminal (eigenes Passwort, Anmeldung erfolgreich, `.env` mit Rechten
+  600); erneuter Aufruf (behält `.env`, baut neu). HTTPS über die LAN-IP mit dem
+  CA-Zertifikat geprüft. Nicht getestet: Docker-Neuinstallation auf einem Rechner
+  ohne Docker.
 * **Geräte-App auf echten Handys/Tablets**: Setup-Seite, Kopplung und
   Einstellungskarte im Desktop-Browser geprüft, der Medienweg per E2E-Test.
   Headless-Chrome mit simulierter Kamera/Mikrofon und strenger Autoplay-Regel:
@@ -124,6 +132,7 @@ Unit-Tests abgedeckt hatten:
 | Sandbox-Testlauf je nach Zufalls-Verzeichnisname nicht importierbar | fester Pfad, `pythonpath` |
 | Generierter Klassenname umbenannt, Tests fanden ihn nicht | Alias statt Umbenennen |
 | Zweites Tool-Projekt mit gleichem Namen brach ab (Unique-Constraint) | eindeutige Plugin-IDs |
+| Installation: mit geändertem `JUSTAI_HTTPS_PORT` (z. B. 8444, weil 8443 belegt) lauschte der Core im Container auf 8444, Docker leitete aber auf 8443 weiter – HTTPS nicht erreichbar | behoben: Container-Port fest 8443, `JUSTAI_HTTPS_PORT` nur noch Host-Port und Anzeige |
 | Geräte-App: Livebild in der Admin-UI „nicht verfügbar“ (fragte MP4 von go2rtc an, App-Kameras haben keinen Stream); nach dem automatischen Neuladen bei Updates keine Kamera/kein Mikrofon mehr, bis jemand tippt | behoben: MJPEG-Livebild, Selbststart, Ton per Berührung nachholbar; im Browser geprüft |
 | Display: doppelte Achsenbeschriftung, „Gespräch“-Anzeige durch Text-Chats, unklare Fehler bei unsichtbarer Seite, kein Neuladen nach Updates | behoben, im Browser geprüft |
 | Zeitzone der Einstellungen wurde von Automationen ignoriert; Schalter ohne Funktion in den Einstellungen | verdrahtet bzw. entfernt |

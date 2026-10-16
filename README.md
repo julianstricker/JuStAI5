@@ -26,10 +26,17 @@ ein Auto in die Einfahrt fährt.“ · „Zeig mir den Kurs von Apple.“ Mehr:
 
 ## Installation
 
+Ein Befehl auf einem Linux-Rechner (x86_64) installiert alles, auch Docker, und
+fragt nur nach API-Key und Admin-Passwort:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/julianstricker/JuStAI5/main/scripts/install.sh | bash
+```
+
 **Schritt für Schritt, ohne Vorkenntnisse:** [docs/INSTALLATION.md](docs/INSTALLATION.md)
 (Docker installieren, API-Key, Starten, Handy als Mikrofon, Kameras, Personen).
 
-Kurzfassung für alle, die Docker schon haben (Linux, x86_64, Compose ≥ 2.24):
+Von Hand, wenn Docker schon da ist (Compose ≥ 2.24):
 
 ```bash
 git clone https://github.com/julianstricker/JuStAI5.git
@@ -102,7 +109,7 @@ plugins/        Mitgelieferte Plugins (Treiber, KI-Provider, Beispiel-Plugin)
 frontend/       Admin-UI und Display-Client (React, Mantine, Vite)
 docker/         Dockerfiles, Secret-Initialisierung
 go2rtc/         Basis-Konfiguration des Medienservers (ohne Zugangsdaten)
-scripts/        Modell-Download, Backup, Restore
+scripts/        Installation, Modell-Download, Backup, Restore
 docs/           Dokumentation und ADRs
 ```
 

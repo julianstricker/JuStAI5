@@ -21,7 +21,8 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8080
     # HTTPS (needed by browsers for microphone/camera of the device app); own local CA.
-    https_port: int = 8443
+    https_port: int = 8443  # port clients use (host side, JUSTAI_HTTPS_PORT in .env); shown in the UI
+    https_listen_port: int = 8443  # port inside the container (docker maps https_port -> 8443)
     tls_enabled: bool = True
     tls_names: list[str] = Field(default_factory=list)  # extra names/addresses for the certificate
     public_url: str = "http://localhost:8080"

@@ -13,7 +13,7 @@ import {
 
 import type { JsonSchema } from "@/shared/types";
 
-import { useT } from "@/shared/i18n";
+import { useI18n } from "@/shared/i18n";
 
 interface Props {
   schema: JsonSchema;
@@ -30,7 +30,7 @@ export function JsonSchemaForm({
   secretFields = [],
   secretsSet = [],
 }: Props) {
-  const t = useT();
+  const { lang, t } = useI18n();
   const props = schema.properties ?? {};
   const required = new Set(schema.required ?? []);
   const set = (key: string, v: unknown) => onChange({ ...value, [key]: v });
@@ -38,8 +38,9 @@ export function JsonSchemaForm({
   return (
     <Stack gap="sm">
       {Object.entries(props).map(([key, field]) => {
-        const label = field.title ?? key;
-        const description = field.description;
+        const loc = field["x-i18n"]?.[lang];
+        const label = loc?.title ?? field.title ?? key;
+        const description = loc?.description ?? field.description;
         const current = value[key] ?? field.default;
         const type = Array.isArray(field.type) ? field.type[0] : field.type;
         if (secretFields.includes(key)) {

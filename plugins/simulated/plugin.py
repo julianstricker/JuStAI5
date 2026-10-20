@@ -27,7 +27,7 @@ SCHEMA: dict[str, Any] = {
         "speaker": {"type": "boolean", "default": True},
         "camera": {"type": "boolean", "default": True},
         "ptz": {"type": "boolean", "default": False},
-        "image": {"type": "string", "description": "Pfad zu einem Bild (Kamera bzw. PTZ-Panorama)"},
+        "image": {"type": "string", "description": "Path to an image (camera or PTZ panorama)"},
         "echo_delay_s": {"type": "number", "default": 0.8},
         "echo_gain": {"type": "number", "default": 0.4},
         "hardware_ducking": {"type": "boolean", "default": False},
@@ -189,7 +189,7 @@ class SimHandle(BaseDeviceHandle):
 
 class SimDriver:
     driver_id = "simulated"
-    display_name = "Simuliertes Gerät"
+    display_name = "Simulated device"
 
     def config_schema(self) -> dict[str, Any]:
         return SCHEMA
@@ -226,11 +226,11 @@ class SimDriver:
 class SayParams(BaseModel):
     device_id: str
     text: str = Field(max_length=500)
-    voice: str = Field("en_US-lessac-medium", description="Piper-Stimme des simulierten Benutzers")
+    voice: str = Field("en_US-lessac-medium", description="Piper voice of the simulated user")
     delay_s: float = Field(0.0, ge=0, le=60)
     also_devices: list[str] = Field(default_factory=list,
-                                    description="Weitere simulierte Geräte, die dieselbe Äußerung gleichzeitig hören")
-    also_gain: float = Field(0.4, ge=0, le=2, description="Lautstärke in den weiteren Räumen")
+                                    description="Further simulated devices that hear the same utterance at the same time")  # noqa: E501
+    also_gain: float = Field(0.4, ge=0, le=2, description="Volume in the further rooms")
 
 
 class SimulatedPlugin(Plugin):
@@ -238,13 +238,13 @@ class SimulatedPlugin(Plugin):
         self.ctx.register_provider("device_driver", SimDriver())
         self.ctx.register_tool(ToolDefinition(
             name="simulator.say",
-            description="(Tests) Lässt einen simulierten Benutzer in das Mikrofon eines simulierten Geräts sprechen.",
+            description="(Tests) Makes a simulated user speak into the microphone of a simulated device.",
             parameters=SayParams, category="testing", available_in_conversation=False, timeout_s=60), self.say)
 
     async def say(self, p: SayParams, ctx: ToolContext) -> ToolResult:
         room = ROOMS.get(p.device_id)
         if room is None:
-            return ToolResult.failure("unknown_device", "kein simuliertes Gerät mit dieser ID aktiv")
+            return ToolResult.failure("unknown_device", "no simulated device with this ID active")
         from piper import PiperVoice
 
         voice = VOICES.get(p.voice)

@@ -88,7 +88,7 @@ Condition = Annotated[TimeWindow | PayloadCondition | NoActiveConversation | Sta
 
 class InvokeAssistant(_M):
     type: Literal["assistant.invoke"] = "assistant.invoke"
-    instruction: str = Field(description="What the assistant should do/say, e.g. 'Begrüße Julian'")
+    instruction: str = Field(description="What the assistant should do/say, e.g. 'Greet Julian'")
     room: str = Field("trigger", description="'trigger' (room of the triggering event) or a room id")
     start_conversation: bool = Field(True, description="keep listening after speaking")
 

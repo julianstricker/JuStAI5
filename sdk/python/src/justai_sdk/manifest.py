@@ -77,6 +77,13 @@ class RuntimeRequirements(BaseModel):
     binaries: list[str] = Field(default_factory=list)  # e.g. ffmpeg
 
 
+class LocalizedText(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = None
+    description: str | None = None
+
+
 class PluginManifest(BaseModel):
     """Machine-readable description of a plugin.
 
@@ -87,9 +94,13 @@ class PluginManifest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: str
-    name: str
+    name: str  # English; translations in i18n
     version: str
     description: str = ""
+    i18n: dict[str, LocalizedText] = Field(
+        default_factory=dict,
+        description="Translated name/description per language, e.g. {'de': {'name': ...}}",
+    )
     author: str = ""
     license: str = ""
     homepage: str = ""

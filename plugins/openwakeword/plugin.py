@@ -60,16 +60,16 @@ def validate_wakeword_model(data: bytes) -> None:
     import onnxruntime as ort
 
     if len(data) > MAX_CUSTOM_MODEL_BYTES:
-        raise ValueError("Modelldatei zu groß")
+        raise ValueError("model file too large")
     try:
         session = ort.InferenceSession(data, providers=["CPUExecutionProvider"])
     except Exception as exc:
-        raise ValueError(f"keine gültige ONNX-Datei: {exc}") from exc
+        raise ValueError(f"not a valid ONNX file: {exc}") from exc
     inputs, outputs = session.get_inputs(), session.get_outputs()
     shape_in = inputs[0].shape if len(inputs) == 1 else None
     shape_out = outputs[0].shape if len(outputs) == 1 else None
     if not shape_in or len(shape_in) != 3 or shape_in[-1] != 96 or not shape_out or shape_out[-1] != 1:
-        raise ValueError("kein openWakeWord-Modell (erwartet Eingang [1, n, 96] und Ausgang [1, 1])")
+        raise ValueError("not an openWakeWord model (expected input [1, n, 96] and output [1, 1])")
 
 
 class OpenWakeWordProvider:
@@ -99,12 +99,12 @@ class OpenWakeWordProvider:
     def install_model(self, name: str, data: bytes) -> str:
         """Store an uploaded wakeword model; returns its id (the file name without .onnx)."""
         if self.custom_dir is None:
-            raise ValueError("kein Verzeichnis für eigene Modelle konfiguriert")
+            raise ValueError("no directory for own models configured")
         mid = name.lower().removesuffix(".onnx").replace("-", "_").replace(" ", "_")
         if not _CUSTOM_NAME_RE.match(mid):
-            raise ValueError("Name nur aus Kleinbuchstaben, Ziffern und _ (z. B. hey_justi)")
+            raise ValueError("name only of lower-case letters, digits and _ (e.g. hey_justi)")
         if mid in self._models() and (self.models_dir / f"{mid}.onnx").exists():
-            raise ValueError(f"{mid} ist ein mitgeliefertes Modell")
+            raise ValueError(f"{mid} is a bundled model")
         validate_wakeword_model(data)
         self.custom_dir.mkdir(parents=True, exist_ok=True)
         tmp = self.custom_dir / f".{mid}.upload"
@@ -115,7 +115,7 @@ class OpenWakeWordProvider:
     def remove_model(self, mid: str) -> None:
         path = self._models().get(mid)
         if path is None or self.custom_dir is None or path.parent != self.custom_dir:
-            raise ValueError("nur eigene Modelle können gelöscht werden")
+            raise ValueError("only own models can be deleted")
         path.unlink()
 
     def create_detector(self, models: list[str]) -> OpenWakeWordDetector:

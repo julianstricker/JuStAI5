@@ -1,7 +1,10 @@
 id: faster-whisper
-name: faster-whisper (lokale Spracherkennung)
+name: "faster-whisper (local speech recognition)"
 version: 1.0.0
-description: Lokale Speech-to-Text mit Whisper (CTranslate2). Mehrsprachig mit automatischer Spracherkennung.
+description: "Local speech-to-text with Whisper (CTranslate2). Multilingual with automatic language detection."
+i18n:
+  de: {name: "faster-whisper (lokale Spracherkennung)", description: "Lokale Speech-to-Text mit Whisper (CTranslate2). Mehrsprachig mit automatischer Spracherkennung."}
+  it: {name: "faster-whisper (riconoscimento vocale locale)", description: "Riconoscimento vocale locale con Whisper (CTranslate2). Multilingue con rilevamento automatico della lingua."}
 author: JuStAI5
 license: MIT
 types: [stt]
@@ -16,7 +19,7 @@ config_schema:
     model:
       type: string
       default: small
-      description: tiny, base, small, medium, large-v3, large-v3-turbo oder Pfad
+      description: tiny, base, small, medium, large-v3, large-v3-turbo or a path
     device:
       type: string
       default: auto
@@ -27,7 +30,7 @@ config_schema:
     download_root:
       type: string
       default: ""
-      description: Leer = $JUSTAI_MODELS_DIR/whisper
+      description: Empty = $JUSTAI_MODELS_DIR/whisper
     beam_size:
       type: integer
       default: 1

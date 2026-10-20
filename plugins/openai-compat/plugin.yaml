@@ -1,10 +1,10 @@
 id: openai-compat
-name: OpenAI-kompatible Endpunkte
+name: "OpenAI-compatible endpoints"
 version: 1.0.0
-description: >-
-  LLMs über die OpenAI-kompatible Chat-API: OpenAI, Ollama, vLLM, llama.cpp-Server,
-  LM Studio, OpenRouter u. a. Jeder Endpunkt wird als eigener Provider "oai:<id>"
-  registriert und als lokal oder Cloud gekennzeichnet.
+description: "LLMs through the OpenAI-compatible chat API: OpenAI, Ollama, vLLM, llama.cpp server, LM Studio, OpenRouter and others. Each endpoint is registered as its own provider \"oai:<id>\" and marked as local or cloud."
+i18n:
+  de: {name: "OpenAI-kompatible Endpunkte", description: "LLMs über die OpenAI-kompatible Chat-API: OpenAI, Ollama, vLLM, llama.cpp-Server, LM Studio, OpenRouter u. a. Jeder Endpunkt wird als eigener Provider \"oai:<id>\" registriert und als lokal oder Cloud gekennzeichnet."}
+  it: {name: "Endpoint compatibili OpenAI", description: "LLM tramite l'API chat compatibile OpenAI: OpenAI, Ollama, vLLM, server llama.cpp, LM Studio, OpenRouter e altri. Ogni endpoint viene registrato come provider \"oai:<id>\" e contrassegnato come locale o cloud."}
 author: JuStAI5
 license: MIT
 types: [ai_provider, stt, tts]
@@ -34,5 +34,5 @@ config_schema:
           supports_tools: {type: boolean, default: true}
     api_keys:
       type: string
-      description: 'JSON-Objekt {"<endpoint-id>": "<api key>"} (verschlüsselt gespeichert)'
+      description: 'JSON object {"<endpoint-id>": "<api key>"} (stored encrypted)'
   additionalProperties: false

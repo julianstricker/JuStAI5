@@ -2,12 +2,12 @@
 # It is *untrusted* on purpose: it runs isolated in the sandbox container and can
 # only reach the hosts listed in network_allowlist (through the core gateway).
 id: example-weather
-name: Wetter (Beispiel-Plugin)
+name: "Weather (example plugin)"
 version: 1.0.0
-description: >-
-  Aktuelles Wetter und Vorhersage über Open-Meteo (ohne API-Schlüssel). Beispiel für
-  Manifest, Konfiguration, Berechtigungen, Lifecycle-Hooks, Caching, Fehlerbehandlung,
-  Display-Komponente und Tests.
+description: "Current weather and forecast from Open-Meteo (no API key). Example of manifest, configuration, permissions, lifecycle hooks, caching, error handling, display component and tests."
+i18n:
+  de: {name: "Wetter (Beispiel-Plugin)", description: "Aktuelles Wetter und Vorhersage über Open-Meteo (ohne API-Schlüssel). Beispiel für Manifest, Konfiguration, Berechtigungen, Lifecycle-Hooks, Caching, Fehlerbehandlung, Display-Komponente und Tests."}
+  it: {name: "Meteo (plugin di esempio)", description: "Meteo attuale e previsioni da Open-Meteo (senza chiave API). Esempio di manifest, configurazione, permessi, hook del ciclo di vita, cache, gestione degli errori, componente display e test."}
 author: JuStAI5
 license: MIT
 homepage: https://open-meteo.com
@@ -25,7 +25,7 @@ config_schema:
     default_location:
       type: string
       default: Bozen
-      description: Ort, wenn keiner genannt wird
+      description: Place when none is mentioned
     cache_minutes:
       type: integer
       default: 15

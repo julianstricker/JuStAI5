@@ -103,7 +103,7 @@ class SandboxClient:
             try:
                 jsonschema.validate(payload, schema)
             except jsonschema.ValidationError as exc:
-                return ToolResult.failure("invalid_arguments", f"Ungültige Parameter: {exc.message}")
+                return ToolResult.failure("invalid_arguments", f"Invalid parameters: {exc.message}")
             r = await self._http.post(f"/plugins/{plugin_id}/tools/{name}", json={
                 "args": payload, "context": ctx.model_dump(mode="json"), "timeout_s": timeout})
             data = r.json()

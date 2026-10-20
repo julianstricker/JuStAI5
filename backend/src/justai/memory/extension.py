@@ -18,21 +18,21 @@ if TYPE_CHECKING:
 
 
 class SearchParams(BaseModel):
-    query: str = Field(description="Wonach im Gedächtnis gesucht werden soll")
+    query: str = Field(description="What to search for in memory")
 
 
 class RememberParams(BaseModel):
-    content: str = Field(description="Die Information als vollständiger Satz, "
-                                     "z. B. 'Julian hat einen weißen XPENG bestellt'")
+    content: str = Field(description="The information as a complete sentence in the user's language, "
+                                     "e.g. 'Julian ordered a white XPENG'")
     kind: str = Field("fact", description="fact | preference | episode | procedure")
-    private: bool = Field(False, description="Nur für die sprechende Person sichtbar")
+    private: bool = Field(False, description="Visible only to the speaking person")
     subject: str | None = Field(None, description="Worum es geht, z. B. 'Julian'")
     predicate: str | None = Field(None, description="Beziehung in snake_case, z. B. 'ordered_vehicle'")
-    user_requested: bool = Field(False, description="True, wenn der Benutzer ausdrücklich 'merk dir' o. ä. gesagt hat")
+    user_requested: bool = Field(False, description="True if the user explicitly said 'remember' or similar")
 
 
 class ForgetSearch(BaseModel):
-    query: str = Field(description="Was vergessen werden soll, z. B. 'Auto von gestern'")
+    query: str = Field(description="What should be forgotten, e.g. 'the car from yesterday'")
 
 
 class ForgetParams(BaseModel):
@@ -86,8 +86,8 @@ class MemoryExtension:
 
         reg.register(ToolDefinition(
             name="memory.search",
-            description="Durchsucht das Langzeitgedächtnis (frühere Gespräche, Fakten über Personen, "
-                        "Vorlieben). Ergebnisse mit Herkunft; 'inferred' sind nur Vermutungen.",
+            description="Searches the long-term memory (earlier conversations, facts about people, "
+                        "preferences). Results with origin; 'inferred' ones are only assumptions.",
             parameters=SearchParams, category="memory", permissions=[Permission.MEMORY_READ]), search)
 
         async def remember(p: RememberParams, ctx: ToolContext) -> ToolResult:
@@ -100,12 +100,12 @@ class MemoryExtension:
                 source={"type": "conversation", "session_id": ctx.session_id, "tool": True}),
                 respect_forgotten=not p.user_requested)
             if hit is None:
-                return ToolResult.failure("forgotten", "Das sollte ich auf Wunsch vergessen und merke es mir "
-                                          "nur, wenn der Benutzer es ausdrücklich verlangt.")
-            return ToolResult.success({"id": hit.id}, message="Gemerkt")
+                return ToolResult.failure("forgotten", "I was asked to forget this and only remember it "
+                                          "if the user explicitly asks for it.")
+            return ToolResult.success({"id": hit.id}, message="Remembered")
 
         reg.register(ToolDefinition(
-            name="memory.remember", description="Speichert eine wichtige Information dauerhaft.",
+            name="memory.remember", description="Stores an important piece of information permanently.",
             parameters=RememberParams, category="memory", permissions=[Permission.MEMORY_WRITE],
             side_effect=SideEffect.WRITE), remember)
 
@@ -115,12 +115,12 @@ class MemoryExtension:
             hits = [h for h in hits if h.owner_person_id in (None, ctx.person_id)]
             return ToolResult.success([{"id": h.id, "content": h.content,
                                         "updated": h.updated_at.date().isoformat()} for h in hits],
-                                      message="Nenne dem Benutzer die Treffer und frage, welche gelöscht "
-                                              "werden sollen; dann memory.forget mit den IDs.")
+                                      message="Tell the user the matches and ask which ones should be "
+                                              "deleted; then memory.forget with the IDs.")
 
         reg.register(ToolDefinition(
             name="memory.find_to_forget",
-            description="Sucht Erinnerungen, die der Benutzer vergessen lassen möchte (löscht nichts).",
+            description="Finds memories the user wants forgotten (deletes nothing).",
             parameters=ForgetSearch, category="memory", permissions=[Permission.MEMORY_READ]), find_forget)
 
         async def forget(p: ForgetParams, ctx: ToolContext) -> ToolResult:
@@ -133,9 +133,9 @@ class MemoryExtension:
                 deleted += 1
             await self.c.audit.record("assistant", "memory.forget", None, count=deleted,
                                       session=ctx.session_id)
-            return ToolResult.success({"deleted": deleted}, message=f"{deleted} Erinnerungen gelöscht")
+            return ToolResult.success({"deleted": deleted}, message=f"{deleted} memories deleted")
 
         reg.register(ToolDefinition(
-            name="memory.forget", description="Löscht Erinnerungen endgültig (nach Bestätigung).",
+            name="memory.forget", description="Deletes memories permanently (after confirmation).",
             parameters=ForgetParams, category="memory", permissions=[Permission.MEMORY_WRITE],
             side_effect=SideEffect.WRITE, requires_confirmation=True), forget)

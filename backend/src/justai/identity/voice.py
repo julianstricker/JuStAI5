@@ -113,10 +113,10 @@ class VoiceProfiles:
             if await s.get(Person, person_id) is None:
                 raise NotFound("person not found")
         if not await self.has_consent(person_id):
-            raise ValidationFailed("Stimmprofil erfordert eine Einwilligung")
+            raise ValidationFailed("A voice profile requires consent")
         pcm = np.concatenate(speech) if speech else np.zeros(0, np.int16)
         if pcm.size < MIN_ENROLL_SECONDS * SR:
-            raise ValidationFailed(f"zu wenig Sprache ({pcm.size / SR:.1f} s, nötig {MIN_ENROLL_SECONDS:.0f} s)")
+            raise ValidationFailed(f"too little speech ({pcm.size / SR:.1f} s, {MIN_ENROLL_SECONDS:.0f} s needed)")
         # Several samples from segments plus one from all speech: robust to short wake phrases.
         seg = int(SEGMENT_SECONDS * SR)
         pieces = [pcm[i:i + seg] for i in range(0, pcm.size - seg + 1, seg)] + [pcm]

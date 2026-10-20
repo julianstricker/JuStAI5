@@ -42,7 +42,7 @@ def service(ptz: FakePtz) -> PtzService:
 
 
 async def test_home_without_position_explains_instead_of_crashing() -> None:
-    with pytest.raises(Conflict, match="Als Home speichern"):
+    with pytest.raises(Conflict, match="Save as home"):
         await service(FakePtz()).home("cam")
 
 

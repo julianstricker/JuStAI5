@@ -27,12 +27,16 @@ ONVIF_SCHEMA: dict[str, Any] = {
     "type": "object",
     "required": ["host"],
     "properties": {
-        "host": {"type": "string", "title": "IP-Adresse / Hostname"},
-        "port": {"type": "integer", "default": 80, "title": "ONVIF-Port (Tapo: 2020)"},
+        "host": {"type": "string", "title": "IP address / host name",
+                 "x-i18n": {"de": {"title": "IP-Adresse / Hostname"}, "it": {"title": "Indirizzo IP / nome host"}}},
+        "port": {"type": "integer", "default": 80, "title": "ONVIF port (Tapo: 2020)",
+                 "x-i18n": {"de": {"title": "ONVIF-Port (Tapo: 2020)"}, "it": {"title": "Porta ONVIF (Tapo: 2020)"}}},
         "username": {"type": "string"},
         "password": {"type": "string"},
         "backchannel": {"type": "boolean", "default": False,
-                        "description": "Kamera unterstützt ONVIF-Audio-Backchannel (Profil T)"},
+                        "description": "Camera supports the ONVIF audio backchannel (profile T)",
+                        "x-i18n": {"de": {"description": "Kamera unterstützt ONVIF-Audio-Backchannel (Profil T)"},
+                                   "it": {"description": "La telecamera supporta il backchannel audio ONVIF (profilo T)"}}},  # noqa: E501
         "horizontal_fov_deg": {"type": "number", "default": 90},
     },
     "additionalProperties": False,
@@ -41,9 +45,12 @@ RTSP_SCHEMA: dict[str, Any] = {
     "type": "object",
     "required": ["url"],
     "properties": {
-        "url": {"type": "string", "title": "RTSP-URL ohne Zugangsdaten",
-                "description": "z. B. rtsp://192.168.0.50:554/stream1"},
-        "sub_url": {"type": "string", "title": "Substream-URL (optional)"},
+        "url": {"type": "string", "title": "RTSP URL without credentials",
+                "description": "e.g. rtsp://192.168.0.50:554/stream1",
+                "x-i18n": {"de": {"title": "RTSP-URL ohne Zugangsdaten", "description": "z. B. rtsp://192.168.0.50:554/stream1"},
+                           "it": {"title": "URL RTSP senza credenziali", "description": "ad es. rtsp://192.168.0.50:554/stream1"}}},
+        "sub_url": {"type": "string", "title": "Substream URL (optional)",
+                    "x-i18n": {"de": {"title": "Substream-URL (optional)"}, "it": {"title": "URL del substream (facoltativo)"}}},  # noqa: E501
         "username": {"type": "string"},
         "password": {"type": "string"},
         "backchannel": {"type": "boolean", "default": False},
@@ -183,7 +190,7 @@ class RtspDriver:
         return ProbeResult(ok=True, capabilities=sorted(caps), media=Go2rtcMedia(
             sources=[main + ("" if config.get("backchannel") else "#backchannel=0")],
             sub_sources=[sub] if sub else [], backchannel=bool(config.get("backchannel"))),
-            warnings=["Audio-/Videospuren werden am echten Stream überprüft"])
+            warnings=["Audio/video tracks are checked on the real stream"])
 
     async def open(self, device_id: str, config: dict[str, Any], probe: ProbeResult) -> Handle:
         p = urlparse(config["url"])

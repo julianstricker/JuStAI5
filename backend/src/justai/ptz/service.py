@@ -108,8 +108,8 @@ class PtzService:
             # made since startup/last home; without any, ask the user to define one.
             off = self._offset.get(device_id) or [0.0, 0.0]
             if abs(off[0]) < 1e-3 and abs(off[1]) < 1e-3:
-                raise Conflict("Keine Home-Position gespeichert. Kamera ausrichten und "
-                               "„Als Home speichern“ wählen.") from exc
+                raise Conflict("No home position stored. Point the camera and choose "
+                               "'Save as home'.") from exc
             await ptz.move_relative(-off[0], -off[1])
         self._offset[device_id] = [0.0, 0.0]
 

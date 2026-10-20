@@ -60,8 +60,8 @@ log = get_logger(__name__)
 MAX_CHAIN_HOPS = 4
 # Automations that only announce something still give the person a moment to react.
 ANNOUNCE_LISTEN_S = 4.0
-SAY_EXACTLY = ("Sage jetzt wörtlich diesen Text und nichts weiter: „{text}“ "
-               "Antwortet die Person danach, führe das Gespräch normal weiter.")
+SAY_EXACTLY = ("Now say exactly this text and nothing else, in its language: \"{text}\" "
+               "If the person answers afterwards, continue the conversation normally.")
 
 
 def _get_path(data: dict[str, Any], path: str) -> Any:
@@ -357,7 +357,7 @@ class AutomationEngine:
             for action in definition.actions:
                 await self._execute(auto, action, event, note)
         except Exception as exc:
-            note(f"Fehler: {exc}")
+            note(f"Error: {exc}")
             await self._finish_run(run_id, "failed", log_entries, str(exc))
             await self._publish(auto, event, "automation.run.finished", {"run_id": run_id, "status": "failed"})
             raise
@@ -427,7 +427,7 @@ class AutomationEngine:
                 raise ValueError("no interaction endpoint with a speaker in the target room")
             person_id = (event.payload.get("person_id") if event else None) or auto.owner_person_id
             await self._converse(endpoint_id, action.instruction, person_id, action.start_conversation)
-            note(f"Assistent in {room_id} aktiviert")
+            note(f"Assistant activated in {room_id}")
         elif isinstance(action, Speak):
             room_id = self._room(action.room, event)
             endpoint_id = await self._endpoint_for_room(room_id, event) if room_id else None
@@ -435,12 +435,12 @@ class AutomationEngine:
                 # Same voice as in conversations, and the person can answer right away.
                 person_id = (event.payload.get("person_id") if event else None) or auto.owner_person_id
                 await self._converse(endpoint_id, SAY_EXACTLY.format(text=action.text), person_id, True)
-                note(f"Gesprochen (Gespräch) in {room_id}: {action.text[:60]}")
+                note(f"Spoken (conversation) in {room_id}: {action.text[:60]}")
             else:
                 speech = c.extensions["speech"]
                 decision = speech.resolve(target_room_id=room_id, system=True)
                 await speech.say(action.text, decision)
-                note(f"Gesagt in {room_id}: {action.text[:60]}")
+                note(f"Said in {room_id}: {action.text[:60]}")
         elif isinstance(action, ShowOnDisplay):
             room_id = self._room(action.room, event)
             display = c.extensions.get("display")
@@ -448,7 +448,7 @@ class AutomationEngine:
                 raise ValueError("displays unavailable")
             pres = await display.present(action.document, target_room_id=room_id, system=True,
                                          source=f"automation:{auto.id}")
-            note(f"Darstellung {pres.id}: {pres.status}")
+            note(f"Presentation {pres.id}: {pres.status}")
         elif isinstance(action, CallTool):
             ctx = ToolContext(call_id=f"auto-{auto.id}", origin=InvocationOrigin.AUTOMATION,
                               automation_id=auto.id, room_id=event.source.room_id if event else None,
@@ -463,6 +463,6 @@ class AutomationEngine:
             new = event.caused(action.event, action.payload, source=source) if event else Event(
                 type=action.event, payload=action.payload, source=source)
             await self.bus.publish(new)
-            note(f"Ereignis {action.event}")
+            note(f"Event {action.event}")
         elif isinstance(action, Wait):
             await asyncio.sleep(action.seconds)

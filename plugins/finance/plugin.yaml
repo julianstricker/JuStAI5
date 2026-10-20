@@ -1,10 +1,10 @@
 id: finance
-name: Börsenkurse
+name: "Stock prices"
 version: 1.0.0
-description: >-
-  Aktien-, ETF-, Index- und Krypto-Kurse sowie Kursverläufe. Datenquelle: die
-  inoffizielle Yahoo-Finance-Chart-Schnittstelle (ohne Schlüssel, ohne Garantie,
-  leicht verzögert). Nicht für Handelsentscheidungen geeignet.
+description: "Prices of stocks, ETFs, indices and crypto plus price histories. Data source: the unofficial Yahoo Finance chart API (no key, no guarantee, slightly delayed). Not suitable for trading decisions."
+i18n:
+  de: {name: "Börsenkurse", description: "Aktien-, ETF-, Index- und Krypto-Kurse sowie Kursverläufe. Datenquelle: die inoffizielle Yahoo-Finance-Chart-Schnittstelle (ohne Schlüssel, ohne Garantie, leicht verzögert). Nicht für Handelsentscheidungen geeignet."}
+  it: {name: "Quotazioni di borsa", description: "Quotazioni di azioni, ETF, indici e cripto e andamenti storici. Fonte: l'interfaccia non ufficiale dei grafici di Yahoo Finance (senza chiave, senza garanzia, leggermente ritardata). Non adatto a decisioni di trading."}
 author: JuStAI5
 license: MIT
 types: [tool, integration]
@@ -21,5 +21,5 @@ config_schema:
     default_symbols:
       type: array
       default: ["^GSPC", "^NDX", "^GDAXI", "FTSEMIB.MI", "EURUSD=X", "BTC-EUR"]
-      description: Werte für allgemeine Fragen nach "den Börsen"
+      description: Symbols for general questions about "the markets"
   additionalProperties: false

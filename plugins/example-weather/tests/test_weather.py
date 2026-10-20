@@ -47,7 +47,13 @@ def test_current_weather() -> None:
     ctx = make()
     result = asyncio.run(ctx.call_tool("weather.current", {}))
     assert result.ok and result.data["temperature"] == 21.4
-    assert "teilweise bewölkt" in result.message
+    assert "teilweise bewölkt" in result.message  # configured language
+
+
+def test_conversation_language_wins_over_the_configured_one() -> None:
+    ctx = make()
+    result = asyncio.run(ctx.call_tool("weather.current", {}, language="it"))
+    assert result.ok and "parzialmente nuvoloso" in result.message
 
 
 def test_forecast_and_cache() -> None:

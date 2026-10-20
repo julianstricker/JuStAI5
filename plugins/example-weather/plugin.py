@@ -33,12 +33,12 @@ WEEKDAYS = {"de": ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"], "it": ["Lu", "Ma",
 
 
 class LocationParams(BaseModel):
-    location: str | None = Field(None, description="Ort, z. B. 'Bozen' oder 'Milano'")
+    location: str | None = Field(None, description="Place, e.g. 'Bolzano' or 'Milano'")
 
 
 class ForecastParams(LocationParams):
     days: int = Field(3, ge=1, le=7)
-    show_on_display: bool = Field(False, description="Ergebnis auch auf dem Display im Raum zeigen")
+    show_on_display: bool = Field(False, description="Also show the result on the display in the room")
 
 
 class WeatherError(PluginError):
@@ -46,8 +46,8 @@ class WeatherError(PluginError):
 
 
 def condition(code: int, lang: str) -> str:
-    entry = CONDITIONS.get(code) or CONDITIONS.get(code - code % 10) or {"de": f"Code {code}"}
-    return entry.get(lang) or entry.get("de", "")
+    entry = CONDITIONS.get(code) or CONDITIONS.get(code - code % 10) or {"en": f"code {code}"}
+    return entry.get(lang) or entry.get("en", "")
 
 
 class WeatherPlugin(Plugin):
@@ -57,13 +57,13 @@ class WeatherPlugin(Plugin):
     async def setup(self) -> None:
         self.last_error: str | None = None
         self.ctx.register_tool(ToolDefinition(
-            name="weather.current", description="Aktuelles Wetter an einem Ort.",
+            name="weather.current", description="Current weather at a place.",
             parameters=LocationParams, category="information", timeout_s=15), self.current)
         self.ctx.register_tool(ToolDefinition(
-            name="weather.forecast", description="Wettervorhersage für die nächsten Tage.",
+            name="weather.forecast", description="Weather forecast for the next days.",
             parameters=ForecastParams, category="information", timeout_s=20), self.forecast)
         self.ctx.register_display_component(DisplayComponentSpec(
-            type="weather-card", description="Wetterkarte",
+            type="weather-card", description="Weather card",
             props_schema={"type": "object", "required": ["location", "temperature"], "properties": {
                 "location": {"type": "string"}, "temperature": {"type": "number"},
                 "condition": {"type": "string"}, "forecast": {"type": "array"}}},
@@ -76,9 +76,10 @@ class WeatherPlugin(Plugin):
         return PluginHealth()
 
     # -------------------------------------------------------------- helpers
-    @property
-    def lang(self) -> str:
-        return str(self.ctx.config.get("language", "de"))
+    def lang(self, ctx: ToolContext | None = None) -> str:
+        """The conversation's language, else the configured one, else English."""
+        lang = ((ctx.language if ctx else None) or self.ctx.config.get("language") or "en")[:2]
+        return lang if lang in WEEKDAYS else "en"
 
     async def _cached(self, key: str) -> Any | None:
         minutes = int(self.ctx.config.get("cache_minutes", 15))
@@ -87,17 +88,17 @@ class WeatherPlugin(Plugin):
             return entry["v"]
         return None
 
-    async def _geocode(self, name: str) -> dict[str, Any]:
+    async def _geocode(self, name: str, lang: str) -> dict[str, Any]:
         key = f"geo:{name.lower()}"
         cached = await self.ctx.store.get(key)
         if cached:
             return dict(cached)
-        r = await self.ctx.http.get(GEO_URL, params={"name": name, "count": 1, "language": self.lang})
+        r = await self.ctx.http.get(GEO_URL, params={"name": name, "count": 1, "language": lang})
         if r.status != 200:
-            raise WeatherError(f"Geocoding fehlgeschlagen ({r.status})")
+            raise WeatherError(f"geocoding failed ({r.status})")
         results = r.json().get("results") or []
         if not results:
-            raise WeatherError(f"Ort '{name}' nicht gefunden")
+            raise WeatherError(f"place '{name}' not found")
         place = {k: results[0][k] for k in ("name", "latitude", "longitude", "timezone")}
         await self.ctx.store.put(key, place)
         return place
@@ -112,7 +113,7 @@ class WeatherPlugin(Plugin):
             "current": "temperature_2m,weather_code,wind_speed_10m",
             "daily": "temperature_2m_max,temperature_2m_min,weather_code", "forecast_days": days})
         if r.status != 200:
-            self.last_error = f"Open-Meteo antwortet mit {r.status}"
+            self.last_error = f"Open-Meteo answered {r.status}"
             raise WeatherError(self.last_error)
         self.last_error = None
         data = r.json()
@@ -122,12 +123,13 @@ class WeatherPlugin(Plugin):
     # ---------------------------------------------------------------- tools
     async def current(self, params: LocationParams, ctx: ToolContext) -> ToolResult:
         try:
-            place = await self._geocode(params.location or self.ctx.config.get("default_location", "Bozen"))
+            place = await self._geocode(params.location or self.ctx.config.get("default_location", "Bozen"),
+                                        self.lang(ctx))
             data = await self._forecast(place, 1)
         except WeatherError as exc:
             return ToolResult.failure("weather_unavailable", str(exc))
         cur = data["current"]
-        text = condition(int(cur["weather_code"]), self.lang)
+        text = condition(int(cur["weather_code"]), self.lang(ctx))
         return ToolResult.success(
             {"location": place["name"], "temperature": cur["temperature_2m"], "condition": text,
              "wind_kmh": cur.get("wind_speed_10m")},
@@ -135,26 +137,28 @@ class WeatherPlugin(Plugin):
 
     async def forecast(self, params: ForecastParams, ctx: ToolContext) -> ToolResult:
         try:
-            place = await self._geocode(params.location or self.ctx.config.get("default_location", "Bozen"))
+            place = await self._geocode(params.location or self.ctx.config.get("default_location", "Bozen"),
+                                        self.lang(ctx))
             data = await self._forecast(place, params.days)
         except WeatherError as exc:
             return ToolResult.failure("weather_unavailable", str(exc))
         daily = data["daily"]
         import datetime as dt
 
+        lang = self.lang(ctx)
         days = []
         for i, day in enumerate(daily["time"]):
-            weekday = WEEKDAYS.get(self.lang, WEEKDAYS["de"])[dt.date.fromisoformat(day).weekday()]
+            weekday = WEEKDAYS[lang][dt.date.fromisoformat(day).weekday()]
             days.append({"day": weekday, "min": daily["temperature_2m_min"][i],
                          "max": daily["temperature_2m_max"][i],
-                         "condition": condition(int(daily["weather_code"][i]), self.lang)})
+                         "condition": condition(int(daily["weather_code"][i]), lang)})
         result = {"location": place["name"], "temperature": data["current"]["temperature_2m"],
-                  "condition": condition(int(data["current"]["weather_code"]), self.lang), "forecast": days}
+                  "condition": condition(int(data["current"]["weather_code"]), lang), "forecast": days}
         if params.show_on_display and ctx.room_id:
             try:
-                await self.ctx.services.show(ctx.room_id, {"title": f"Wetter {place['name']}", "components": [
+                await self.ctx.services.show(ctx.room_id, {"title": place["name"], "components": [
                     {"type": "example-weather.weather-card", **result}], "duration_s": 120})
             except Exception as exc:  # display is optional - never fail the forecast
                 result["display_error"] = str(exc)
-        return ToolResult.success(result, message=f"Vorhersage für {place['name']}: " + ", ".join(
+        return ToolResult.success(result, message=f"Forecast for {place['name']}: " + ", ".join(
             f"{d['day']} {d['min']:.0f}–{d['max']:.0f} °C {d['condition']}" for d in days))

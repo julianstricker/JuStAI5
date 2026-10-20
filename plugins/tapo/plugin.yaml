@@ -1,11 +1,10 @@
 id: tapo
-name: TP-Link Tapo Kameras
+name: "TP-Link Tapo cameras"
 version: 1.0.0
-description: >-
-  Tapo-Kameras (C100, C200, C210, C410 u. a.). Video und Zwei-Wege-Audio über das
-  Tapo-Protokoll (go2rtc), alternativ RTSP. PTZ, Presets und Privatsphäre-Modus über
-  die lokale Tapo-API (Cloud-Passwort) oder ONVIF (Kamerakonto). Fähigkeiten werden
-  zur Laufzeit ermittelt.
+description: "Tapo cameras (C100, C200, C210, C410 and others). Video and two-way audio via the Tapo protocol (go2rtc), alternatively RTSP. PTZ, presets and privacy mode via the local Tapo API (cloud password) or ONVIF (camera account). Capabilities are determined at runtime."
+i18n:
+  de: {name: "TP-Link Tapo Kameras", description: "Tapo-Kameras (C100, C200, C210, C410 u. a.). Video und Zwei-Wege-Audio über das Tapo-Protokoll (go2rtc), alternativ RTSP. PTZ, Presets und Privatsphäre-Modus über die lokale Tapo-API (Cloud-Passwort) oder ONVIF (Kamerakonto). Fähigkeiten werden zur Laufzeit ermittelt."}
+  it: {name: "Telecamere TP-Link Tapo", description: "Telecamere Tapo (C100, C200, C210, C410 e altre). Video e audio bidirezionale tramite il protocollo Tapo (go2rtc), in alternativa RTSP. PTZ, preset e modalità privacy tramite l'API Tapo locale (password cloud) o ONVIF (account della telecamera). Le capacità vengono rilevate durante il funzionamento."}
 author: JuStAI5
 license: MIT
 types: [device, ptz, discovery]

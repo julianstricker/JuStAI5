@@ -21,6 +21,7 @@ from justai_sdk.ports.ai import ChatMessage, Role
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, delete, func, or_, select, update
 
+from justai import i18n
 from justai.ai.config import ModelRole
 from justai.ai.router import AIRouter, DataFlags
 from justai.common.errors import NotFound
@@ -135,16 +136,17 @@ EXTRACTION_SCHEMA: dict[str, Any] = {
     "required": ["memories"],
 }
 
-EXTRACTION_PROMPT = """Du extrahierst dauerhaft nützliche Erinnerungen aus einem Gespräch zwischen
-einem Hausassistenten und Menschen. Speichere nur Dinge, die später hilfreich sind: Fakten über
-Personen, Besitz, Pläne, Vorlieben, Gewohnheiten, Beziehungen, wichtige Ereignisse.
-Speichere KEINE Smalltalk-Inhalte, Fragen nach Uhrzeit/Wetter, Tool-Ergebnisse oder
-Aussagen des Assistenten über sich selbst.
-- certainty: "stated" wenn der Benutzer es ausdrücklich gesagt hat, "implied" wenn es klar
-  folgt, "guess" bei Vermutungen.
-- about: "speaker" wenn es den Sprecher betrifft, sonst Name der Person oder "household".
-- private: true für persönliche/sensible Informationen.
-Antworte als JSON nach Schema. Wenn nichts zu speichern ist: {"memories": []}."""
+EXTRACTION_PROMPT = """You extract lastingly useful memories from a conversation between a home
+assistant and people. Only store things that will help later: facts about people, possessions,
+plans, preferences, habits, relationships, important events.
+Do NOT store small talk, questions about time/weather, tool results or statements of the
+assistant about itself.
+Write each memory (and the summary) in the language of the conversation.
+- certainty: "stated" if the user said it explicitly, "implied" if it clearly follows,
+  "guess" for assumptions.
+- about: "speaker" if it concerns the speaker, otherwise the person's name or "household".
+- private: true for personal/sensitive information.
+Answer as JSON following the schema. If there is nothing to store: {"memories": []}."""
 
 
 class MemoryService:
@@ -317,9 +319,9 @@ class MemoryService:
             hits = [*about, *[h for h in hits if h.id not in known]][:limit]
         out = []
         for h in hits:
-            label = {"confirmed": "bestätigt", "extracted": "aus Gespräch",
-                     "observed": "beobachtet", "inferred": "VERMUTUNG"}.get(h.provenance, h.provenance)
-            out.append(f"[{label}, {h.updated_at:%d.%m.%Y}] {h.content}")
+            label = {"confirmed": "confirmed", "extracted": "from a conversation",
+                     "observed": "observed", "inferred": "ASSUMPTION"}.get(h.provenance, h.provenance)
+            out.append(f"[{label}, {h.updated_at:%Y-%m-%d}] {h.content}")
         return out
 
     async def list_all(self, *, person_id: str | None = None, kind: str | None = None,
@@ -343,18 +345,18 @@ class MemoryService:
                 TranscriptTurn.role.in_(["user", "assistant"])).order_by(TranscriptTurn.created_at))).all()
             speaker = await s.get(Person, session.person_id) if session.person_id else None
             people = {p.name.lower(): p.id for p in (await s.scalars(select(Person))).all()}
-            person_id, room_id = session.person_id, session.room_id
+            person_id, room_id, language = session.person_id, session.room_id, session.language
         user_turns = [t for t in turns if t.role == "user"]
         if not user_turns or sum(len(t.text) for t in user_turns) < 15:
             await self._mark_processed(session_id)
             return 0
-        transcript = "\n".join(f"{'Benutzer' if t.role == 'user' else 'Assistent'}: {t.text}"
+        transcript = "\n".join(f"{'User' if t.role == 'user' else 'Assistant'}: {t.text}"
                                for t in turns)
-        speaker_line = f"Der Sprecher ist {speaker.name}." if speaker else "Der Sprecher ist unbekannt."
+        speaker_line = f"The speaker is {speaker.name}." if speaker else "The speaker is unknown."
         result = await self.ai.chat(
             ModelRole.MEMORY,
             [ChatMessage(role=Role.SYSTEM, content=EXTRACTION_PROMPT),
-             ChatMessage(role=Role.USER, content=f"{speaker_line}\n\nGespräch:\n{transcript}")],
+             ChatMessage(role=Role.USER, content=f"{speaker_line}\n\nConversation:\n{transcript}")],
             json_schema=EXTRACTION_SCHEMA, flags=DataFlags(personal=True), temperature=0.1)
         try:
             data = json.loads(result.text or "{}")
@@ -387,7 +389,7 @@ class MemoryService:
         summary = data.get("summary")
         # The summary could repeat forgotten content: only keep it if nothing was forgotten.
         if summary and stored and not skipped_forgotten:
-            await self.add(MemoryIn(content=f"Gespräch: {summary}", kind="episode",
+            await self.add(MemoryIn(content=i18n.text("memory.episode", language, summary=summary), kind="episode",
                                     scope="private" if person_id else "shared",
                                     owner_person_id=person_id, room_id=room_id,
                                     provenance=Provenance.EXTRACTED, confidence=0.8, importance=0.3,

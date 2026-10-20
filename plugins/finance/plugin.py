@@ -16,7 +16,7 @@ PERIODS = {"1d": ("1d", "5m"), "5d": ("5d", "30m"), "1mo": ("1mo", "1d"), "6mo":
 
 class QuotesParams(BaseModel):
     symbols: list[str] = Field(default_factory=list, max_length=12,
-                               description="Ticker wie AAPL, MSFT, ^GDAXI, BTC-EUR; leer = Übersicht")
+                               description="Tickers like AAPL, MSFT, ^GDAXI, BTC-EUR; empty = overview")
 
 
 class ChartParams(BaseModel):
@@ -28,11 +28,11 @@ class FinancePlugin(Plugin):
     async def setup(self) -> None:
         self.ctx.register_tool(ToolDefinition(
             name="finance.quotes",
-            description="Aktuelle Kurse (Aktien, Indizes, Devisen, Krypto). Ergebnis eignet sich für "
-                        "display.show mit stock-quote-Komponenten.",
+            description="Current prices (stocks, indices, currencies, crypto). The result suits "
+                        "display.show with stock-quote components.",
             parameters=QuotesParams, category="information", timeout_s=20), self.quotes)
         self.ctx.register_tool(ToolDefinition(
-            name="finance.chart", description="Kursverlauf eines Wertes (für chart-Komponenten).",
+            name="finance.chart", description="Price history of a symbol (for chart components).",
             parameters=ChartParams, category="information", timeout_s=20), self.chart)
 
     async def _fetch(self, symbol: str, range_: str, interval: str) -> dict[str, Any]:
@@ -42,7 +42,7 @@ class FinancePlugin(Plugin):
             raise ValueError(f"{symbol}: HTTP {r.status}")
         result = (r.json().get("chart") or {}).get("result") or []
         if not result:
-            raise ValueError(f"{symbol}: keine Daten")
+            raise ValueError(f"{symbol}: no data")
         return dict(result[0])
 
     async def quotes(self, params: QuotesParams, ctx: ToolContext) -> ToolResult:
@@ -64,8 +64,8 @@ class FinancePlugin(Plugin):
                         "time": datetime.fromtimestamp(meta.get("regularMarketTime", 0), UTC)
                         .isoformat(timespec="minutes")})
         if not out:
-            return ToolResult.failure("no_data", "; ".join(errors) or "keine Kurse")
-        return ToolResult.success({"quotes": out, "errors": errors, "source": "Yahoo Finance (inoffiziell)"},
+            return ToolResult.failure("no_data", "; ".join(errors) or "no prices")
+        return ToolResult.success({"quotes": out, "errors": errors, "source": "Yahoo Finance (unofficial)"},
                                   message=", ".join(f"{q['symbol']} {q['price']} {q['currency']}" for q in out))
 
     async def chart(self, params: ChartParams, ctx: ToolContext) -> ToolResult:

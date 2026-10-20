@@ -16,20 +16,20 @@ if TYPE_CHECKING:
     from justai.tools.registry import ToolRegistry
 
 DOC_HELP = (
-    "Dokument: {\"title\":\"...\",\"layout\":\"single|dashboard\",\"components\":[...],"
-    "\"duration_s\":120}. Komponenten (type + Felder): text{text,size}, heading{text}, "
+    "Document: {\"title\":\"...\",\"layout\":\"single|dashboard\",\"components\":[...],"
+    "\"duration_s\":120}. Components (type + fields): text{text,size}, heading{text}, "
     "markdown{markdown}, image{src(https)}, table{columns,rows}, kv{items:[{label,value}]}, "
     "stat{label,value,unit,trend}, chart{kind:line|bar|area,x_type:time|category,series:[{name,"
     "points:[[x,y]]}]}, list{items}, weather{location,temperature,condition,forecast:[{day,min,max,"
     "condition}]}, stock-quote{symbol,name,price,currency,change,change_pct}, camera{device_id}, "
     "notification{title,message,level}, choice{prompt,options:[{id,label}]}, button{label,action_id}, "
-    "clock{}, card/row/grid{children:[...]}. Kein HTML.")
+    "clock{}, card/row/grid{children:[...]}. No HTML. Texts in the user's language.")
 
 
 class ShowParams(BaseModel):
     document: dict[str, Any] = Field(description=DOC_HELP)
-    room: str | None = Field(None, description="Nur für ausdrückliche Anzeige in einem ANDEREN Raum")
-    personal: bool = Field(False, description="True bei privaten Inhalten (Kalender, Gesundheit, Finanzen)")
+    room: str | None = Field(None, description="Only for an explicit display in ANOTHER room")
+    personal: bool = Field(False, description="True for private content (calendar, health, finances)")
 
 
 class UpdateParams(BaseModel):
@@ -63,7 +63,7 @@ class DisplayExtension:
             if p.room:
                 room = await self.c.rooms.find(p.room)
                 if room is None:
-                    return ToolResult.failure("unknown_room", f"Raum '{p.room}' unbekannt")
+                    return ToolResult.failure("unknown_room", f"unknown room '{p.room}'")
                 target_room = room.id
             try:
                 pres = await svc.present(
@@ -76,25 +76,25 @@ class DisplayExtension:
             except ValidationFailed as exc:
                 return ToolResult.failure("invalid_document", exc.message, data=exc.details)
             if pres.status != "displayed":
-                return ToolResult.failure("not_displayed", f"Nicht angezeigt: {pres.error or 'keine Bestätigung'}",
+                return ToolResult.failure("not_displayed", f"Not displayed: {pres.error or 'no acknowledgement'}",
                                           data={"presentation_id": pres.id, "status": pres.status})
             return ToolResult.success({"presentation_id": pres.id, "status": pres.status},
-                                      message="Auf dem Display angezeigt (bestätigt)")
+                                      message="Shown on the display (acknowledged)")
 
         reg.register(ToolDefinition(
             name="display.show",
-            description="Zeigt strukturierte Inhalte auf dem Bildschirm im Raum des Gesprächs an und meldet "
-                        "erst Erfolg, wenn das Display die Anzeige bestätigt hat. " + DOC_HELP,
+            description="Shows structured content on the screen in the room of the conversation and only "
+                        "reports success once the display has acknowledged it. " + DOC_HELP,
             parameters=ShowParams, category="display", side_effect=SideEffect.PHYSICAL, timeout_s=20,
             permissions=[Permission.DISPLAY_WRITE]), show)
 
         async def update(p: UpdateParams, ctx: ToolContext) -> ToolResult:
             pres = await svc.update(p.presentation_id, p.document)
             return ToolResult(ok=pres.status == "updated", data={"status": pres.status},
-                              message="Darstellung aktualisiert" if pres.status == "updated" else "fehlgeschlagen")
+                              message="Presentation updated" if pres.status == "updated" else "failed")
 
         reg.register(ToolDefinition(
-            name="display.update", description="Aktualisiert eine angezeigte Darstellung.",
+            name="display.update", description="Updates a displayed presentation.",
             parameters=UpdateParams, category="display", side_effect=SideEffect.PHYSICAL,
             permissions=[Permission.DISPLAY_WRITE]), update)
 
@@ -102,12 +102,12 @@ class DisplayExtension:
             presentations = {x.id: x for x in await svc.presentations(200)}
             pres = presentations.get(p.presentation_id)
             if pres is None:
-                return ToolResult.failure("unknown", "Darstellung nicht gefunden")
+                return ToolResult.failure("unknown", "Presentation not found")
             await svc.close(pres.display_device_id, pres.id)
-            return ToolResult.success(message="Darstellung geschlossen")
+            return ToolResult.success(message="Presentation closed")
 
         reg.register(ToolDefinition(
-            name="display.close", description="Schließt eine Darstellung.", parameters=CloseParams,
+            name="display.close", description="Closes a presentation.", parameters=CloseParams,
             category="display", side_effect=SideEffect.PHYSICAL, permissions=[Permission.DISPLAY_WRITE]), close)
 
         async def list_(_: NoParams, ctx: ToolContext) -> ToolResult:
@@ -117,5 +117,5 @@ class DisplayExtension:
                                         "capabilities": d["capabilities"]} for d in here])
 
         reg.register(ToolDefinition(
-            name="display.list", description="Displays im aktuellen Raum und ihr Status.",
+            name="display.list", description="Displays in the current room and their status.",
             parameters=NoParams, category="display", permissions=[Permission.DEVICES_READ]), list_)

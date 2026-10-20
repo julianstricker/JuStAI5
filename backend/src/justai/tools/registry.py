@@ -146,21 +146,21 @@ class ToolExecutor:
         started = time.monotonic()
         tool = self.registry.get(name)
         if tool is None:
-            result = ToolResult.failure("unknown_tool", f"Tool {name} gibt es nicht.")
+            result = ToolResult.failure("unknown_tool", f"Tool {name} does not exist.")
             await self._record(name, None, args, ctx, result, started)
             return result
         definition = tool.definition
         missing = sorted(set(definition.permissions) - ctx.permissions)
         if missing:
             result = ToolResult.failure("permission_denied",
-                                        f"Keine Berechtigung für {definition.name}: {missing}")
+                                        f"No permission for {definition.name}: {missing}")
             await self._record(definition.name, tool.owner, args, ctx, result, started, "denied")
             return result
         try:
             params = definition.parameters.model_validate(args)
         except ValidationError as exc:
             errors = [{"loc": e["loc"], "msg": e["msg"]} for e in exc.errors()]
-            result = ToolResult.failure("invalid_arguments", "Ungültige Parameter", data=errors)
+            result = ToolResult.failure("invalid_arguments", "Invalid parameters", data=errors)
             await self._record(definition.name, tool.owner, args, ctx, result, started)
             return result
         if definition.requires_confirmation and not ctx.confirmed:
@@ -169,8 +169,8 @@ class ToolExecutor:
             result = ToolResult(
                 ok=False, needs_confirmation=True, confirmation_token=token,
                 error_code="confirmation_required",
-                message=("Diese Aktion muss der Benutzer bestätigen. Frage ihn ausdrücklich und "
-                         "rufe nach seiner Zustimmung assistant.confirm_action mit dem Token auf."),
+                message=("The user must confirm this action. Ask explicitly and call "
+                         "assistant.confirm_action with the token after they agree."),
             )
             await self._record(definition.name, tool.owner, args, ctx, result, started,
                                "needs_confirmation")

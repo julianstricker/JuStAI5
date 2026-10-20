@@ -1,11 +1,10 @@
 id: simulated
-name: Simulierte Geräte
+name: "Simulated devices"
 version: 1.0.0
-description: >-
-  Virtuelle Kameras, Mikrofone und Lautsprecher für Tests und Demos ohne Hardware:
-  akustischer Raum mit Echo des eigenen Lautsprechers (Verzögerung, Hall, optional
-  Mikrofon-Ducking wie bei Tapo-Kameras), einspielbare Benutzersprache, Kamerabilder
-  aus Bilddateien und virtuelles PTZ über einem Panoramabild.
+description: "Virtual cameras, microphones and speakers for tests and demos without hardware: acoustic room with echo of the own speaker (delay, reverb, optional microphone ducking like Tapo cameras), injectable user speech, camera images from image files and virtual PTZ over a panorama image."
+i18n:
+  de: {name: "Simulierte Geräte", description: "Virtuelle Kameras, Mikrofone und Lautsprecher für Tests und Demos ohne Hardware: akustischer Raum mit Echo des eigenen Lautsprechers (Verzögerung, Hall, optional Mikrofon-Ducking wie bei Tapo-Kameras), einspielbare Benutzersprache, Kamerabilder aus Bilddateien und virtuelles PTZ über einem Panoramabild."}
+  it: {name: "Dispositivi simulati", description: "Telecamere, microfoni e altoparlanti virtuali per test e demo senza hardware: stanza acustica con eco del proprio altoparlante (ritardo, riverbero, ducking opzionale del microfono come nelle telecamere Tapo), parlato utente simulato, immagini da file e PTZ virtuale su un'immagine panoramica."}
 author: JuStAI5
 license: MIT
 types: [device, tool]

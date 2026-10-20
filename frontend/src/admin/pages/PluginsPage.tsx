@@ -20,7 +20,7 @@ import { useState } from "react";
 import { api } from "@/shared/api";
 import type { PluginInfo } from "@/shared/types";
 
-import { type Key, useT } from "@/shared/i18n";
+import { type Key, useI18n, useT } from "@/shared/i18n";
 
 import { JsonSchemaForm } from "../components/JsonSchemaForm";
 import { PageHeader, StatusBadge, useAction } from "../components/common";
@@ -43,6 +43,15 @@ const PERMISSION_HINTS: Record<string, Key> = {
   "automation.manage": "perm.automation.manage",
 };
 
+/** Name and description in the UI language (manifest i18n, English fallback). */
+function useLocalized() {
+  const { lang } = useI18n();
+  return (m: PluginInfo["manifest"]) => ({
+    name: m.i18n?.[lang]?.name || m.name,
+    description: m.i18n?.[lang]?.description || m.description,
+  });
+}
+
 function ConfigModal({
   plugin,
   onClose,
@@ -59,6 +68,7 @@ function ConfigModal({
   );
   const [granted, setGranted] = useState<string[]>(plugin.granted_permissions);
   const t = useT();
+  const loc = useLocalized();
   const save = useAction(
     () =>
       api.put(`/api/plugins/${plugin.id}/config`, {
@@ -71,9 +81,9 @@ function ConfigModal({
     },
   );
   return (
-    <Modal opened onClose={onClose} title={plugin.manifest.name} size="lg">
+    <Modal opened onClose={onClose} title={loc(plugin.manifest).name} size="lg">
       <Stack>
-        <Text size="sm">{plugin.manifest.description}</Text>
+        <Text size="sm">{loc(plugin.manifest).description}</Text>
         <Title order={6}>{t("plug.permissions")}</Title>
         {plugin.manifest.permissions.map((p) => (
           <Checkbox
@@ -125,6 +135,7 @@ export function PluginsPage() {
   });
   const [configuring, setConfiguring] = useState<PluginInfo | null>(null);
   const t = useT();
+  const loc = useLocalized();
   const toggle = useAction(
     ({ id, enable }: { id: string; enable: boolean }) =>
       api.post(`/api/plugins/${id}/${enable ? "enable" : "disable"}`),
@@ -175,7 +186,7 @@ export function PluginsPage() {
           <Card key={p.id} withBorder>
             <Group justify="space-between">
               <Stack gap={0}>
-                <Text fw={600}>{p.manifest.name}</Text>
+                <Text fw={600}>{loc(p.manifest).name}</Text>
                 <Text size="xs" c="dimmed">
                   {p.id} {p.version} · {p.source} · {p.manifest.trust}
                 </Text>
@@ -188,7 +199,7 @@ export function PluginsPage() {
               />
             </Group>
             <Text size="sm" mt="xs" lineClamp={3}>
-              {p.manifest.description}
+              {loc(p.manifest).description}
             </Text>
             <Group gap={4} mt="xs">
               <StatusBadge status={p.status} />

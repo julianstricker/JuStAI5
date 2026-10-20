@@ -1,7 +1,10 @@
 id: fastembed
-name: fastembed (lokale Embeddings)
+name: "fastembed (local embeddings)"
 version: 1.0.0
-description: Mehrsprachige Text-Embeddings lokal (ONNX) für das Langzeitgedächtnis.
+description: "Multilingual text embeddings computed locally (ONNX) for the long-term memory."
+i18n:
+  de: {name: "fastembed (lokale Embeddings)", description: "Mehrsprachige Text-Embeddings lokal (ONNX) für das Langzeitgedächtnis."}
+  it: {name: "fastembed (embedding locali)", description: "Embedding di testo multilingue calcolati in locale (ONNX) per la memoria a lungo termine."}
 author: JuStAI5
 license: Apache-2.0 (fastembed)
 types: [embedding]
@@ -19,5 +22,5 @@ config_schema:
     cache_dir:
       type: string
       default: ""
-      description: Leer = $JUSTAI_MODELS_DIR/fastembed
+      description: Empty = $JUSTAI_MODELS_DIR/fastembed
   additionalProperties: false

@@ -30,6 +30,7 @@ from justai_sdk.ports.ai import (
 )
 from justai_sdk.tools import InvocationOrigin, ToolContext, ToolResult
 
+from justai import i18n
 from justai.ai.config import AISettings, ModelRole
 from justai.ai.router import CLOUD_FALLBACK_NOTICES, AIRouter, DataFlags
 from justai.audio.dsp import SR
@@ -73,24 +74,8 @@ def replay_start(frames: list[ProcessedFrame], wake_t: float) -> float:
 MAX_TOOL_ROUNDS = 6
 MAX_HISTORY = 30
 
-_SORRY = {
-    "de": ("Entschuldigung, dabei ist ein Fehler aufgetreten.",
-           "Entschuldigung, das habe ich leider nicht geschafft."),
-    "it": ("Scusa, si è verificato un errore.", "Scusa, non ci sono riuscito."),
-    "en": ("Sorry, something went wrong.", "Sorry, I could not do that."),
-}
-
-
-_CLOUD_NOTE = {
-    "de": "Hinweis: Das lokale Modell ist gerade nicht verfügbar, ich antworte über ein Cloud-Modell.",
-    "it": "Nota: il modello locale non è disponibile, rispondo tramite un modello cloud.",
-    "en": "Note: the local model is unavailable, I am answering with a cloud model.",
-}
-
-
 def _sorry(language: str | None, *, failed: bool = False) -> str:
-    texts = _SORRY.get((language or "de")[:2], _SORRY["de"])
-    return texts[1] if failed else texts[0]
+    return i18n.text("sorry.failed" if failed else "sorry.error", language)
 
 
 class AudioPort(Protocol):
@@ -401,7 +386,7 @@ def tool_result_payload(result: ToolResult) -> dict[str, Any]:
         payload["confirmation_token"] = result.confirmation_token
     text = json.dumps(payload, ensure_ascii=False, default=str)
     if len(text) > 12000:
-        payload["data"] = "[gekürzt]"
+        payload["data"] = "[truncated]"
     return payload
 
 
@@ -552,7 +537,7 @@ class RealtimeDriver:
             self._suppress_output = True  # drop the rest of the answer being generated
 
     async def inject(self, text: str) -> None:
-        await self.rt.send_text(f"[Systemereignis, nicht vom Benutzer gesprochen] {text}",
+        await self.rt.send_text(f"[System event, not spoken by the user] {text}",
                                 end_of_turn=True)
 
     async def user_text(self, text: str) -> None:
@@ -670,7 +655,7 @@ class PipelineDriver:
                 async for ev in stream:
                     if cloud_notices and not announced:
                         announced = True  # say it before the answer that comes from the cloud
-                        note = _CLOUD_NOTE.get((s.ctx.language or "de")[:2], _CLOUD_NOTE["de"])
+                        note = i18n.text("cloud.note", s.ctx.language)
                         spoken.append(note)
                         await tts_queue.put(note)
                     if ev.kind == ChatEventKind.TEXT:
@@ -743,7 +728,7 @@ class PipelineDriver:
         from justai.conversation.context import LANG_NAMES
 
         name = LANG_NAMES.get(language, language)
-        note = ChatMessage(role=Role.SYSTEM, content=f"Der Benutzer spricht gerade {name}. Antworte auf {name}.")
+        note = ChatMessage(role=Role.SYSTEM, content=f"The user is speaking {name} right now. Answer in {name}.")
         if len(self.messages) > 1 and self.messages[1].role == Role.SYSTEM:
             self.messages[1] = note
         else:
@@ -752,9 +737,10 @@ class PipelineDriver:
     def note_person(self, name: str) -> None:
         system = self.messages[0]
         content = str(system.content or "")
-        unknown = "Die sprechende Person ist nicht sicher identifiziert."
-        updated = content.replace(unknown, f"Du sprichst mit {name}.") if unknown in content \
-            else content + f"\nDu sprichst mit {name}."
+        from justai.conversation.context import UNKNOWN_SPEAKER
+
+        updated = content.replace(UNKNOWN_SPEAKER, f"You are talking to {name}.") if UNKNOWN_SPEAKER in content \
+            else content + f"\nYou are talking to {name}."
         self.messages[0] = ChatMessage(role=Role.SYSTEM, content=updated)
 
     def _trimmed(self) -> list[ChatMessage]:
@@ -775,7 +761,7 @@ class PipelineDriver:
         async def run() -> str:
             async with self._lock:
                 self.messages.append(ChatMessage(
-                    role=Role.USER, content=f"[Systemereignis, nicht vom Benutzer gesprochen] {text}"))
+                    role=Role.USER, content=f"[System event, not spoken by the user] {text}"))
                 return await self._respond_locked()
 
         self._turn = asyncio.create_task(run())

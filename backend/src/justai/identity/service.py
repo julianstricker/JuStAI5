@@ -72,11 +72,11 @@ class EnrollResult:
 def quality_issues(face: FaceObservation) -> list[str]:
     issues = []
     if face.size_px < MIN_FACE_PX:
-        issues.append(f"Gesicht zu klein ({face.size_px}px < {MIN_FACE_PX}px)")
+        issues.append(f"face too small ({face.size_px}px < {MIN_FACE_PX}px)")
     if face.sharpness < MIN_SHARPNESS:
         issues.append("Bild unscharf")
     if not 40 <= face.brightness <= 225:
-        issues.append("zu dunkel oder zu hell")
+        issues.append("too dark or too bright")
     if face.frontalness < MIN_FRONTAL:
         issues.append("Gesicht nicht frontal genug")
     return issues
@@ -198,13 +198,13 @@ class IdentityService:
                             *, source: str = "enrollment", max_samples: int = 8) -> EnrollResult:
         person = await self.get(person_id)
         if not person.biometric_consent:
-            raise ValidationFailed("biometrische Registrierung erfordert eine Einwilligung")
+            raise ValidationFailed("biometric enrolment requires consent")
         reasons: builtins.list[str] = []
         accepted: builtins.list[tuple[np.ndarray, FaceObservation, np.ndarray]] = []
         for image in images:
             faces = analyzer.detect_faces(image)
             if len(faces) != 1:
-                reasons.append("kein Gesicht" if not faces else f"{len(faces)} Gesichter im Bild")
+                reasons.append("no face" if not faces else f"{len(faces)} faces in the image")
                 continue
             issues = quality_issues(faces[0])
             if issues:

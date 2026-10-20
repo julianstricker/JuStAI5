@@ -72,5 +72,5 @@ def test_prompt_contains_previous_turns() -> None:
                               previous=[("user", "Wie wird das Wetter?"), ("assistant", "Sonnig.")],
                               previous_age_s=150)
     prompt = build_system_prompt(AISettings(), ctx, [])
-    assert "Fortsetzung eures Gesprächs von vor etwa 2 Minute" in prompt
-    assert "- Benutzer: Wie wird das Wetter?" in prompt and "- Du: Sonnig." in prompt
+    assert "continues your conversation from about 2 minute(s) ago" in prompt
+    assert "- User: Wie wird das Wetter?" in prompt and "- You: Sonnig." in prompt

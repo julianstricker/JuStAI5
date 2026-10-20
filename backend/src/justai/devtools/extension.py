@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 
 class DevelopParams(BaseModel):
-    request: str = Field(description="Beschreibung der gewünschten neuen Fähigkeit")
+    request: str = Field(description="Description of the desired new capability")
 
 
 class DevToolsExtension:
@@ -29,13 +29,13 @@ class DevToolsExtension:
             project_id = await self.service.create(p.request, {"session_id": ctx.session_id,
                                                                "person_id": ctx.person_id})
             return ToolResult.success({"project_id": project_id}, message=(
-                "Ich prüfe zuerst vorhandene Fähigkeiten und entwickle sonst ein neues Werkzeug. Es wird "
-                "isoliert getestet und erst nach Freigabe durch einen Administrator (Admin-Oberfläche, "
-                "Bereich Tools) aktiviert."))
+                "I first check existing capabilities and otherwise develop a new tool. It is tested in "
+                "isolation and only activated after an administrator approves it (admin interface, "
+                "Tools)."))
 
         reg.register(ToolDefinition(
             name="tools.develop",
-            description="Startet die Entwicklung einer neuen Fähigkeit, wenn kein vorhandenes Tool passt "
-                        "(vorher system.capabilities prüfen). Aktivierung nur nach Admin-Freigabe.",
+            description="Starts developing a new capability when no existing tool fits (check "
+                        "system.capabilities first). Activation only after admin approval.",
             parameters=DevelopParams, category="system", side_effect=SideEffect.WRITE,
             permissions=[Permission.TOOLS_DEVELOP]), develop)

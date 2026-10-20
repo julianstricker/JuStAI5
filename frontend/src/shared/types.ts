@@ -67,6 +67,8 @@ export interface JsonSchema {
   minimum?: number;
   maximum?: number;
   pattern?: string;
+  /** Translations of title/description per language: {"de": {"title": ...}} */
+  "x-i18n"?: Record<string, { title?: string; description?: string }>;
 }
 
 export type DeviceRole = "mic" | "camera" | "speaker" | "display";
@@ -155,6 +157,7 @@ export interface PluginInfo {
   manifest: {
     name: string;
     description: string;
+    i18n?: Record<string, { name?: string | null; description?: string | null }>;
     types: string[];
     permissions: string[];
     config_schema: JsonSchema;

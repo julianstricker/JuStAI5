@@ -37,13 +37,26 @@ CONFIG_SCHEMA: dict[str, Any] = {
     "type": "object",
     "required": ["host"],
     "properties": {
-        "host": {"type": "string", "title": "IP-Adresse / Hostname"},
-        "cloud_password": {"type": "string", "title": "Tapo-Cloud-Passwort",
-                           "description": "Für Tapo-Stream mit Zwei-Wege-Audio und lokale Steuerung"},
-        "password_hash": {"type": "string", "title": "Passwort-Hash (statt Cloud-Passwort)",
-                          "description": "Großgeschriebener MD5/SHA256-Hash des Cloud-Passworts"},
-        "camera_username": {"type": "string", "title": "Kamerakonto Benutzer (RTSP/ONVIF)"},
-        "camera_password": {"type": "string", "title": "Kamerakonto Passwort"},
+        "host": {"type": "string", "title": "IP address / host name",
+                 "x-i18n": {"de": {"title": "IP-Adresse / Hostname"}, "it": {"title": "Indirizzo IP / nome host"}}},
+        "cloud_password": {"type": "string", "title": "Tapo cloud password",
+                           "description": "For the Tapo stream with two-way audio and local control",
+                           "x-i18n": {"de": {"title": "Tapo-Cloud-Passwort",
+                                             "description": "Für Tapo-Stream mit Zwei-Wege-Audio und lokale Steuerung"},
+                                      "it": {"title": "Password cloud Tapo",
+                                             "description": "Per lo stream Tapo con audio bidirezionale e controllo locale"}}},  # noqa: E501
+        "password_hash": {"type": "string", "title": "Password hash (instead of the cloud password)",
+                          "description": "Upper-case MD5/SHA256 hash of the cloud password",
+                          "x-i18n": {"de": {"title": "Passwort-Hash (statt Cloud-Passwort)",
+                                            "description": "Großgeschriebener MD5/SHA256-Hash des Cloud-Passworts"},
+                                     "it": {"title": "Hash della password (invece della password cloud)",
+                                            "description": "Hash MD5/SHA256 in maiuscolo della password cloud"}}},
+        "camera_username": {"type": "string", "title": "Camera account user (RTSP/ONVIF)",
+                            "x-i18n": {"de": {"title": "Kamerakonto Benutzer (RTSP/ONVIF)"},
+                                       "it": {"title": "Utente dell'account della telecamera (RTSP/ONVIF)"}}},
+        "camera_password": {"type": "string", "title": "Camera account password",
+                            "x-i18n": {"de": {"title": "Kamerakonto Passwort"},
+                                       "it": {"title": "Password dell'account della telecamera"}}},
         "stream": {"type": "string", "enum": ["tapo", "rtsp"], "default": "tapo"},
         "horizontal_fov_deg": {"type": "number", "default": 95},
         "vertical_fov_deg": {"type": "number", "default": 54},
@@ -195,21 +208,21 @@ class TapoDriver:
 
         use_rtsp = config.get("stream") == "rtsp"
         if use_rtsp and not ports[PORT_RTSP]:
-            warnings.append("RTSP-Port geschlossen (Akku-Modelle haben kein RTSP); verwende das Tapo-Protokoll")
+            warnings.append("RTSP port closed (battery models have no RTSP); using the Tapo protocol")
             use_rtsp = False
         if use_rtsp:
             main, sub = rtsp_source(host, config, 1), rtsp_source(host, config, 2)
             backchannel = False
             if main is None:
                 return ProbeResult(ok=False, error="RTSP needs the camera account")
-            warnings.append("RTSP hat kein Zwei-Wege-Audio; für den Lautsprecher das Tapo-Protokoll verwenden")
+            warnings.append("RTSP has no two-way audio; use the Tapo protocol for the speaker")
         else:
             main, sub = tapo_source(host, config, 0), tapo_source(host, config, 1)
             backchannel = True
             if main is None:
                 if rtsp_source(host, config, 1) and ports[PORT_RTSP]:
                     main, sub, backchannel = rtsp_source(host, config, 1), rtsp_source(host, config, 2), False
-                    warnings.append("kein Cloud-Passwort: RTSP ohne Lautsprecher")
+                    warnings.append("no cloud password: RTSP without speaker")
                 else:
                     return ProbeResult(ok=False, error="cloud password (or hash) required")
             elif not ports[PORT_TAPO_STREAM]:
@@ -241,12 +254,12 @@ class TapoDriver:
                     await asyncio.to_thread(tapo.getPrivacyMode)
                     caps.add(Capability.CAMERA_PRIVACY_MODE)
             except Exception as exc:
-                warnings.append(f"lokale Tapo-API nicht nutzbar: {type(exc).__name__}: {exc}")
+                warnings.append(f"local Tapo API not usable: {type(exc).__name__}: {exc}")
         if Capability.PTZ_PAN not in caps and ports[PORT_ONVIF] and config.get("camera_username"):
             caps |= {Capability.PTZ_PAN, Capability.PTZ_TILT}  # confirmed via ONVIF on open()
         if Capability.PTZ_PAN not in caps and not config.get("cloud_password") \
                 and not config.get("camera_username"):
-            warnings.append("PTZ/Presets brauchen das Cloud-Passwort (lokale API) oder das Kamerakonto (ONVIF)")
+            warnings.append("PTZ/presets need the cloud password (local API) or the camera account (ONVIF)")
 
         media = Go2rtcMedia(sources=[main], sub_sources=[sub] if sub else [],
                             backchannel=backchannel, backchannel_codec="pcma")

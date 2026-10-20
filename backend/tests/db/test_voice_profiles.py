@@ -42,11 +42,11 @@ async def test_voice_profiles(db: Database) -> None:
     anna = await identity.create(PersonIn(name="Anna VoiceTest"))
     ben = await identity.create(PersonIn(name="Ben VoiceTest"))
     try:
-        with pytest.raises(ValidationFailed, match="Einwilligung"):
+        with pytest.raises(ValidationFailed, match="consent"):
             await voices.enroll(anna.id, speech(1), session_id=None)
         await identity.set_consent(anna.id, "voice", True, {"test": True})
         await identity.set_consent(ben.id, "voice", True, {"test": True})
-        with pytest.raises(ValidationFailed, match="zu wenig Sprache"):
+        with pytest.raises(ValidationFailed, match="too little speech"):
             await voices.enroll(anna.id, speech(1, seconds=2), session_id=None)
         assert await voices.enroll(anna.id, speech(1), session_id=None) >= 2
         await voices.enroll(ben.id, speech(2), session_id=None)

@@ -45,8 +45,8 @@ log = get_logger(__name__)
 DRIVER_ID = "browser-display"
 ACK_TIMEOUT_S = 8.0
 ACK_REASONS = {
-    "hidden": "Display ist nicht sichtbar (Bildschirm aus oder Seite im Hintergrund)",
-    "render_error": "Display konnte den Inhalt nicht darstellen",
+    "hidden": "Display is not visible (screen off or page in the background)",
+    "render_error": "Display could not render the content",
 }
 
 
@@ -330,7 +330,7 @@ class DisplayService:
         """Send a document and wait for the display's acknowledgement -> (status, error)."""
         conn = self.connections.get(device_id)
         if conn is None:
-            return "failed", "Display nicht verbunden"
+            return "failed", "Display not connected"
         fut: asyncio.Future[tuple[str, str | None]] = asyncio.get_running_loop().create_future()
         conn.acks[pres_id] = fut
         error: str | None = None
@@ -341,7 +341,7 @@ class DisplayService:
             if status != "displayed":
                 status, error = "failed", ACK_REASONS.get(reason or "", reason or "Darstellung fehlgeschlagen")
         except TimeoutError:
-            status, error = "failed", "keine Bestätigung vom Display"
+            status, error = "failed", "no acknowledgement from the display"
         except Exception as exc:
             log.warning("display send failed", device=device_id, error=str(exc))
             status, error = "failed", "Senden fehlgeschlagen"
@@ -419,7 +419,7 @@ class DisplayService:
             kind="display", device_id=conn.device_id, room_id=pres.room_id, session_id=pres.session_id)))
         session = self.c.conversations.get(pres.session_id) if pres.session_id else None
         if session is not None:
-            await session.inject(f"Der Benutzer hat auf dem Display '{payload['label']}' gewählt.")
+            await session.inject(f"The user chose '{payload['label']}' on the display.")
 
     async def list(self) -> builtins.list[dict[str, Any]]:
         devices = [d for d in await self.c.device_records.list() if d.driver_id == DRIVER_ID or

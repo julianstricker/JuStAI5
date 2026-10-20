@@ -16,7 +16,7 @@ STARTED = time.time()
 
 
 class DeviceFilter(BaseModel):
-    room: str | None = Field(None, description="Raumname oder -ID (optional)")
+    room: str | None = Field(None, description="Room name or ID (optional)")
     capability: str | None = Field(None, description="z. B. video.input, audio.output, display.text")
 
 
@@ -40,7 +40,7 @@ def register(c: Container) -> None:
         })
 
     reg.register(ToolDefinition(
-        name="system.status", description="Systemstatus: Geräte online, Plugins, aktive Gespräche.",
+        name="system.status", description="System status: devices online, plugins, active conversations.",
         parameters=NoParams, category="system", permissions=[Permission.SYSTEM_READ]), status)
 
     async def capabilities(_: NoParams, ctx: ToolContext) -> ToolResult:
@@ -51,8 +51,8 @@ def register(c: Container) -> None:
 
     reg.register(ToolDefinition(
         name="system.capabilities",
-        description="Listet die verfügbaren Fähigkeiten/Tools des Assistenten (z. B. um zu prüfen, "
-                    "ob es für eine Aufgabe schon ein Tool gibt).",
+        description="Lists the assistant's available capabilities/tools (e.g. to check whether a tool for "
+                    "a task already exists).",
         parameters=NoParams, category="system", permissions=[Permission.SYSTEM_READ]), capabilities)
 
     async def rooms(_: NoParams, ctx: ToolContext) -> ToolResult:
@@ -66,7 +66,7 @@ def register(c: Container) -> None:
         return ToolResult.success(out)
 
     reg.register(ToolDefinition(
-        name="rooms.list", description="Räume mit ihren Geräten und Fähigkeiten.",
+        name="rooms.list", description="Rooms with their devices and capabilities.",
         parameters=NoParams, category="rooms", permissions=[Permission.DEVICES_READ]), rooms)
 
     async def devices(params: DeviceFilter, ctx: ToolContext) -> ToolResult:
@@ -74,7 +74,7 @@ def register(c: Container) -> None:
         if params.room:
             room = await c.rooms.find(params.room)
             if room is None:
-                return ToolResult.failure("unknown_room", f"Raum '{params.room}' unbekannt")
+                return ToolResult.failure("unknown_room", f"unknown room '{params.room}'")
             room_id = room.id
         items = []
         for d in await c.device_records.list(room_id=room_id):
@@ -87,17 +87,17 @@ def register(c: Container) -> None:
         return ToolResult.success(items)
 
     reg.register(ToolDefinition(
-        name="devices.list", description="Geräte (optional gefiltert nach Raum oder Fähigkeit).",
+        name="devices.list", description="Devices (optionally filtered by room or capability).",
         parameters=DeviceFilter, category="devices", permissions=[Permission.DEVICES_READ]),
         devices)
 
     async def device_caps(params: DeviceRef, ctx: ToolContext) -> ToolResult:
         rt = c.devices.get(params.device_id)
         if rt is None:
-            return ToolResult.failure("unknown_device", "Gerät nicht aktiv")
+            return ToolResult.failure("unknown_device", "Device not active")
         return ToolResult.success({"status": rt.status, "capabilities": sorted(rt.capabilities)})
 
     reg.register(ToolDefinition(
-        name="devices.capabilities", description="Tatsächliche Fähigkeiten eines Geräts (zur Laufzeit).",
+        name="devices.capabilities", description="Actual capabilities of a device (at runtime).",
         parameters=DeviceRef, category="devices", permissions=[Permission.DEVICES_READ],
         side_effect=SideEffect.READ), device_caps)

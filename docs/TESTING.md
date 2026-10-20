@@ -8,10 +8,10 @@ und **nicht getestet**.
 
 | Suite | Ort | Braucht | Ergebnis |
 | --- | --- | --- | --- |
-| Unit | `backend/tests/unit` | nichts | 119 bestanden |
-| Audio mit echten Modellen | `backend/tests/audio` | Modelle (`JUSTAI_TEST_MODELS_DIR`) | 5 bestanden |
+| Unit | `backend/tests/unit` | nichts | 122 bestanden |
+| Audio mit echten Modellen | `backend/tests/audio` | Modelle (`JUSTAI_TEST_MODELS_DIR`) | 9 bestanden; `test_speaker.py` schlägt in etwa 1 von 4 Läufen fehl (Piper-Synthese ist zufällig, fremde Stimme dann 0,49 statt < 0,45) |
 | Datenbank | `backend/tests/db` | PostgreSQL + pgvector (`JUSTAI_TEST_DATABASE_URL`) | 3 bestanden |
-| End-to-End | `backend/tests/e2e` | laufende Instanz (`JUSTAI_E2E_URL`, `JUSTAI_E2E_PASSWORD`), Gemini | 11 Tests (siehe Hinweis) |
+| End-to-End | `backend/tests/e2e` | laufende Instanz (`JUSTAI_E2E_URL`, `JUSTAI_E2E_PASSWORD`), Gemini | 13 bestanden (siehe Hinweis) |
 | Beispiel-Plugin | `plugins/example-weather/tests` | nichts | 5 bestanden |
 | Frontend | `frontend` | Node | `tsc` und ESLint fehlerfrei |
 | Statische Analyse | ganzes Repo | – | ruff fehlerfrei, mypy `--strict` fehlerfrei (Backend, SDK, Sandbox) |
@@ -132,6 +132,7 @@ Unit-Tests abgedeckt hatten:
 | Sandbox-Testlauf je nach Zufalls-Verzeichnisname nicht importierbar | fester Pfad, `pythonpath` |
 | Generierter Klassenname umbenannt, Tests fanden ihn nicht | Alias statt Umbenennen |
 | Zweites Tool-Projekt mit gleichem Namen brach ab (Unique-Constraint) | eindeutige Plugin-IDs |
+| „Hey Jarvis, wie spät ist es?“ ohne Pause blieb unbeantwortet: Audio zwischen Wakeword und bereiter Session (1,4–1,7 s) wurde verworfen | behoben: Puffer pro Endpoint, Wiedergabe ab dem Wakeword mit VAD-Entscheidung Pause/keine Pause, Pipeline ignoriert Kurz-Äußerungen; E2E in beiden Modi ([AUDIO.md](AUDIO.md#sprechen-ohne-pause-nach-dem-wakeword)) |
 | Installation: mit geändertem `JUSTAI_HTTPS_PORT` (z. B. 8444, weil 8443 belegt) lauschte der Core im Container auf 8444, Docker leitete aber auf 8443 weiter – HTTPS nicht erreichbar | behoben: Container-Port fest 8443, `JUSTAI_HTTPS_PORT` nur noch Host-Port und Anzeige |
 | Geräte-App: Livebild in der Admin-UI „nicht verfügbar“ (fragte MP4 von go2rtc an, App-Kameras haben keinen Stream); nach dem automatischen Neuladen bei Updates keine Kamera/kein Mikrofon mehr, bis jemand tippt | behoben: MJPEG-Livebild, Selbststart, Ton per Berührung nachholbar; im Browser geprüft |
 | Display: doppelte Achsenbeschriftung, „Gespräch“-Anzeige durch Text-Chats, unklare Fehler bei unsichtbarer Seite, kein Neuladen nach Updates | behoben, im Browser geprüft |

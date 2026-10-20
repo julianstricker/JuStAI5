@@ -45,6 +45,31 @@ from justai.tools.registry import ToolExecutor, ToolRegistry
 
 log = get_logger(__name__)
 
+# Speech right after the wakeword (see ConversationSession._listen). Measured with
+# openWakeWord: detection comes 0.04-0.27 s after the end of "Hey Jarvis".
+WAKE_LOOKBACK_S = 0.15  # no pause: start this much before the detection (keeps the first word)
+PAUSE_FRAMES = 15  # 150 ms below the speech threshold right after the wakeword = a pause
+PAUSE_SEARCH_S = 0.8
+SPEECH_VAD = 0.35
+
+
+def replay_start(frames: list[ProcessedFrame], wake_t: float) -> float:
+    """Where the user's words after the wakeword begin.
+
+    Paused after the wakeword: at the pause, so the tail/reverb of "Jarvis" stays out (it
+    would become an utterance of its own). Went on without a pause: shortly before the
+    detection, so the first word of the question is not cut off."""
+    run = 0
+    for f in frames:
+        if f.t < wake_t:
+            continue
+        if f.t > wake_t + PAUSE_SEARCH_S:
+            break
+        run = run + 1 if f.vad < SPEECH_VAD else 0
+        if run >= PAUSE_FRAMES:
+            return f.t - (PAUSE_FRAMES - 1) * 0.01
+    return wake_t - WAKE_LOOKBACK_S
+
 MAX_TOOL_ROUNDS = 6
 MAX_HISTORY = 30
 
@@ -85,6 +110,8 @@ class AudioPort(Protocol):
     async def stop_output(self) -> None: ...
 
     def echo_window_end(self) -> float | None: ...
+
+    def frames_since(self, t: float) -> list[ProcessedFrame]: ...
 
 
 class SessionStore(Protocol):
@@ -132,6 +159,7 @@ class ConversationSession:
         self._ending = False
         self.text_listeners: list[Callable[[str, str], Awaitable[None]]] = []
         self._ignore_until = 0.0
+        self._wake_t: float | None = None
         # The speaker's voice (wake phrase + user speech, max. 12 s) for "same speaker?"
         # checks when a later wakeword could continue this conversation. Memory only.
         self.voice_audio: list[np.ndarray] = []
@@ -169,6 +197,11 @@ class ConversationSession:
     def ignore_audio_until(self, t: float) -> None:
         self._ignore_until = max(self._ignore_until, t)
 
+    def replay_after_wake(self, wake_t: float) -> None:
+        """When the session is ready, first feed the endpoint's buffered audio since the
+        wakeword (what was said right after it, even without a pause), then continue live."""
+        self._wake_t = wake_t
+
     # ------------------------------------------------------------------ properties
     @property
     def state(self) -> SessionState:
@@ -189,7 +222,6 @@ class ConversationSession:
     async def start(self, initial_instruction: str | None = None) -> None:
         self.sm.transition(SessionState.STARTING, self.ctx.trigger)
         if self.audio is not None:
-            self.audio.listener = self._on_frame
             self.audio.barge_in_handler = self._on_barge_in
             spawn(self.audio.warm_up())
         memories = await self._recall("")
@@ -202,10 +234,29 @@ class ConversationSession:
             "endpoint_id": self.endpoint_id, "trigger": self.ctx.trigger, "mode": self.mode,
             "resumed_from": self.resumed_from, "person_id": self.ctx.person_id})
         if initial_instruction:
+            self._listen()
             self.sm.try_transition(SessionState.PROCESSING, "proactive")
             await self.driver.inject(initial_instruction)
         else:
             self.sm.try_transition(SessionState.LISTENING, "ready")
+            self._listen()
+
+    def _listen(self) -> None:
+        """Attach to the microphone. Buffered audio since the wakeword is replayed first; no await
+        between replay and attaching, so no frame is lost or delivered twice."""
+        if self.audio is None or self._ending:
+            return
+        if self._wake_t is not None:
+            buffered = self.audio.frames_since(self._wake_t - 1.0)
+            start = replay_start(buffered, self._wake_t)
+            self.ignore_audio_until(start)
+            replay = [f for f in buffered if f.t >= start]
+            log.info("replaying speech after the wakeword", session=self.id,
+                     paused=start > self._wake_t, seconds=round(len(replay) * 0.01, 2),
+                     speech_frames=sum(1 for f in replay if f.speech and not f.gated))
+            for frame in replay:
+                self._on_frame(frame)
+        self.audio.listener = self._on_frame
 
     async def end(self, reason: str) -> None:
         if self._ending:
@@ -367,7 +418,7 @@ class RealtimeDriver:
         self.s = session
         self.system_prompt = system_prompt
         self.rt: Any = None
-        self._queue: asyncio.Queue[np.ndarray] = asyncio.Queue(maxsize=500)
+        self._queue: asyncio.Queue[np.ndarray] = asyncio.Queue(maxsize=1500)  # room for replayed audio
         self._tasks: list[asyncio.Task[None]] = []
         self._uid: str | None = None
         self._done: asyncio.Event | None = None
@@ -523,6 +574,7 @@ class PipelineDriver:
     """VAD endpointing -> STT -> LLM (with tools) -> sentence-wise streaming TTS."""
 
     PRE_ROLL = 30  # frames (300 ms)
+    MIN_SPEECH_FRAMES = 20  # shorter "utterances" (clicks, reverb of the wakeword) are dropped
 
     def __init__(self, session: ConversationSession, system_prompt: str) -> None:
         self.s = session
@@ -530,6 +582,7 @@ class PipelineDriver:
         self._pre: deque[np.ndarray] = deque(maxlen=self.PRE_ROLL)
         self._utt: list[np.ndarray] | None = None
         self._silence = 0
+        self._speech = 0
         self._turn: asyncio.Task[str] | None = None
         self._lock = asyncio.Lock()  # one turn at a time (voice, text, injected events)
 
@@ -547,14 +600,18 @@ class PipelineDriver:
             if frame.speech:
                 self._utt = list(self._pre)
                 self._silence = 0
+                self._speech = 0
             return
         self._utt.append(frame.pcm)
-        self._silence = 0 if frame.vad >= 0.35 else self._silence + 1
+        self._silence = 0 if frame.vad >= SPEECH_VAD else self._silence + 1
+        self._speech += frame.vad >= SPEECH_VAD
         too_long = len(self._utt) * 10 >= self.s.max_utterance_s * 1000
         if self._silence * 10 >= self.s.end_of_utterance_ms or too_long:
             pcm = np.concatenate(self._utt)
             self._utt = None
             self._pre.clear()
+            if self._speech < self.MIN_SPEECH_FRAMES:
+                return  # a blip, not words: keep listening instead of blocking for STT
             self.s.sm.try_transition(SessionState.PROCESSING, "utterance")
             self._turn = asyncio.create_task(self._handle_audio(pcm))  # type: ignore[arg-type]
 

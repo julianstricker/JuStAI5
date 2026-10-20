@@ -17,6 +17,7 @@ import contextlib
 import io
 import time
 import wave
+from collections import deque
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import asdict
 from typing import Any
@@ -56,6 +57,7 @@ log = get_logger(__name__)
 
 FrameListener = Callable[[ProcessedFrame], None]
 WakeHandler = Callable[[WakeCandidate, ArbitrationResult], Awaitable[None]]
+RECENT_FRAMES = 1000  # 10 s of 10 ms frames
 
 DEFAULT_NETWORK_LATENCY_S = 2.2  # conservative until calibrated (C200 measured ~1.8 s)
 DEFAULT_LOCAL_LATENCY_S = 0.35
@@ -127,6 +129,9 @@ class EndpointAudio:
         self._task: asyncio.Task[None] | None = None
         self._resamplers: dict[str, StreamResampler] = {}
         self._active_speaker: SpeakerChannel | None = None
+        # Last seconds of processed audio: what was said right after the wakeword, while the
+        # arbitration window ran and the session started, is replayed to the new session.
+        self.recent: deque[ProcessedFrame] = deque(maxlen=RECENT_FRAMES)
 
     @property
     def id(self) -> str:
@@ -146,6 +151,7 @@ class EndpointAudio:
             while True:
                 chunk = await queue.get()
                 out = await self.processor.feed(chunk.t, chunk.pcm)
+                self.recent.extend(out.frames)
                 if out.barge_in and self.barge_in_handler is not None:
                     await self.barge_in_handler()
                 if self.listener is not None:
@@ -165,6 +171,10 @@ class EndpointAudio:
             if channel:
                 channel.unsubscribe(f"endpoint:{self.id}")
         self.mic_device_id = None
+
+    def frames_since(self, t: float) -> list[ProcessedFrame]:
+        """Buffered frames from time ``t`` on (oldest first)."""
+        return [f for f in self.recent if f.t >= t]
 
     @property
     def has_input(self) -> bool:

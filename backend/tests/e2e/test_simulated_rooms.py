@@ -532,3 +532,21 @@ def test_device_app_streams_microphone_camera_and_receives_speech(world: World) 
     user = " ".join(t["text"] for t in result["session"]["transcript"] if t["role"] == "user").lower()
     assert "spain" in user, user
     assert result["speaker_bytes"] > 16000, "no answer audio reached the device"
+
+
+@pytest.mark.parametrize("mode", ["pipeline", "realtime"])
+def test_question_right_after_the_wakeword_without_a_pause(world: World, mode: str) -> None:
+    """'Hey Jarvis, what is …' in one breath: the question must not get lost while the
+    session starts (arbitration window, session setup, realtime connection)."""
+    ok(world.api.patch(f"/api/endpoints/{world.endpoints['Wohnzimmer']}", json={"config": {
+        "conversation": {"mode": mode, "inactivity_timeout_s": 12},
+        "audio": {"duplex": "half", "output_latency_ms": 900}}}))
+    time.sleep(1.0)
+    world.say("Wohnzimmer", "Hey Jarvis, what is the capital of France?")
+    answered = wait_for(lambda: (s := world.session("Wohnzimmer")) and any(
+        t["role"] == "assistant" for t in s["transcript"]) and s, 45)
+    assert answered, "no answer: the question right after the wakeword was lost"
+    user = " ".join(t["text"] for t in answered["transcript"] if t["role"] == "user").lower()
+    answer = " ".join(t["text"] for t in answered["transcript"] if t["role"] == "assistant").lower()
+    assert "france" in user, f"question not transcribed: {user!r}"
+    assert "paris" in answer, answer

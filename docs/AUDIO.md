@@ -61,7 +61,7 @@ Echo-Referenz. Bricht der Pfad ab, wird er neu aufgebaut.
 | 2 | **Echo-Fenster + Half-Duplex-Gate**: Solange eigene Ausgabe hörbar sein kann (Ausgabe + Latenz + Nachhall), wird das Mikrofon verworfen | `PlaybackTracker`, `processor.py` | alles Echo, deterministisch |
 | 3 | **Wakeword-Unterdrückung während der Wiedergabe**: Half Duplex: keine Wakewords im Echo-Fenster; Full Duplex: nur über `threshold_during_playback` (0,85) | `processor._run_wakeword` | Assistent sagt selbst „Hey Jarvis“ |
 | 4 | **Echo-Transkriptfilter**: Ähnelt ein Benutzertranskript stark dem, was der Assistent in den letzten 25 s gesagt hat, wird es verworfen | `conversation/echo_filter.py` | Restecho, das trotzdem transkribiert wurde |
-| 5 | **Ignorieren des Wakeword-Nachlaufs** (0,35 s nach dem Wakeword) | `conversation/manager.py` | „Jarvis“-Rest wird als Frage interpretiert |
+| 5 | **Wakeword-Nachlauf weglassen**: Nach einer Pause beginnt die Session hinter der Pause; Äußerungen mit weniger als 200 ms Sprache startet die Pipeline gar nicht erst ([Sprechen ohne Pause](#sprechen-ohne-pause-nach-dem-wakeword)) | `conversation/session.py` | „Jarvis“-Rest oder Hall wird als Frage interpretiert oder blockiert die Session |
 | 6 | **Inaktivitäts-Timeout startet erst nach Ende des Echo-Fensters** | `conversation/state.py` | Session endet nicht während der Ausgabe |
 
 Zusätzlich: Der Echo-Fenster-Tracker merkt sich mehrere Ausgabe-Bursts, weil das
@@ -182,6 +182,31 @@ score = 10·wake_score + 0.25·clamp(SNR_phrase, −10, 70) + 2·VAD + priority
 
 Events: `audio.wakeword.detected` (jeder Kandidat), `audio.wakeword.accepted`
 (mit Scores aller Kandidaten), `audio.wakeword.rejected`.
+
+## Sprechen ohne Pause nach dem Wakeword
+
+„Hey Jarvis, wie spät ist es?“ in einem Atemzug funktioniert. Zwischen Erkennung
+und bereiter Session vergehen 1,4–1,7 s (gemessen: Arbitrierungsfenster 0,8 s,
+Sessionaufbau 0,55–0,9 s inkl. Verbindung zu Gemini Live). Damit diese Worte nicht
+verloren gehen:
+
+* Jeder Endpoint hält die letzten 10 s verarbeitetes Audio (`EndpointAudio.recent`).
+* Ist die Session bereit, bekommt sie zuerst das gepufferte Audio ab dem Wakeword,
+  dann live weiter (ohne `await` dazwischen: kein Frame fehlt oder kommt doppelt).
+* Wo das Gesagte beginnt, entscheidet die Sprachaktivität (`replay_start`):
+  * **Pause** (≥ 150 ms unter der Sprachschwelle innerhalb von 0,8 s nach der
+    Erkennung): ab der Pause; der Nachhall von „Jarvis“ bleibt draußen.
+  * **Keine Pause**: ab 0,15 s **vor** der Erkennung. openWakeWord meldet
+    gemessen 0,04–0,27 s nach dem Ende von „Hey Jarvis“, also oft schon während
+    des ersten Wortes der Frage; so bleibt es erhalten.
+* Die Pipeline startet keine Erkennung für „Äußerungen“ mit weniger als 200 ms
+  Sprache (Klicks, Hall). Sonst wäre die Session während der unnötigen
+  Spracherkennung taub für die eigentliche Frage.
+
+Getestet: `tests/unit/test_wake_replay.py`, `tests/audio/test_wake_replay.py`
+(echtes openWakeWord, Piper-Stimme: mit und ohne Pause), E2E
+`test_question_right_after_the_wakeword_without_a_pause` in Pipeline- und
+Realtime-Modus (vorher fehlgeschlagen: die Frage ging verloren).
 
 ## Getestet
 

@@ -152,14 +152,14 @@ class ConversationManager:
             existing.sm.activity()  # wakeword during an active session keeps it alive
             return
         try:
-            session = await self.start(candidate.endpoint_id, trigger="wakeword", wake_audio=candidate.audio)
-            # openWakeWord fires while "Jarvis" is still being spoken; skip its tail.
-            session.ignore_audio_until(candidate.t + 0.35)
+            await self.start(candidate.endpoint_id, trigger="wakeword", wake_audio=candidate.audio,
+                             wake_t=candidate.t)
         except Exception as exc:
             log.error("session start failed", endpoint=candidate.endpoint_id, error=str(exc))
 
     async def start(self, endpoint_id: str, *, trigger: str, instruction: str | None = None,
-                    person_id: str | None = None, wake_audio: np.ndarray | None = None) -> ConversationSession:
+                    person_id: str | None = None, wake_audio: np.ndarray | None = None,
+                    wake_t: float | None = None) -> ConversationSession:
         lock = self._locks.setdefault(endpoint_id, asyncio.Lock())
         async with lock:
             existing = self._by_endpoint.get(endpoint_id)
@@ -196,6 +196,9 @@ class ConversationManager:
                 session.ctx.previous_age_s = time.monotonic() - resume.ended_at
                 session.resumed_from = resume.session_id
                 self._recent.pop(endpoint_id, None)
+            if wake_t is not None:
+                # What was said right after the wakeword reaches the session even without a pause.
+                session.replay_after_wake(wake_t)
             if wake_audio is not None:
                 session.add_voice(wake_audio)
             if session.ctx.person_id is None and self.voices is not None and self.voices.enrolled:

@@ -1,4 +1,14 @@
-import { AppShell, Burger, Group, NavLink, ScrollArea, Text, ThemeIcon, Tooltip } from "@mantine/core";
+import {
+  AppShell,
+  Burger,
+  Group,
+  NavLink,
+  ScrollArea,
+  Select,
+  Text,
+  ThemeIcon,
+  Tooltip,
+} from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
   IconAdjustments,
@@ -22,26 +32,31 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link, Outlet, useLocation } from "react-router";
 
 import { api } from "@/shared/api";
+import { type Key, type Lang, LANGS, useI18n } from "@/shared/i18n";
 
 import { useMe } from "../auth";
 import { PrivacyIndicator } from "./PrivacyIndicator";
 
-const NAV = [
-  { to: "/", label: "Dashboard", icon: IconDashboard },
-  { to: "/rooms", label: "Räume", icon: IconDoor },
-  { to: "/devices", label: "Geräte", icon: IconCamera },
-  { to: "/audio", label: "Audio", icon: IconMicrophone },
-  { to: "/conversations", label: "Gespräche", icon: IconMessages },
-  { to: "/ai", label: "KI-Provider", icon: IconRobot },
-  { to: "/people", label: "Personen", icon: IconUsers },
-  { to: "/memory", label: "Gedächtnis", icon: IconBrain },
-  { to: "/automations", label: "Automationen", icon: IconSettingsAutomation },
-  { to: "/vision", label: "Vision", icon: IconEye },
-  { to: "/displays", label: "Displays", icon: IconDeviceTv },
-  { to: "/plugins", label: "Plugins", icon: IconPlugConnected },
-  { to: "/tools", label: "Tools", icon: IconTool },
-  { to: "/diagnostics", label: "Diagnose", icon: IconStethoscope },
-  { to: "/settings", label: "Einstellungen", icon: IconAdjustments },
+const NAV: { to: string; label: Key; icon: typeof IconDashboard }[] = [
+  { to: "/", label: "nav.dashboard", icon: IconDashboard },
+  { to: "/rooms", label: "nav.rooms", icon: IconDoor },
+  { to: "/devices", label: "nav.devices", icon: IconCamera },
+  { to: "/audio", label: "nav.audio", icon: IconMicrophone },
+  { to: "/conversations", label: "nav.conversations", icon: IconMessages },
+  { to: "/ai", label: "nav.ai", icon: IconRobot },
+  { to: "/people", label: "nav.people", icon: IconUsers },
+  { to: "/memory", label: "nav.memory", icon: IconBrain },
+  {
+    to: "/automations",
+    label: "nav.automations",
+    icon: IconSettingsAutomation,
+  },
+  { to: "/vision", label: "nav.vision", icon: IconEye },
+  { to: "/displays", label: "nav.displays", icon: IconDeviceTv },
+  { to: "/plugins", label: "nav.plugins", icon: IconPlugConnected },
+  { to: "/tools", label: "nav.tools", icon: IconTool },
+  { to: "/diagnostics", label: "nav.diagnostics", icon: IconStethoscope },
+  { to: "/settings", label: "nav.settings", icon: IconAdjustments },
 ];
 
 export function Layout() {
@@ -49,6 +64,7 @@ export function Layout() {
   const location = useLocation();
   const me = useMe();
   const qc = useQueryClient();
+  const { lang, setLang, t } = useI18n();
 
   const logout = async () => {
     await api.post("/api/auth/logout");
@@ -65,7 +81,12 @@ export function Layout() {
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between">
           <Group gap="xs">
-            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
+            <Burger
+              opened={opened}
+              onClick={toggle}
+              hiddenFrom="sm"
+              size="sm"
+            />
             <ThemeIcon variant="gradient" size="lg" radius="xl">
               <IconRobot size={20} />
             </ThemeIcon>
@@ -73,11 +94,24 @@ export function Layout() {
           </Group>
           <Group gap="md">
             <PrivacyIndicator />
+            <Select
+              aria-label={t("shell.language")}
+              size="xs"
+              w={110}
+              data={LANGS.map((l) => ({ value: l.code, label: l.label }))}
+              value={lang}
+              onChange={(v) => v && setLang(v as Lang)}
+              allowDeselect={false}
+            />
             <Text size="sm" c="dimmed">
               {me.username} ({me.role})
             </Text>
-            <Tooltip label="Abmelden">
-              <IconLogout style={{ cursor: "pointer" }} size={20} onClick={logout} />
+            <Tooltip label={t("shell.logout")}>
+              <IconLogout
+                style={{ cursor: "pointer" }}
+                size={20}
+                onClick={logout}
+              />
             </Tooltip>
           </Group>
         </Group>
@@ -89,9 +123,13 @@ export function Layout() {
               key={item.to}
               component={Link}
               to={item.to}
-              label={item.label}
+              label={t(item.label)}
               leftSection={<item.icon size={18} />}
-              active={item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to)}
+              active={
+                item.to === "/"
+                  ? location.pathname === "/"
+                  : location.pathname.startsWith(item.to)
+              }
               onClick={close}
             />
           ))}

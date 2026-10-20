@@ -19,6 +19,8 @@ import { IconPlus } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
+import { rich, useT } from "@/shared/i18n";
+
 import { api } from "@/shared/api";
 
 import { useIsAdmin, useMe } from "../auth";
@@ -63,6 +65,7 @@ function UserModal({
   const [role, setRole] = useState(user?.role ?? "resident");
   const [password, setPassword] = useState("");
   const [person, setPerson] = useState<string | null>(user?.person_id ?? null);
+  const t = useT();
   const save = useAction(
     () =>
       user
@@ -79,39 +82,41 @@ function UserModal({
             display_name: displayName,
             person_id: person,
           }),
-    { invalidate: [["users"]], success: "Benutzer gespeichert" },
+    { invalidate: [["users"]], success: t("set.userSaved") },
   );
   return (
     <Modal
       opened
       onClose={onClose}
-      title={user ? `Benutzer ${user.username}` : "Neuer Benutzer"}
+      title={
+        user ? t("set.userTitle", { name: user.username }) : t("set.newUser")
+      }
     >
       <Stack>
         {!user && (
           <TextInput
-            label="Benutzername"
+            label={t("set.username")}
             value={username}
             onChange={(e) => setUsername(e.currentTarget.value)}
           />
         )}
         <TextInput
-          label="Anzeigename"
+          label={t("set.displayName")}
           value={displayName}
           onChange={(e) => setDisplayName(e.currentTarget.value)}
         />
         <Select
-          label="Rolle"
+          label={t("set.role")}
           data={[
-            { value: "admin", label: "Administrator" },
-            { value: "resident", label: "Bewohner" },
-            { value: "guest", label: "Gast" },
+            { value: "admin", label: t("role.admin") },
+            { value: "resident", label: t("role.resident") },
+            { value: "guest", label: t("role.guest") },
           ]}
           value={role}
           onChange={(v) => setRole(v ?? "resident")}
         />
         <Select
-          label="Verknüpfte Person"
+          label={t("set.linkedPerson")}
           clearable
           data={(people.data ?? []).map((p) => ({
             value: p.id,
@@ -121,7 +126,7 @@ function UserModal({
           onChange={setPerson}
         />
         <PasswordInput
-          label={user ? "Neues Passwort (optional)" : "Passwort"}
+          label={user ? t("set.newPassword") : t("login.password")}
           value={password}
           onChange={(e) => setPassword(e.currentTarget.value)}
         />
@@ -131,7 +136,7 @@ function UserModal({
             onClose();
           }}
         >
-          Speichern
+          {t("common.save")}
         </Button>
       </Stack>
     </Modal>
@@ -152,12 +157,13 @@ export function SettingsPage() {
   });
   const [draft, setDraft] = useState<SystemSettings | null>(null);
   const [editing, setEditing] = useState<UserRow | null | "new">(null);
+  const t = useT();
   useEffect(() => {
     if (settings.data) setDraft(settings.data);
   }, [settings.data]);
   const saveSettings = useAction(
     (s: SystemSettings) => api.put("/api/settings/system", s),
-    { invalidate: [["system-settings"]], success: "Einstellungen gespeichert" },
+    { invalidate: [["system-settings"]], success: t("set.saved") },
   );
   const toggleUser = useAction(
     (u: UserRow) =>
@@ -165,32 +171,29 @@ export function SettingsPage() {
     { invalidate: [["users"]] },
   );
   const logoutAll = useAction(() => api.post("/api/auth/logout-all"), {
-    success: "Alle Sitzungen beendet",
+    success: t("set.loggedOutAll"),
   });
 
   return (
     <Stack>
-      <PageHeader
-        title="Einstellungen"
-        description="Benutzer, Aufbewahrung, Netzwerksuche, Geräte-App und Datensicherung"
-      />
+      <PageHeader title={t("nav.settings")} description={t("set.desc")} />
       {isAdmin && <DeviceAppCard />}
       {draft && isAdmin && (
         <SimpleGrid cols={{ base: 1, lg: 2 }}>
           <Card withBorder>
             <Stack>
-              <Title order={5}>System</Title>
+              <Title order={5}>{t("set.system")}</Title>
               <TextInput
-                label="Zeitzone"
-                description="IANA-Name, z. B. Europe/Rome; gilt für Zeitpläne von Automationen"
+                label={t("set.timezone")}
+                description={t("set.timezoneHint")}
                 value={draft.timezone}
                 onChange={(e) =>
                   setDraft({ ...draft, timezone: e.currentTarget.value })
                 }
               />
               <TextInput
-                label="Autorisierte Netzbereiche für die Gerätesuche"
-                description="Kommagetrennte CIDR-Bereiche, z. B. 192.168.0.0/24"
+                label={t("set.cidrs")}
+                description={t("set.cidrsHint")}
                 value={draft.discovery_cidrs.join(", ")}
                 onChange={(e) =>
                   setDraft({
@@ -203,8 +206,8 @@ export function SettingsPage() {
                 }
               />
               <Switch
-                label="Gesichts-Vorschaubilder speichern"
-                description="Kleine Ausschnitte zur Kontrolle von Gesichtsprofilen"
+                label={t("set.thumbs")}
+                description={t("set.thumbsHint")}
                 checked={draft.store_face_thumbnails}
                 onChange={(e) =>
                   setDraft({
@@ -217,18 +220,18 @@ export function SettingsPage() {
           </Card>
           <Card withBorder>
             <Stack>
-              <Title order={5}>Aufbewahrung (Tage)</Title>
+              <Title order={5}>{t("set.retention")}</Title>
               {(
                 [
-                  ["events_days", "Persistente Ereignisse"],
-                  ["transcripts_days", "Gesprächstranskripte"],
-                  ["sightings_days", "Sichtungen"],
-                  ["tool_executions_days", "Tool-Protokoll"],
+                  ["events_days", "set.retEvents"],
+                  ["transcripts_days", "set.retTranscripts"],
+                  ["sightings_days", "set.retSightings"],
+                  ["tool_executions_days", "set.retTools"],
                 ] as const
               ).map(([k, label]) => (
                 <NumberInput
                   key={k}
-                  label={label}
+                  label={t(label)}
                   min={1}
                   value={draft.retention[k]}
                   onChange={(v) =>
@@ -243,7 +246,7 @@ export function SettingsPage() {
                 onClick={() => saveSettings.mutate(draft)}
                 loading={saveSettings.isPending}
               >
-                Speichern
+                {t("common.save")}
               </Button>
             </Stack>
           </Card>
@@ -252,13 +255,13 @@ export function SettingsPage() {
       {isAdmin && (
         <Card withBorder>
           <Group justify="space-between" mb="sm">
-            <Title order={5}>Benutzer</Title>
+            <Title order={5}>{t("set.users")}</Title>
             <Button
               size="xs"
               leftSection={<IconPlus size={14} />}
               onClick={() => setEditing("new")}
             >
-              Benutzer
+              {t("set.addUser")}
             </Button>
           </Group>
           <Table>
@@ -278,7 +281,7 @@ export function SettingsPage() {
                         variant="subtle"
                         onClick={() => setEditing(u)}
                       >
-                        Bearbeiten
+                        {t("common.edit")}
                       </Button>
                       {u.id !== me.id && (
                         <Button
@@ -287,7 +290,7 @@ export function SettingsPage() {
                           color={u.disabled ? "green" : "red"}
                           onClick={() => toggleUser.mutate(u)}
                         >
-                          {u.disabled ? "Aktivieren" : "Sperren"}
+                          {u.disabled ? t("set.enable") : t("set.lock")}
                         </Button>
                       )}
                     </Group>
@@ -300,19 +303,19 @@ export function SettingsPage() {
       )}
       <Card withBorder>
         <Stack>
-          <Title order={5}>Sicherheit & Datensicherung</Title>
+          <Title order={5}>{t("set.security")}</Title>
           <Button
             variant="light"
             w={260}
             onClick={() => logoutAll.mutate(undefined)}
           >
-            Alle meine Sitzungen abmelden
+            {t("set.logoutAll")}
           </Button>
           <Text size="sm">
-            Vollständige Sicherung (Datenbank, Konfiguration, Plugins,
-            Schlüssel): <code>./scripts/backup.sh</code>. Wiederherstellung:{" "}
-            <code>./scripts/restore.sh &lt;backup.tar.gz&gt;</code>. Details in
-            docs/DEPLOYMENT.md.
+            {rich(t("set.backupHint"), {
+              backup: <code>./scripts/backup.sh</code>,
+              restore: <code>./scripts/restore.sh &lt;backup.tar.gz&gt;</code>,
+            })}
           </Text>
         </Stack>
       </Card>

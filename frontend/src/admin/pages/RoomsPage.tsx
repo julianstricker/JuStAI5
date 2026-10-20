@@ -31,6 +31,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { api } from "@/shared/api";
+import { type Key, useT } from "@/shared/i18n";
 import type {
   Device,
   DeviceRole,
@@ -49,11 +50,11 @@ import {
   useAction,
 } from "../components/common";
 
-const ROLE_LABEL: Record<DeviceRole, string> = {
-  mic: "Mikrofon",
-  camera: "Kamera",
-  speaker: "Lautsprecher",
-  display: "Display",
+const ROLE_LABEL: Record<DeviceRole, Key> = {
+  mic: "role.mic",
+  camera: "role.camera",
+  speaker: "role.speaker",
+  display: "role.display",
 };
 const ROLE_CAP: Record<DeviceRole, string> = {
   mic: "audio.input",
@@ -104,6 +105,7 @@ function RoomModal({
   const [name, setName] = useState(room?.name ?? "");
   const [description, setDescription] = useState(room?.description ?? "");
   const [floor, setFloor] = useState(room?.floor ?? "");
+  const t = useT();
   const [policy, setPolicy] = useState<RoomPolicy>({
     shared_space: true,
     vision_allowed: true,
@@ -119,7 +121,7 @@ function RoomModal({
         ? api.patch(`/api/rooms/${room.id}`, body)
         : api.post("/api/rooms", body);
     },
-    { invalidate: [["rooms"]], success: "Raum gespeichert" },
+    { invalidate: [["rooms"]], success: t("rooms.saved") },
   );
   const toggle = (k: keyof RoomPolicy, label: string, hint: string) => (
     <Switch
@@ -133,46 +135,34 @@ function RoomModal({
     <Modal
       opened
       onClose={onClose}
-      title={room ? `Raum ${room.name}` : "Neuer Raum"}
+      title={room ? t("rooms.titleEdit", { name: room.name }) : t("rooms.new")}
     >
       <Stack>
         <TextInput
-          label="Name"
+          label={t("common.name")}
           value={name}
           onChange={(e) => setName(e.currentTarget.value)}
           required
         />
         <TextInput
-          label="Beschreibung"
+          label={t("common.description")}
           value={description}
           onChange={(e) => setDescription(e.currentTarget.value)}
         />
         <TextInput
-          label="Etage"
+          label={t("rooms.floor")}
           value={floor}
           onChange={(e) => setFloor(e.currentTarget.value)}
         />
-        <Divider label="Richtlinien" />
-        {toggle(
-          "shared_space",
-          "Gemeinschaftsraum",
-          "Private Inhalte werden hier nicht auf Displays gezeigt",
-        )}
-        {toggle(
-          "vision_allowed",
-          "Bildanalyse erlaubt",
-          "Kameras dieses Raums dürfen analysiert werden",
-        )}
-        {toggle("face_recognition_allowed", "Gesichtserkennung erlaubt", "")}
-        {toggle(
-          "cloud_media_allowed",
-          "Bilder/Audio an Cloud-KI",
-          "Kamerabilder dieses Raums dürfen an Cloud-Modelle",
-        )}
+        <Divider label={t("rooms.policies")} />
+        {toggle("shared_space", t("rooms.shared"), t("rooms.sharedHint"))}
+        {toggle("vision_allowed", t("rooms.vision"), t("rooms.visionHint"))}
+        {toggle("face_recognition_allowed", t("rooms.faces"), "")}
+        {toggle("cloud_media_allowed", t("rooms.cloud"), t("rooms.cloudHint"))}
         {toggle(
           "announcements_allowed",
-          "Durchsagen erlaubt",
-          "Andere Räume dürfen hier ausdrücklich Durchsagen machen",
+          t("rooms.announce"),
+          t("rooms.announceHint"),
         )}
         <Button
           onClick={async () => {
@@ -182,7 +172,7 @@ function RoomModal({
           loading={save.isPending}
           disabled={!name}
         >
-          Speichern
+          {t("common.save")}
         </Button>
       </Stack>
     </Modal>
@@ -211,6 +201,7 @@ function EndpointModal({
   const [group, setGroup] = useState(endpoint?.arbitration_group ?? "default");
   const [priority, setPriority] = useState(endpoint?.priority ?? 0);
   const [enabled, setEnabled] = useState(endpoint?.enabled ?? true);
+  const t = useT();
   const roomDevices = devices.filter(
     (d) => d.room_id === room.id || d.room_id === null,
   );
@@ -250,7 +241,7 @@ function EndpointModal({
         ? api.patch(`/api/endpoints/${endpoint.id}`, body)
         : api.post("/api/endpoints", body);
     },
-    { invalidate: [["endpoints"], ["rooms"]], success: "Endpunkt gespeichert" },
+    { invalidate: [["endpoints"], ["rooms"]], success: t("ep.saved") },
   );
 
   return (
@@ -258,21 +249,19 @@ function EndpointModal({
       opened
       onClose={onClose}
       title={
-        endpoint
-          ? `Interaction Endpoint ${endpoint.name}`
-          : "Neuer Interaction Endpoint"
+        endpoint ? t("ep.titleEdit", { name: endpoint.name }) : t("ep.new")
       }
       size="lg"
     >
       <Stack>
         <Group grow>
           <TextInput
-            label="Name"
+            label={t("common.name")}
             value={name}
             onChange={(e) => setName(e.currentTarget.value)}
           />
           <Switch
-            label="Aktiv"
+            label={t("common.active")}
             checked={enabled}
             onChange={(e) => setEnabled(e.currentTarget.checked)}
             mt="lg"
@@ -282,7 +271,7 @@ function EndpointModal({
           {(Object.keys(ROLE_LABEL) as DeviceRole[]).map((role) => (
             <Select
               key={role}
-              label={ROLE_LABEL[role]}
+              label={t(ROLE_LABEL[role])}
               clearable
               value={pick(role)}
               onChange={(v) => setRole(role, v)}
@@ -294,35 +283,35 @@ function EndpointModal({
                 )
                 .map((d) => ({
                   value: d.id,
-                  label: `${d.name}${d.capabilities.includes(ROLE_CAP[role]) ? "" : " (Fähigkeit unbekannt)"}`,
+                  label: `${d.name}${d.capabilities.includes(ROLE_CAP[role]) ? "" : t("ep.capUnknown")}`,
                 }))}
             />
           ))}
         </SimpleGrid>
         <Tabs defaultValue="wake">
           <Tabs.List>
-            <Tabs.Tab value="wake">Wakeword</Tabs.Tab>
-            <Tabs.Tab value="audio">Audio</Tabs.Tab>
-            <Tabs.Tab value="conv">Gespräch</Tabs.Tab>
+            <Tabs.Tab value="wake">{t("ep.tabWake")}</Tabs.Tab>
+            <Tabs.Tab value="audio">{t("ep.tabAudio")}</Tabs.Tab>
+            <Tabs.Tab value="conv">{t("ep.tabConv")}</Tabs.Tab>
           </Tabs.List>
           <Tabs.Panel value="wake" pt="sm">
             <Stack>
               <Switch
-                label="Wakeword aktiv"
+                label={t("ep.wakeActive")}
                 checked={config.wakeword.enabled}
                 onChange={(e) =>
                   upd("wakeword", { enabled: e.currentTarget.checked })
                 }
               />
               <MultiSelect
-                label="Wakeword-Modelle"
+                label={t("ep.wakeModels")}
                 data={(models.data ?? []).map((m) => ({
                   value: m.id,
                   label: `${m.phrase} (${m.name})`,
                 }))}
                 value={config.wakeword.models}
                 onChange={(v) => upd("wakeword", { models: v })}
-                description="Mehrere möglich. Eigene Modelle (openWakeWord, .onnx) lassen sich hochladen."
+                description={t("ep.wakeModelsHint")}
               />
               <Group gap="xs">
                 <FileButton
@@ -334,7 +323,7 @@ function EndpointModal({
                     api
                       .upload<{ id: string }>("/api/ai/wakewords", form)
                       .then((r) => {
-                        notifyOk(`Wakeword „${r.id}“ installiert`);
+                        notifyOk(t("ep.wakeInstalled", { id: r.id }));
                         void models.refetch();
                         upd("wakeword", {
                           models: [
@@ -347,17 +336,17 @@ function EndpointModal({
                 >
                   {(props) => (
                     <Button {...props} size="xs" variant="default">
-                      Eigenes Wakeword hochladen (.onnx)
+                      {t("ep.wakeUpload")}
                     </Button>
                   )}
                 </FileButton>
                 <Text size="xs" c="dimmed">
-                  Dateiname = ID, z. B. hey_justi.onnx
+                  {t("ep.wakeFileHint")}
                 </Text>
               </Group>
               <Group grow>
                 <NumberInput
-                  label="Schwelle"
+                  label={t("ep.threshold")}
                   step={0.05}
                   min={0.05}
                   max={0.99}
@@ -366,8 +355,8 @@ function EndpointModal({
                   onChange={(v) => upd("wakeword", { threshold: Number(v) })}
                 />
                 <NumberInput
-                  label="Schwelle während eigener Ausgabe"
-                  description="nur Vollduplex"
+                  label={t("ep.thresholdPlayback")}
+                  description={t("ep.fullDuplexOnly")}
                   step={0.05}
                   decimalScale={2}
                   value={config.wakeword.threshold_during_playback}
@@ -378,13 +367,13 @@ function EndpointModal({
               </Group>
               <Group grow>
                 <TextInput
-                  label="Arbitrierungsgruppe"
-                  description="Mikrofone, die sich gegenseitig hören können"
+                  label={t("ep.group")}
+                  description={t("ep.groupHint")}
                   value={group}
                   onChange={(e) => setGroup(e.currentTarget.value)}
                 />
                 <NumberInput
-                  label="Priorität"
+                  label={t("common.priority")}
                   value={priority}
                   onChange={(v) => setPriority(Number(v))}
                 />
@@ -394,18 +383,17 @@ function EndpointModal({
           <Tabs.Panel value="audio" pt="sm">
             <Stack>
               <Select
-                label="Duplex-Modus"
+                label={t("ep.duplex")}
                 data={[
                   {
                     value: "auto",
-                    label:
-                      "Auto (sicher: halb, voll erst nach gemessener Echounterdrückung)",
+                    label: t("ep.duplexAuto"),
                   },
                   {
                     value: "half",
-                    label: "Halbduplex (Eingabe während Ausgabe gesperrt)",
+                    label: t("ep.duplexHalf"),
                   },
-                  { value: "full", label: "Vollduplex mit AEC und Barge-in" },
+                  { value: "full", label: t("ep.duplexFull") },
                 ]}
                 value={config.audio.duplex}
                 onChange={(v) =>
@@ -416,8 +404,8 @@ function EndpointModal({
               />
               <Group grow>
                 <NumberInput
-                  label="Ausgabelatenz (ms)"
-                  description="leer = automatisch / Kalibrierung"
+                  label={t("ep.outputLatency")}
+                  description={t("ep.outputLatencyHint")}
                   value={config.audio.output_latency_ms ?? ""}
                   onChange={(v) =>
                     upd("audio", {
@@ -426,19 +414,19 @@ function EndpointModal({
                   }
                 />
                 <NumberInput
-                  label="Echo-Nachlauf (ms)"
+                  label={t("ep.echoTail")}
                   value={config.audio.echo_tail_ms}
                   onChange={(v) => upd("audio", { echo_tail_ms: Number(v) })}
                 />
               </Group>
               <Group grow>
                 <NumberInput
-                  label="Eingangsverstärkung (dB)"
+                  label={t("ep.inputGain")}
                   value={config.audio.input_gain_db}
                   onChange={(v) => upd("audio", { input_gain_db: Number(v) })}
                 />
                 <NumberInput
-                  label="VAD-Schwelle"
+                  label={t("ep.vad")}
                   step={0.05}
                   decimalScale={2}
                   value={config.audio.vad_threshold}
@@ -447,21 +435,21 @@ function EndpointModal({
               </Group>
               <Group>
                 <Checkbox
-                  label="Echounterdrückung (AEC)"
+                  label={t("ep.aec")}
                   checked={config.audio.aec}
                   onChange={(e) =>
                     upd("audio", { aec: e.currentTarget.checked })
                   }
                 />
                 <Checkbox
-                  label="Rauschunterdrückung"
+                  label={t("ep.noise")}
                   checked={config.audio.noise_suppression}
                   onChange={(e) =>
                     upd("audio", { noise_suppression: e.currentTarget.checked })
                   }
                 />
                 <Checkbox
-                  label="Barge-in"
+                  label={t("ep.bargeIn")}
                   checked={config.audio.barge_in}
                   onChange={(e) =>
                     upd("audio", { barge_in: e.currentTarget.checked })
@@ -473,14 +461,14 @@ function EndpointModal({
           <Tabs.Panel value="conv" pt="sm">
             <Stack>
               <Select
-                label="Modus"
+                label={t("common.mode")}
                 data={[
-                  { value: "default", label: "Global (KI-Einstellungen)" },
+                  { value: "default", label: t("ep.modeGlobal") },
                   {
                     value: "realtime",
-                    label: "Realtime (natives Sprachmodell)",
+                    label: t("ep.modeRealtime"),
                   },
-                  { value: "pipeline", label: "Pipeline (STT → LLM → TTS)" },
+                  { value: "pipeline", label: t("ep.modePipeline") },
                 ]}
                 value={config.conversation.mode}
                 onChange={(v) =>
@@ -492,7 +480,7 @@ function EndpointModal({
               />
               <Group grow>
                 <NumberInput
-                  label="Inaktivitäts-Timeout (s)"
+                  label={t("ep.inactivity")}
                   min={3}
                   value={config.conversation.inactivity_timeout_s}
                   onChange={(v) =>
@@ -500,7 +488,7 @@ function EndpointModal({
                   }
                 />
                 <NumberInput
-                  label="Sprechpause bis Äußerungsende (ms)"
+                  label={t("ep.endSilence")}
                   value={config.conversation.end_of_utterance_silence_ms}
                   onChange={(v) =>
                     upd("conversation", {
@@ -511,8 +499,8 @@ function EndpointModal({
               </Group>
               <Group grow align="flex-end">
                 <NumberInput
-                  label="Gespräch fortsetzen innerhalb (min)"
-                  description="Neues Wakeword knüpft an das letzte Gespräch an; 0 = immer neu"
+                  label={t("ep.resume")}
+                  description={t("ep.resumeHint")}
                   min={0}
                   max={60}
                   value={Math.round(
@@ -523,8 +511,8 @@ function EndpointModal({
                   }
                 />
                 <Switch
-                  label="Nur bei gleichem Sprecher fortsetzen"
-                  description="Stimme (Wakeword) und Kamera; nichts wird gespeichert"
+                  label={t("ep.speakerCheck")}
+                  description={t("ep.speakerCheckHint")}
                   checked={config.conversation.speaker_check ?? true}
                   onChange={(e) =>
                     upd("conversation", {
@@ -535,17 +523,17 @@ function EndpointModal({
               </Group>
               <Group grow>
                 <Select
-                  label="Sprache"
+                  label={t("common.language")}
                   clearable
                   data={["de", "it", "en"]}
                   value={language}
                   onChange={setLanguage}
                 />
                 <Select
-                  label="Rolle unbekannter Sprecher"
+                  label={t("ep.unknownRole")}
                   data={[
-                    { value: "resident", label: "Bewohner" },
-                    { value: "guest", label: "Gast" },
+                    { value: "resident", label: t("role.resident") },
+                    { value: "guest", label: t("role.guest") },
                   ]}
                   value={config.conversation.default_role}
                   onChange={(v) =>
@@ -563,7 +551,7 @@ function EndpointModal({
           }}
           loading={save.isPending}
         >
-          Speichern
+          {t("common.save")}
         </Button>
       </Stack>
     </Modal>
@@ -572,6 +560,7 @@ function EndpointModal({
 
 export function RoomsPage() {
   const isAdmin = useIsAdmin();
+  const t = useT();
   const rooms = useQuery({
     queryKey: ["rooms"],
     queryFn: () => api.get<Room[]>("/api/rooms"),
@@ -594,11 +583,11 @@ export function RoomsPage() {
 
   const delRoom = useAction((id: string) => api.del(`/api/rooms/${id}`), {
     invalidate: [["rooms"]],
-    success: "Raum gelöscht",
+    success: t("rooms.deleted"),
   });
   const delEp = useAction((id: string) => api.del(`/api/endpoints/${id}`), {
     invalidate: [["endpoints"]],
-    success: "Endpunkt gelöscht",
+    success: t("ep.deleted"),
   });
   const assign = useAction(
     ({ id, room }: { id: string; room: string | null }) =>
@@ -616,13 +605,13 @@ export function RoomsPage() {
       invalidate: [["endpoints"]],
       success: (r) =>
         r.delay_s !== null
-          ? `Echo-Verzögerung: ${r.delay_s.toFixed(2)} s`
-          : (r.interpretation ?? "Keine Messung möglich"),
+          ? t("ep.echoDelay", { s: r.delay_s.toFixed(2) })
+          : (r.interpretation ?? t("ep.noMeasurement")),
     },
   );
   const startSession = useAction(
     (id: string) => api.post(`/api/endpoints/${id}/start-session`),
-    { success: "Gespräch gestartet" },
+    { success: t("ep.sessionStarted") },
   );
 
   const unassigned = devices.data?.filter((d) => !d.room_id) ?? [];
@@ -630,15 +619,15 @@ export function RoomsPage() {
   return (
     <Stack>
       <PageHeader
-        title="Räume"
-        description="Räume gruppieren Geräte. Interaction Endpoints kombinieren Mikrofon, Kamera, Lautsprecher und Display eines Raums zu einem Kommunikationspunkt."
+        title={t("nav.rooms")}
+        description={t("rooms.desc")}
         actions={
           isAdmin && (
             <Button
               leftSection={<IconPlus size={16} />}
               onClick={() => setRoomModal("new")}
             >
-              Raum
+              {t("rooms.add")}
             </Button>
           )
         }
@@ -665,8 +654,9 @@ export function RoomsPage() {
                       variant="subtle"
                       color="red"
                       onClick={() =>
-                        confirm(`Raum ${room.name} löschen?`) &&
-                        delRoom.mutate(room.id)
+                        confirm(
+                          t("rooms.confirmDelete", { name: room.name }),
+                        ) && delRoom.mutate(room.id)
                       }
                     >
                       <IconTrash size={16} />
@@ -678,7 +668,7 @@ export function RoomsPage() {
                 {room.description}
               </Text>
               <Text fw={600} size="sm">
-                Geräte
+                {t("rooms.devices")}
               </Text>
               <Stack gap={4} mb="sm">
                 {roomDevices.map((d) => (
@@ -694,7 +684,7 @@ export function RoomsPage() {
                         </Badge>
                       ))}
                       {isAdmin && (
-                        <Tooltip label="Aus Raum entfernen">
+                        <Tooltip label={t("rooms.removeFromRoom")}>
                           <ActionIcon
                             size="sm"
                             variant="subtle"
@@ -711,7 +701,7 @@ export function RoomsPage() {
                 ))}
                 {isAdmin && unassigned.length > 0 && (
                   <Select
-                    placeholder="Gerät zuordnen …"
+                    placeholder={t("rooms.assignDevice")}
                     size="xs"
                     data={unassigned.map((d) => ({
                       value: d.id,
@@ -726,7 +716,7 @@ export function RoomsPage() {
               </Stack>
               <Group justify="space-between">
                 <Text fw={600} size="sm">
-                  Interaction Endpoints
+                  {t("rooms.endpoints")}
                 </Text>
                 {isAdmin && (
                   <Button
@@ -735,7 +725,7 @@ export function RoomsPage() {
                     leftSection={<IconPlus size={14} />}
                     onClick={() => setEpModal({ room, endpoint: null })}
                   >
-                    Endpoint
+                    {t("rooms.addEndpoint")}
                   </Button>
                 )}
               </Group>
@@ -751,16 +741,18 @@ export function RoomsPage() {
                         {ep.session && (
                           <StatusBadge status={ep.session.state} />
                         )}
-                        {!ep.enabled && <Badge color="gray">inaktiv</Badge>}
+                        {!ep.enabled && (
+                          <Badge color="gray">{t("ep.inactive")}</Badge>
+                        )}
                         {ep.devices.length === 0 && (
-                          <Tooltip label="Die Geräte dieses Endpoints wurden gelöscht. Neue Geräte zuordnen oder den Endpoint löschen.">
-                            <Badge color="orange">keine Geräte</Badge>
+                          <Tooltip label={t("ep.noDevicesHint")}>
+                            <Badge color="orange">{t("ep.noDevices")}</Badge>
                           </Tooltip>
                         )}
                       </Group>
                       {isAdmin && (
                         <Group gap={4}>
-                          <Tooltip label="Echo-Latenz kalibrieren (spielt kurze Töne)">
+                          <Tooltip label={t("ep.calibrate")}>
                             <ActionIcon
                               variant="subtle"
                               loading={calibrate.isPending}
@@ -774,7 +766,7 @@ export function RoomsPage() {
                             variant="subtle"
                             onClick={() => startSession.mutate(ep.id)}
                           >
-                            Gespräch starten
+                            {t("ep.startConversation")}
                           </Button>
                           <ActionIcon
                             variant="subtle"
@@ -786,7 +778,7 @@ export function RoomsPage() {
                             variant="subtle"
                             color="red"
                             onClick={() =>
-                              confirm("Endpoint löschen?") &&
+                              confirm(t("ep.confirmDelete")) &&
                               delEp.mutate(ep.id)
                             }
                           >
@@ -807,8 +799,8 @@ export function RoomsPage() {
                             variant="light"
                             color={dev && !dev.enabled ? "gray" : undefined}
                           >
-                            {ROLE_LABEL[r.role]}: {dev?.name ?? r.device_id}
-                            {dev && !dev.enabled ? " (deaktiviert)" : ""}
+                            {t(ROLE_LABEL[r.role])}: {dev?.name ?? r.device_id}
+                            {dev && !dev.enabled ? t("ep.deviceDisabled") : ""}
                           </Badge>
                         );
                       })}
@@ -816,19 +808,20 @@ export function RoomsPage() {
                     {ep.runtime && (
                       <Text size="xs" c="dimmed" mt={4}>
                         {ep.runtime.duplex === "half"
-                          ? "Halbduplex"
-                          : "Vollduplex"}{" "}
-                        ({ep.runtime.duplex_reason}) · Gate-Latenz{" "}
-                        {ep.runtime.latency_s.toFixed(2)} s · Pegel{" "}
-                        {ep.runtime.level_db.toFixed(0)} dBFS
+                          ? t("ep.halfDuplex")
+                          : t("ep.fullDuplex")}{" "}
+                        {t("ep.runtimeInfo", {
+                          reason: ep.runtime.duplex_reason,
+                          lat: ep.runtime.latency_s.toFixed(2),
+                          db: ep.runtime.level_db.toFixed(0),
+                        })}
                       </Text>
                     )}
                   </Card>
                 ))}
                 {!roomEps.length && (
                   <Text size="xs" c="dimmed">
-                    Noch kein Endpoint – ohne Endpoint kann in diesem Raum nicht
-                    gesprochen werden.
+                    {t("rooms.noEndpoint")}
                   </Text>
                 )}
               </Stack>

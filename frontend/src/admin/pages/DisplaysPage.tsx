@@ -19,6 +19,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { api } from "@/shared/api";
+import { rich, useT } from "@/shared/i18n";
 import type { Room } from "@/shared/types";
 
 import {
@@ -55,19 +56,25 @@ interface Presentation {
 }
 
 const TEST_DOC = {
-  title: "JuStAI5 Testanzeige",
+  title: "JuStAI5 test display",
   layout: "dashboard",
   components: [
-    { type: "heading", text: "Hallo vom Assistenten" },
-    { type: "stat", label: "Temperatur", value: 21.5, unit: "°C", trend: "up" },
+    { type: "heading", text: "Hello from the assistant" },
+    {
+      type: "stat",
+      label: "Temperature",
+      value: 21.5,
+      unit: "°C",
+      trend: "up",
+    },
     { type: "clock" },
     {
       type: "chart",
       kind: "line",
-      title: "Beispiel",
+      title: "Example",
       series: [
         {
-          name: "Werte",
+          name: "Values",
           points: [
             ["Mo", 3],
             ["Di", 5],
@@ -93,6 +100,7 @@ function PairModal({
     queryFn: () => api.get<Room[]>("/api/rooms"),
   });
   const [name, setName] = useState("Display");
+  const t = useT();
   const [room, setRoom] = useState<string | null>(null);
   const approve = useAction(
     () =>
@@ -102,26 +110,26 @@ function PairModal({
       }),
     {
       invalidate: [["displays"], ["display-pending"], ["devices"]],
-      success: "Display gekoppelt",
+      success: t("disp.paired"),
     },
   );
   return (
     <Modal
       opened
       onClose={onClose}
-      title={`Display koppeln (Code ${pending.code})`}
+      title={t("disp.pairTitle", { code: pending.code })}
     >
       <Stack>
         <Text size="xs" c="dimmed">
           {pending.user_agent}
         </Text>
         <TextInput
-          label="Name"
+          label={t("common.name")}
           value={name}
           onChange={(e) => setName(e.currentTarget.value)}
         />
         <Select
-          label="Raum"
+          label={t("common.room")}
           data={(rooms.data ?? []).map((r) => ({ value: r.id, label: r.name }))}
           value={room}
           onChange={setRoom}
@@ -133,7 +141,7 @@ function PairModal({
             onClose();
           }}
         >
-          Koppeln
+          {t("disp.pair")}
         </Button>
       </Stack>
     </Modal>
@@ -161,6 +169,7 @@ export function DisplaysPage() {
     queryFn: () => api.get<Room[]>("/api/rooms"),
   });
   const [pairing, setPairing] = useState<Pending | null>(null);
+  const t = useT();
   const [doc, setDoc] = useState(JSON.stringify(TEST_DOC, null, 2));
   const [target, setTarget] = useState<string | null>(null);
   const test = useAction(
@@ -168,7 +177,7 @@ export function DisplaysPage() {
       api.post(`/api/displays/${id}/present`, { document: JSON.parse(doc) }),
     {
       invalidate: [["presentations"]],
-      success: "Darstellung gesendet",
+      success: t("disp.sent"),
     },
   );
   const close = useAction(
@@ -184,30 +193,26 @@ export function DisplaysPage() {
 
   return (
     <Stack>
-      <PageHeader
-        title="Displays & Geräte-App"
-        description="Bildschirme und Geräte mit der JuStAI5-App. Inhalte sind strukturierte Komponenten – kein beliebiges HTML."
-      />
+      <PageHeader title={t("disp.title")} description={t("disp.desc")} />
       <Alert color="blue">
-        Nur Bildschirm: im Browser <Code>{url}</Code> öffnen. Handy, Tablet oder
-        PC auch als Mikrofon, Lautsprecher und Kamera: die Geräte-App über HTTPS
-        öffnen (<Code>{`https://${location.hostname}:8443/app`}</Code>,
-        Anleitung unter Einstellungen). Der angezeigte Code erscheint hier zur
-        Freigabe; mit Mikrofon und Lautsprecher legt JuStAI5 im gewählten Raum
-        automatisch einen Endpoint an.
+        {rich(t("disp.hint"), {
+          url: <Code>{url}</Code>,
+          app: <Code>{`https://${location.hostname}:8443/app`}</Code>,
+        })}
       </Alert>
       {!!pending.data?.length && (
         <Card withBorder>
           <Title order={5} mb="xs">
-            Wartende Displays
+            {t("disp.waiting")}
           </Title>
           {pending.data.map((p) => (
             <Group key={p.code} justify="space-between">
               <Text>
-                Code <b>{p.code}</b> · {p.user_agent.slice(0, 80)}
+                {rich(t("disp.code"), { code: <b>{p.code}</b> })} ·{" "}
+                {p.user_agent.slice(0, 80)}
               </Text>
               <Button size="xs" onClick={() => setPairing(p)}>
-                Koppeln
+                {t("disp.pair")}
               </Button>
             </Group>
           ))}
@@ -233,7 +238,9 @@ export function DisplaysPage() {
             {d.presentation && (
               <Group mt="xs">
                 <Text size="sm">
-                  Zeigt: {d.presentation.title ?? d.presentation.id}{" "}
+                  {t("disp.showing", {
+                    title: d.presentation.title ?? d.presentation.id,
+                  })}{" "}
                   <StatusBadge status={d.presentation.status} />
                 </Text>
                 <Button
@@ -246,7 +253,7 @@ export function DisplaysPage() {
                     })
                   }
                 >
-                  Schließen
+                  {t("common.close")}
                 </Button>
               </Group>
             )}
@@ -256,9 +263,9 @@ export function DisplaysPage() {
       <SimpleGrid cols={{ base: 1, lg: 2 }}>
         <Card withBorder>
           <Stack>
-            <Title order={5}>Testdarstellung</Title>
+            <Title order={5}>{t("disp.test")}</Title>
             <Select
-              label="Display"
+              label={t("disp.display")}
               data={(displays.data ?? []).map((d) => ({
                 value: d.device_id,
                 label: d.name,
@@ -278,13 +285,13 @@ export function DisplaysPage() {
               onClick={() => target && test.mutate(target)}
               loading={test.isPending}
             >
-              Senden
+              {t("common.send")}
             </Button>
           </Stack>
         </Card>
         <Card withBorder>
           <Title order={5} mb="xs">
-            Darstellungen
+            {t("disp.presentations")}
           </Title>
           <Table fz="xs">
             <Table.Tbody>

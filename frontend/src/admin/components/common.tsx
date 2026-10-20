@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
 import { ApiError } from "@/shared/api";
+import { type Key, locale, tg, useT } from "@/shared/i18n";
 
 export function PageHeader({
   title,
@@ -53,16 +54,14 @@ const STATUS_COLORS: Record<string, string> = {
   ended: "gray",
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  disabled: "deaktiviert",
-  no_driver: "kein Treiber",
-};
-
 export function StatusBadge({ status }: { status: string | null | undefined }) {
+  const t = useT();
   const s = status ?? "unknown";
+  const key = `status.${s}` as Key;
+  const label = t(key);
   return (
     <Badge color={STATUS_COLORS[s] ?? "gray"} variant="light">
-      {STATUS_LABELS[s] ?? s}
+      {label === key ? s : label}
     </Badge>
   );
 }
@@ -76,7 +75,7 @@ export function errorMessage(err: unknown): string {
 export function notifyError(err: unknown) {
   notifications.show({
     color: "red",
-    title: "Fehler",
+    title: tg("common.error"),
     message: errorMessage(err),
   });
 }
@@ -114,7 +113,10 @@ export function fmtTime(value: string | number | null | undefined): string {
   if (value === null || value === undefined) return "–";
   const d =
     typeof value === "number" ? new Date(value * 1000) : new Date(value);
-  return d.toLocaleString("de-DE", { dateStyle: "short", timeStyle: "medium" });
+  return d.toLocaleString(locale(), {
+    dateStyle: "short",
+    timeStyle: "medium",
+  });
 }
 
 export function Json({ value }: { value: unknown }) {

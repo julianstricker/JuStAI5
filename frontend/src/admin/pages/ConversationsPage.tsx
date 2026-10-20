@@ -1,12 +1,33 @@
-import { Badge, Button, Card, Group, ScrollArea, Select, SimpleGrid, Stack, Table, Tabs, Text, TextInput, Title } from "@mantine/core";
+import {
+  Badge,
+  Button,
+  Card,
+  Group,
+  ScrollArea,
+  Select,
+  SimpleGrid,
+  Stack,
+  Table,
+  Tabs,
+  Text,
+  TextInput,
+  Title,
+} from "@mantine/core";
 import { IconSend } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { api } from "@/shared/api";
+import { useT } from "@/shared/i18n";
 import type { ActiveSession, Room } from "@/shared/types";
 
-import { PageHeader, StatusBadge, fmtTime, notifyError, useAction } from "../components/common";
+import {
+  PageHeader,
+  StatusBadge,
+  fmtTime,
+  notifyError,
+  useAction,
+} from "../components/common";
 
 interface HistoryRow {
   id: string;
@@ -29,7 +50,11 @@ interface Turn {
 }
 
 function Chat() {
-  const rooms = useQuery({ queryKey: ["rooms"], queryFn: () => api.get<Room[]>("/api/rooms") });
+  const t = useT();
+  const rooms = useQuery({
+    queryKey: ["rooms"],
+    queryFn: () => api.get<Room[]>("/api/rooms"),
+  });
   const [room, setRoom] = useState<string | null>(null);
   const [session, setSession] = useState<string | null>(null);
   const [text, setText] = useState("");
@@ -42,7 +67,10 @@ function Chat() {
     setLines((l) => [...l, { role: "user", text: msg }]);
     setBusy(true);
     try {
-      const r = await api.post<{ session_id: string; answer: string }>("/api/conversations/ask", { text: msg, session_id: session, room_id: room });
+      const r = await api.post<{ session_id: string; answer: string }>(
+        "/api/conversations/ask",
+        { text: msg, session_id: session, room_id: room },
+      );
       setSession(r.session_id);
       setLines((l) => [...l, { role: "assistant", text: r.answer }]);
     } catch (err) {
@@ -57,25 +85,35 @@ function Chat() {
       <Stack>
         <Group>
           <Select
-            label="Raumkontext"
-            placeholder="ohne Raum"
+            label={t("conv.roomContext")}
+            placeholder={t("conv.noRoom")}
             clearable
-            data={(rooms.data ?? []).map((r) => ({ value: r.id, label: r.name }))}
+            data={(rooms.data ?? []).map((r) => ({
+              value: r.id,
+              label: r.name,
+            }))}
             value={room}
             onChange={(v) => {
               setRoom(v);
               setSession(null);
             }}
           />
-          <Button variant="subtle" mt="lg" onClick={() => (setSession(null), setLines([]))}>
-            Neues Gespräch
+          <Button
+            variant="subtle"
+            mt="lg"
+            onClick={() => (setSession(null), setLines([]))}
+          >
+            {t("conv.new")}
           </Button>
         </Group>
         <ScrollArea h={360}>
           <Stack gap="xs">
             {lines.map((l, i) => (
               <Text key={i} c={l.role === "user" ? undefined : "indigo"}>
-                <b>{l.role === "user" ? "Du" : "Assistent"}:</b> {l.text}
+                <b>
+                  {l.role === "user" ? t("role.you") : t("role.assistant")}:
+                </b>{" "}
+                {l.text}
               </Text>
             ))}
           </Stack>
@@ -83,17 +121,21 @@ function Chat() {
         <Group>
           <TextInput
             style={{ flex: 1 }}
-            placeholder="Nachricht an den Assistenten …"
+            placeholder={t("conv.messagePlaceholder")}
             value={text}
             onChange={(e) => setText(e.currentTarget.value)}
             onKeyDown={(e) => e.key === "Enter" && send()}
           />
-          <Button onClick={send} loading={busy} leftSection={<IconSend size={16} />}>
-            Senden
+          <Button
+            onClick={send}
+            loading={busy}
+            leftSection={<IconSend size={16} />}
+          >
+            {t("common.send")}
           </Button>
         </Group>
         <Text size="xs" c="dimmed">
-          Text-Gespräche nutzen dieselben Tools und dasselbe Gedächtnis wie Sprachgespräche (Pipeline-Modus).
+          {t("conv.chatHint")}
         </Text>
       </Stack>
     </Card>
@@ -101,22 +143,43 @@ function Chat() {
 }
 
 export function ConversationsPage() {
-  const active = useQuery({ queryKey: ["sessions"], queryFn: () => api.get<ActiveSession[]>("/api/conversations/active"), refetchInterval: 1500 });
-  const history = useQuery({ queryKey: ["session-history"], queryFn: () => api.get<HistoryRow[]>("/api/conversations/history?limit=100"), refetchInterval: 10000 });
-  const rooms = useQuery({ queryKey: ["rooms"], queryFn: () => api.get<Room[]>("/api/rooms") });
+  const active = useQuery({
+    queryKey: ["sessions"],
+    queryFn: () => api.get<ActiveSession[]>("/api/conversations/active"),
+    refetchInterval: 1500,
+  });
+  const history = useQuery({
+    queryKey: ["session-history"],
+    queryFn: () =>
+      api.get<HistoryRow[]>("/api/conversations/history?limit=100"),
+    refetchInterval: 10000,
+  });
+  const rooms = useQuery({
+    queryKey: ["rooms"],
+    queryFn: () => api.get<Room[]>("/api/rooms"),
+  });
   const [selected, setSelected] = useState<string | null>(null);
-  const turns = useQuery({ queryKey: ["turns", selected], queryFn: () => api.get<Turn[]>(`/api/conversations/${selected}/turns`), enabled: !!selected });
-  const end = useAction((id: string) => api.post(`/api/conversations/${id}/end`), { invalidate: [["sessions"]] });
-  const roomName = (id: string | null) => rooms.data?.find((r) => r.id === id)?.name ?? "–";
+  const t = useT();
+  const turns = useQuery({
+    queryKey: ["turns", selected],
+    queryFn: () => api.get<Turn[]>(`/api/conversations/${selected}/turns`),
+    enabled: !!selected,
+  });
+  const end = useAction(
+    (id: string) => api.post(`/api/conversations/${id}/end`),
+    { invalidate: [["sessions"]] },
+  );
+  const roomName = (id: string | null) =>
+    rooms.data?.find((r) => r.id === id)?.name ?? "–";
 
   return (
     <Stack>
-      <PageHeader title="Gespräche" description="Laufende Sessions, Verlauf mit Transkripten und Text-Chat" />
+      <PageHeader title={t("nav.conversations")} description={t("conv.desc")} />
       <Tabs defaultValue="live">
         <Tabs.List>
-          <Tabs.Tab value="live">Live</Tabs.Tab>
-          <Tabs.Tab value="history">Verlauf</Tabs.Tab>
-          <Tabs.Tab value="chat">Text-Chat</Tabs.Tab>
+          <Tabs.Tab value="live">{t("conv.tabLive")}</Tabs.Tab>
+          <Tabs.Tab value="history">{t("conv.tabHistory")}</Tabs.Tab>
+          <Tabs.Tab value="chat">{t("conv.tabChat")}</Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel value="live" pt="md">
           <SimpleGrid cols={{ base: 1, lg: 2 }}>
@@ -130,56 +193,92 @@ export function ConversationsPage() {
                     <Badge variant="light">{s.trigger}</Badge>
                     {s.person && <Badge color="teal">{s.person}</Badge>}
                   </Group>
-                  <Button size="xs" color="red" variant="light" onClick={() => end.mutate(s.id)}>
-                    Beenden
+                  <Button
+                    size="xs"
+                    color="red"
+                    variant="light"
+                    onClick={() => end.mutate(s.id)}
+                  >
+                    {t("conv.end")}
                   </Button>
                 </Group>
                 <Stack gap={4} mt="sm">
-                  {s.transcript.map((t, i) => (
-                    <Text key={i} size="sm" c={t.role === "user" ? undefined : "indigo"}>
-                      <b>{t.role === "user" ? "Benutzer" : "Assistent"}:</b> {t.text}
+                  {s.transcript.map((turn, i) => (
+                    <Text
+                      key={i}
+                      size="sm"
+                      c={turn.role === "user" ? undefined : "indigo"}
+                    >
+                      <b>
+                        {turn.role === "user"
+                          ? t("role.user")
+                          : t("role.assistant")}
+                        :
+                      </b>{" "}
+                      {turn.text}
                     </Text>
                   ))}
                 </Stack>
               </Card>
             ))}
           </SimpleGrid>
-          {!active.data?.length && <Text c="dimmed">Kein aktives Gespräch.</Text>}
+          {!active.data?.length && (
+            <Text c="dimmed">{t("dash.noConversation")}</Text>
+          )}
         </Tabs.Panel>
         <Tabs.Panel value="history" pt="md">
           <SimpleGrid cols={{ base: 1, lg: 2 }}>
             <Table highlightOnHover>
               <Table.Thead>
                 <Table.Tr>
-                  <Table.Th>Start</Table.Th>
-                  <Table.Th>Raum</Table.Th>
-                  <Table.Th>Auslöser</Table.Th>
-                  <Table.Th>Ende</Table.Th>
+                  <Table.Th>{t("conv.start")}</Table.Th>
+                  <Table.Th>{t("common.room")}</Table.Th>
+                  <Table.Th>{t("conv.trigger")}</Table.Th>
+                  <Table.Th>{t("conv.endCol")}</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
                 {history.data?.map((h) => (
-                  <Table.Tr key={h.id} onClick={() => setSelected(h.id)} style={{ cursor: "pointer" }} bg={selected === h.id ? "var(--mantine-color-indigo-light)" : undefined}>
+                  <Table.Tr
+                    key={h.id}
+                    onClick={() => setSelected(h.id)}
+                    style={{ cursor: "pointer" }}
+                    bg={
+                      selected === h.id
+                        ? "var(--mantine-color-indigo-light)"
+                        : undefined
+                    }
+                  >
                     <Table.Td>{fmtTime(h.started_at)}</Table.Td>
                     <Table.Td>{roomName(h.room_id)}</Table.Td>
                     <Table.Td>
                       {h.trigger} / {h.mode}
                     </Table.Td>
-                    <Table.Td>{h.end_reason ?? "läuft"}</Table.Td>
+                    <Table.Td>{h.end_reason ?? t("conv.running")}</Table.Td>
                   </Table.Tr>
                 ))}
               </Table.Tbody>
             </Table>
             <Card withBorder>
               <Title order={5} mb="xs">
-                Transkript
+                {t("conv.transcript")}
               </Title>
-              {turns.data?.map((t, i) => (
-                <Text key={i} size="sm" c={t.role === "user" ? undefined : t.role === "tool" ? "dimmed" : "indigo"}>
-                  <b>{t.role}:</b> {t.text || JSON.stringify(t.meta)}
+              {turns.data?.map((turn, i) => (
+                <Text
+                  key={i}
+                  size="sm"
+                  c={
+                    turn.role === "user"
+                      ? undefined
+                      : turn.role === "tool"
+                        ? "dimmed"
+                        : "indigo"
+                  }
+                >
+                  <b>{turn.role}:</b> {turn.text || JSON.stringify(turn.meta)}
                 </Text>
               ))}
-              {!selected && <Text c="dimmed">Gespräch auswählen.</Text>}
+              {!selected && <Text c="dimmed">{t("conv.select")}</Text>}
             </Card>
           </SimpleGrid>
         </Tabs.Panel>

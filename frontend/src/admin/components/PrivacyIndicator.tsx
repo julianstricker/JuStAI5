@@ -1,10 +1,16 @@
 // Shows what is in use right now: local wakeword listening, active conversations,
 // cloud audio and local vision (requirement 23.3).
 import { Badge, Group, HoverCard, Stack, Text } from "@mantine/core";
-import { IconCloud, IconEar, IconEye, IconMicrophone } from "@tabler/icons-react";
+import {
+  IconCloud,
+  IconEar,
+  IconEye,
+  IconMicrophone,
+} from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 
 import { api } from "@/shared/api";
+import { useT } from "@/shared/i18n";
 
 interface Indicator {
   endpoint_id?: string;
@@ -18,6 +24,7 @@ interface Indicator {
 }
 
 export function PrivacyIndicator() {
+  const t = useT();
   const { data } = useQuery({
     queryKey: ["status"],
     queryFn: () => api.get<{ privacy: Indicator[] }>("/api/system/status"),
@@ -32,16 +39,32 @@ export function PrivacyIndicator() {
     <HoverCard width={280} shadow="md">
       <HoverCard.Target>
         <Group gap={6}>
-          <Badge leftSection={<IconEar size={12} />} variant="light" color="gray">
+          <Badge
+            leftSection={<IconEar size={12} />}
+            variant="light"
+            color="gray"
+          >
             {listening}
           </Badge>
-          <Badge leftSection={<IconMicrophone size={12} />} variant={conversations ? "filled" : "light"} color={conversations ? "orange" : "gray"}>
+          <Badge
+            leftSection={<IconMicrophone size={12} />}
+            variant={conversations ? "filled" : "light"}
+            color={conversations ? "orange" : "gray"}
+          >
             {conversations}
           </Badge>
-          <Badge leftSection={<IconCloud size={12} />} variant={cloud ? "filled" : "light"} color={cloud ? "red" : "gray"}>
+          <Badge
+            leftSection={<IconCloud size={12} />}
+            variant={cloud ? "filled" : "light"}
+            color={cloud ? "red" : "gray"}
+          >
             {cloud}
           </Badge>
-          <Badge leftSection={<IconEye size={12} />} variant="light" color={vision ? "blue" : "gray"}>
+          <Badge
+            leftSection={<IconEye size={12} />}
+            variant="light"
+            color={vision ? "blue" : "gray"}
+          >
             {vision}
           </Badge>
         </Group>
@@ -49,16 +72,17 @@ export function PrivacyIndicator() {
       <HoverCard.Dropdown>
         <Stack gap={4}>
           <Text size="sm">
-            <IconEar size={12} /> {listening} Endpunkte hören lokal auf das Wakeword
+            <IconEar size={12} /> {t("privacy.wakeword", { n: listening })}
           </Text>
           <Text size="sm">
-            <IconMicrophone size={12} /> {conversations} aktive Gespräche
+            <IconMicrophone size={12} />{" "}
+            {t("privacy.conversations", { n: conversations })}
           </Text>
           <Text size="sm">
-            <IconCloud size={12} /> {cloud} Gespräche übertragen Audio an einen Cloud-Dienst
+            <IconCloud size={12} /> {t("privacy.cloud", { n: cloud })}
           </Text>
           <Text size="sm">
-            <IconEye size={12} /> {vision} Kameras mit lokaler Bildanalyse
+            <IconEye size={12} /> {t("privacy.vision", { n: vision })}
           </Text>
         </Stack>
       </HoverCard.Dropdown>

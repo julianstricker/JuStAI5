@@ -15,6 +15,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 
 import { api } from "@/shared/api";
+import { rich, useT } from "@/shared/i18n";
 
 import { useAction } from "./common";
 
@@ -29,23 +30,23 @@ interface TlsStatus {
 
 /** Device app (phones, tablets, PCs) and the HTTPS setup it needs. */
 export function DeviceAppCard() {
+  const t = useT();
   const status = useQuery({
     queryKey: ["tls"],
     queryFn: () => api.get<TlsStatus>("/api/tls/status"),
   });
   const add = useAction(
     (name: string) => api.post("/api/tls/names", { name }),
-    { invalidate: [["tls"]], success: "Zertifikat erweitert" },
+    { invalidate: [["tls"]], success: t("app.certExtended") },
   );
   const s = status.data;
   if (!s) return null;
   if (!s.enabled) {
     return (
       <Card withBorder>
-        <Title order={5}>Geräte-App</Title>
+        <Title order={5}>{t("app.title")}</Title>
         <Text size="sm" c="dimmed">
-          HTTPS ist deaktiviert (JUSTAI_TLS_ENABLED). Mikrofon und Kamera
-          funktionieren in Browsern nur über HTTPS.
+          {t("app.httpsOff")}
         </Text>
       </Card>
     );
@@ -56,36 +57,34 @@ export function DeviceAppCard() {
     <Card withBorder>
       <Stack>
         <Group justify="space-between">
-          <Title order={5}>Geräte-App (Handy, Tablet, PC)</Title>
+          <Title order={5}>{t("app.titleLong")}</Title>
           <Badge color="teal" variant="light">
-            HTTPS Port {s.port}
+            {t("app.port", { port: s.port ?? "" })}
           </Badge>
         </Group>
         <Text size="sm">
-          Macht ein Gerät zu Mikrofon, Lautsprecher, Kamera und Bildschirm des
-          Assistenten. Auf dem Gerät öffnen:{" "}
-          <Anchor href={appUrl}>{appUrl}</Anchor>, Funktionen wählen, Code unter
-          „Displays“ freigeben. Mit Mikrofon und Lautsprecher entsteht im
-          gewählten Raum automatisch ein Endpoint.
+          {rich(t("app.intro"), {
+            url: <Anchor href={appUrl}>{appUrl}</Anchor>,
+          })}
         </Text>
         {!s.current_host_covered && (
-          <Alert color="orange" title="Diese Adresse fehlt im Zertifikat">
+          <Alert color="orange" title={t("app.missingTitle")}>
             <Group justify="space-between">
               <Text size="sm">
-                Das HTTPS-Zertifikat enthält <Code>{host}</Code> noch nicht.
+                {rich(t("app.missing"), { host: <Code>{host}</Code> })}
               </Text>
               <Button
                 size="xs"
                 onClick={() => add.mutate(host)}
                 loading={add.isPending}
               >
-                Hinzufügen
+                {t("common.add")}
               </Button>
             </Group>
           </Alert>
         )}
         <Text size="xs" c="dimmed">
-          Zertifikat gilt für: {s.names?.join(", ")}
+          {t("app.validFor", { names: s.names?.join(", ") ?? "" })}
         </Text>
         <Group>
           <Button
@@ -94,7 +93,7 @@ export function DeviceAppCard() {
             variant="light"
             size="xs"
           >
-            JuStAI5-Zertifikat herunterladen
+            {t("app.download")}
           </Button>
           <Text size="xs" c="dimmed">
             SHA-256: <Code>{s.ca_fingerprint}</Code>
@@ -102,39 +101,22 @@ export function DeviceAppCard() {
         </Group>
         <Accordion variant="contained">
           <Accordion.Item value="howto">
-            <Accordion.Control>
-              Zertifikat auf Geräten installieren (einmalig, dann ohne Warnung
-              und als App installierbar)
-            </Accordion.Control>
+            <Accordion.Control>{t("app.howto")}</Accordion.Control>
             <Accordion.Panel>
               <List size="sm" spacing="xs">
                 <List.Item>
-                  <b>Android:</b> Zertifikat auf dem Gerät öffnen →
-                  Einstellungen → Sicherheit → Verschlüsselung &amp;
-                  Anmeldedaten → Zertifikat installieren → CA-Zertifikat. Dann
-                  die App-Adresse in Chrome öffnen → Menü → „App installieren“.
+                  <b>Android:</b> {t("app.android")}
                 </List.Item>
                 <List.Item>
-                  <b>iPhone/iPad:</b> Zertifikat in Safari laden → Einstellungen
-                  → „Profil geladen“ installieren → Allgemein → Info →
-                  Zertifikatsvertrauenseinstellungen → JuStAI5 aktivieren. Dann
-                  in Safari Teilen → „Zum Home-Bildschirm“.
+                  <b>iPhone/iPad:</b> {t("app.ios")}
                 </List.Item>
                 <List.Item>
-                  <b>Windows:</b> Datei doppelklicken → Zertifikat installieren
-                  → Lokaler Computer → „Vertrauenswürdige
-                  Stammzertifizierungsstellen“. In Chrome/Edge: Adressleiste →
-                  „App installieren“.
+                  <b>Windows:</b> {t("app.windows")}
                 </List.Item>
                 <List.Item>
-                  <b>macOS:</b> Datei öffnen → Schlüsselbund „System“ →
-                  Zertifikat doppelklicken → Vertrauen: „Immer vertrauen“.
+                  <b>macOS:</b> {t("app.macos")}
                 </List.Item>
-                <List.Item>
-                  <b>Ohne Installation:</b> Die Browser-Warnung einmal
-                  bestätigen genügt meist für Mikrofon und Kamera, die
-                  Installation als App ist dann aber nicht möglich.
-                </List.Item>
+                <List.Item>{t("app.noInstall")}</List.Item>
               </List>
             </Accordion.Panel>
           </Accordion.Item>

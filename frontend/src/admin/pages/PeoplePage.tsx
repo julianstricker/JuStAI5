@@ -26,6 +26,8 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
+import { useT } from "@/shared/i18n";
+
 import { api } from "@/shared/api";
 import type { Device } from "@/shared/types";
 
@@ -67,6 +69,7 @@ function PersonModal({
 }) {
   const [name, setName] = useState(person?.name ?? "");
   const [kind, setKind] = useState<string>(person?.kind ?? "person");
+  const t = useT();
   const [species, setSpecies] = useState(person?.species ?? "");
   const [notes, setNotes] = useState(person?.notes ?? "");
   const [recognition, setRecognition] = useState(
@@ -85,43 +88,39 @@ function PersonModal({
         ? api.patch(`/api/people/${person.id}`, body)
         : api.post("/api/people", body);
     },
-    { invalidate: [["people"]], success: "Gespeichert" },
+    { invalidate: [["people"]], success: t("common.saved") },
   );
   return (
-    <Modal
-      opened
-      onClose={onClose}
-      title={person ? person.name : "Neue Person / neues Tier"}
-    >
+    <Modal opened onClose={onClose} title={person ? person.name : t("ppl.new")}>
       <Stack>
         <TextInput
-          label="Name"
+          label={t("common.name")}
           value={name}
           onChange={(e) => setName(e.currentTarget.value)}
         />
         <Select
-          label="Art"
+          label={t("ppl.kind")}
           data={[
-            { value: "person", label: "Person" },
-            { value: "pet", label: "Haustier" },
+            { value: "person", label: t("ppl.person") },
+            { value: "pet", label: t("ppl.pet") },
           ]}
           value={kind}
           onChange={(v) => setKind(v ?? "person")}
         />
         {kind === "pet" && (
           <TextInput
-            label="Tierart (z. B. dog, cat)"
+            label={t("ppl.species")}
             value={species}
             onChange={(e) => setSpecies(e.currentTarget.value)}
           />
         )}
         <Textarea
-          label="Notizen"
+          label={t("ppl.notes")}
           value={notes}
           onChange={(e) => setNotes(e.currentTarget.value)}
         />
         <Switch
-          label="Wiedererkennung aktiv"
+          label={t("ppl.recognition")}
           checked={recognition}
           onChange={(e) => setRecognition(e.currentTarget.checked)}
         />
@@ -132,7 +131,7 @@ function PersonModal({
           }}
           disabled={!name}
         >
-          Speichern
+          {t("common.save")}
         </Button>
       </Stack>
     </Modal>
@@ -150,6 +149,7 @@ function EnrollModal({
     queryKey: ["devices"],
     queryFn: () => api.get<Device[]>("/api/devices"),
   });
+  const t = useT();
   const cameras = (devices.data ?? []).filter(
     (d) => d.capabilities.includes("video.input") && d.status === "online",
   );
@@ -164,29 +164,25 @@ function EnrollModal({
     {
       invalidate: [["people"], ["faces", person.id]],
       success: (r) =>
-        `${r.added} Aufnahmen gespeichert, ${r.rejected} verworfen`,
+        t("ppl.enrolled", { added: r.added, rejected: r.rejected }),
     },
   );
   return (
     <Modal
       opened
       onClose={onClose}
-      title={`Gesicht registrieren: ${person.name}`}
+      title={t("ppl.enrollTitle", { name: person.name })}
     >
       <Stack>
-        <Alert color="blue">
-          Die Person sollte allein und frontal vor der Kamera stehen. Es werden
-          über einige Sekunden mehrere Aufnahmen gemacht; nur ausreichend
-          scharfe, große und helle Gesichter werden gespeichert.
-        </Alert>
+        <Alert color="blue">{t("ppl.enrollHint")}</Alert>
         <Select
-          label="Kamera"
+          label={t("ppl.camera")}
           data={cameras.map((d) => ({ value: d.id, label: d.name }))}
           value={camera}
           onChange={setCamera}
         />
         <Checkbox
-          label={`${person.name} hat der Speicherung biometrischer Merkmale zur Wiedererkennung ausdrücklich zugestimmt.`}
+          label={t("ppl.consent", { name: person.name })}
           checked={consent}
           onChange={(e) => setConsent(e.currentTarget.checked)}
         />
@@ -200,7 +196,7 @@ function EnrollModal({
           loading={enroll.isPending}
           disabled={!camera || !consent}
         >
-          Aufnehmen
+          {t("ppl.capture")}
         </Button>
       </Stack>
     </Modal>
@@ -208,6 +204,7 @@ function EnrollModal({
 }
 
 function Faces({ person }: { person: Person }) {
+  const t = useT();
   const faces = useQuery({
     queryKey: ["faces", person.id],
     queryFn: () => api.get<Face[]>(`/api/people/${person.id}/faces`),
@@ -225,7 +222,7 @@ function Faces({ person }: { person: Person }) {
               w={56}
               h={56}
               radius="sm"
-              alt="Gesicht"
+              alt={t("ppl.face")}
             />
           ) : (
             <IconFaceId size={40} />
@@ -251,19 +248,20 @@ export function PeoplePage() {
     refetchInterval: 10000,
   });
   const [editing, setEditing] = useState<Person | null | "new">(null);
+  const t = useT();
   const [enrolling, setEnrolling] = useState<Person | null>(null);
   const [mergeFrom, setMergeFrom] = useState<Person | null>(null);
   const [mergeInto, setMergeInto] = useState<string | null>(null);
   const del = useAction((id: string) => api.del(`/api/people/${id}`), {
     invalidate: [["people"]],
-    success: "Person und alle biometrischen Daten gelöscht",
+    success: t("ppl.deleted"),
   });
   const revoke = useAction(
     (id: string) =>
       api.post(`/api/people/${id}/consent`, { kind: "face", granted: false }),
     {
       invalidate: [["people"]],
-      success: "Einwilligung widerrufen, Gesichtsdaten gelöscht",
+      success: t("ppl.consentRevoked"),
     },
   );
   const forgetVoice = useAction(
@@ -271,12 +269,12 @@ export function PeoplePage() {
       api.post(`/api/people/${id}/consent`, { kind: "voice", granted: false }),
     {
       invalidate: [["people"]],
-      success: "Stimmprofil gelöscht, Einwilligung widerrufen",
+      success: t("ppl.voiceDeleted"),
     },
   );
   const merge = useAction(
     () => api.post(`/api/people/${mergeFrom!.id}/merge`, { into: mergeInto }),
-    { invalidate: [["people"]], success: "Profile zusammengeführt" },
+    { invalidate: [["people"]], success: t("ppl.merged") },
   );
   const exportPerson = async (p: Person) => {
     try {
@@ -296,14 +294,14 @@ export function PeoplePage() {
   return (
     <Stack>
       <PageHeader
-        title="Personen & Haustiere"
-        description="Bekannte Personen, Gesichts- und Stimmprofile, Einwilligungen. Ein Stimmprofil legt man im Gespräch an („Merk dir meine Stimme“). Biometrische Merkmale gewähren niemals Admin-Rechte."
+        title={t("ppl.title")}
+        description={t("ppl.desc")}
         actions={
           <Button
             leftSection={<IconPlus size={16} />}
             onClick={() => setEditing("new")}
           >
-            Person
+            {t("ppl.add")}
           </Button>
         }
       />
@@ -314,31 +312,35 @@ export function PeoplePage() {
               <Title order={5}>{p.name}</Title>
               <Group gap={4}>
                 <Badge variant="light">
-                  {p.kind === "pet" ? (p.species ?? "Tier") : "Person"}
+                  {p.kind === "pet"
+                    ? (p.species ?? t("ppl.animal"))
+                    : t("ppl.person")}
                 </Badge>
                 {p.biometric_consent ? (
-                  <Badge color="green">Einwilligung</Badge>
+                  <Badge color="green">{t("ppl.hasConsent")}</Badge>
                 ) : (
-                  <Badge color="gray">keine Biometrie</Badge>
+                  <Badge color="gray">{t("ppl.noBiometrics")}</Badge>
                 )}
                 {!p.recognition_enabled && (
-                  <Badge color="orange">Erkennung aus</Badge>
+                  <Badge color="orange">{t("ppl.recognitionOff")}</Badge>
                 )}
               </Group>
             </Group>
             <Text size="xs" c="dimmed">
-              {p.face_count} Gesichtsaufnahmen ·{" "}
+              {t("ppl.faceCount", { n: p.face_count })} ·{" "}
               {p.voice_count
-                ? `Stimmprofil (${p.voice_count} Proben)`
-                : "kein Stimmprofil"}
+                ? t("ppl.voiceProfile", { n: p.voice_count })
+                : t("ppl.noVoice")}
               {p.last_seen &&
-                ` · zuletzt gesehen ${fmtTime(p.last_seen.at)}${p.last_seen.room ? ` (${p.last_seen.room})` : ""}`}
+                t("ppl.lastSeen", {
+                  when: `${fmtTime(p.last_seen.at)}${p.last_seen.room ? ` (${p.last_seen.room})` : ""}`,
+                })}
             </Text>
             {p.notes && <Text size="sm">{p.notes}</Text>}
             {p.face_count > 0 && <Faces person={p} />}
             <Group gap="xs" mt="sm">
               <Button size="xs" variant="light" onClick={() => setEditing(p)}>
-                Bearbeiten
+                {t("common.edit")}
               </Button>
               {p.kind === "person" && (
                 <Button
@@ -347,7 +349,7 @@ export function PeoplePage() {
                   leftSection={<IconFaceId size={14} />}
                   onClick={() => setEnrolling(p)}
                 >
-                  Gesicht registrieren
+                  {t("ppl.registerFace")}
                 </Button>
               )}
               <Button
@@ -356,14 +358,14 @@ export function PeoplePage() {
                 leftSection={<IconDownload size={14} />}
                 onClick={() => exportPerson(p)}
               >
-                Export
+                {t("ppl.export")}
               </Button>
               <Button
                 size="xs"
                 variant="subtle"
                 onClick={() => setMergeFrom(p)}
               >
-                Zusammenführen
+                {t("ppl.merge")}
               </Button>
               {p.biometric_consent && (
                 <Button
@@ -371,12 +373,10 @@ export function PeoplePage() {
                   variant="subtle"
                   color="orange"
                   onClick={() =>
-                    confirm(
-                      "Einwilligung widerrufen und Gesichtsdaten löschen?",
-                    ) && revoke.mutate(p.id)
+                    confirm(t("ppl.confirmRevoke")) && revoke.mutate(p.id)
                   }
                 >
-                  Einwilligung widerrufen
+                  {t("ppl.revoke")}
                 </Button>
               )}
               {!!p.voice_count && (
@@ -385,12 +385,11 @@ export function PeoplePage() {
                   variant="subtle"
                   color="orange"
                   onClick={() =>
-                    confirm(
-                      "Stimmprofil löschen und Einwilligung widerrufen?",
-                    ) && forgetVoice.mutate(p.id)
+                    confirm(t("ppl.confirmVoiceDelete")) &&
+                    forgetVoice.mutate(p.id)
                   }
                 >
-                  Stimmprofil löschen
+                  {t("ppl.deleteVoice")}
                 </Button>
               )}
               <Button
@@ -398,11 +397,11 @@ export function PeoplePage() {
                 variant="subtle"
                 color="red"
                 onClick={() =>
-                  confirm(`${p.name} mit allen Daten löschen?`) &&
+                  confirm(t("ppl.confirmDelete", { name: p.name })) &&
                   del.mutate(p.id)
                 }
               >
-                Löschen
+                {t("common.delete")}
               </Button>
             </Group>
           </Card>
@@ -421,7 +420,7 @@ export function PeoplePage() {
         <Modal
           opened
           onClose={() => setMergeFrom(null)}
-          title={`${mergeFrom.name} zusammenführen mit …`}
+          title={t("ppl.mergeTitle", { name: mergeFrom.name })}
         >
           <Stack>
             <Select
@@ -432,8 +431,7 @@ export function PeoplePage() {
               onChange={setMergeInto}
             />
             <Text size="xs" c="dimmed">
-              Gesichtsprofile, Erinnerungen und Automationen werden übertragen;
-              das Profil „{mergeFrom.name}“ wird entfernt.
+              {t("ppl.mergeHint", { name: mergeFrom.name })}
             </Text>
             <Button
               disabled={!mergeInto}
@@ -442,7 +440,7 @@ export function PeoplePage() {
                 setMergeFrom(null);
               }}
             >
-              Zusammenführen
+              {t("ppl.merge")}
             </Button>
           </Stack>
         </Modal>

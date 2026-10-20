@@ -16,6 +16,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { api } from "@/shared/api";
+import { useT } from "@/shared/i18n";
 import { useLiveEvents, useTelemetry } from "@/shared/live";
 import type { Device, Endpoint, EndpointRuntime } from "@/shared/types";
 
@@ -78,6 +79,7 @@ function EndpointCard({
   devices: Device[];
 }) {
   const isAdmin = useIsAdmin();
+  const t = useT();
   const [seconds, setSeconds] = useState(10);
   const [recording, setRecording] = useState(false);
   const record = async () => {
@@ -110,8 +112,8 @@ function EndpointCard({
         <Title order={5}>{ep.name}</Title>
         <Text size="sm" c="dimmed" mt="xs">
           {!micRef
-            ? "Kein Mikrofon zugeordnet – das Gerät wurde gelöscht oder nie zugewiesen. Unter „Räume“ ein Mikrofon zuordnen oder den Endpoint löschen."
-            : `Mikrofon „${mic?.name}“ ist deaktiviert – dieser Endpoint hört gerade nicht zu.`}
+            ? t("audio.noMic")
+            : t("audio.micDisabled", { name: mic?.name ?? "" })}
         </Text>
       </Card>
     );
@@ -121,18 +123,24 @@ function EndpointCard({
       <Group justify="space-between" mb="xs">
         <Title order={5}>{ep.name}</Title>
         <Group gap={4}>
-          {r?.gated && <Badge color="orange">Eingang gesperrt</Badge>}
-          {r?.echo_window && <Badge color="violet">Echofenster</Badge>}
-          {r?.speech && <Badge color="green">Sprache</Badge>}
+          {r?.gated && <Badge color="orange">{t("audio.gated")}</Badge>}
+          {r?.echo_window && (
+            <Badge color="violet">{t("audio.echoWindow")}</Badge>
+          )}
+          {r?.speech && <Badge color="green">{t("audio.speech")}</Badge>}
           <Badge variant="outline">
-            {r?.duplex === "full" ? "Vollduplex" : "Halbduplex"}
+            {r?.duplex === "full" ? t("ep.fullDuplex") : t("ep.halfDuplex")}
           </Badge>
         </Group>
       </Group>
       {r ? (
         <Stack gap="xs">
-          <Meter label="Mikrofon (verarbeitet)" value={r.level_db} />
-          <Meter label="Grundrauschen" value={r.noise_floor_db} color="gray" />
+          <Meter label={t("audio.micProcessed")} value={r.level_db} />
+          <Meter
+            label={t("audio.noiseFloor")}
+            value={r.noise_floor_db}
+            color="gray"
+          />
           <Group grow>
             <Stack gap={2}>
               <Text size="xs">VAD {(r.vad * 100).toFixed(0)} %</Text>
@@ -140,7 +148,7 @@ function EndpointCard({
             </Stack>
             <Stack gap={2}>
               <Text size="xs">
-                Wakeword {(r.wake_score * 100).toFixed(0)} %
+                {t("audio.wake", { p: (r.wake_score * 100).toFixed(0) })}
               </Text>
               <Progress value={r.wake_score * 100} color="grape" />
             </Stack>
@@ -148,37 +156,39 @@ function EndpointCard({
           <Table fz="xs">
             <Table.Tbody>
               <Table.Tr>
-                <Table.Td>Gate-Latenz (Ausgabe → Mikrofon)</Table.Td>
+                <Table.Td>{t("audio.gateLatency")}</Table.Td>
                 <Table.Td>{r.latency_s.toFixed(2)} s</Table.Td>
               </Table.Tr>
               <Table.Tr>
-                <Table.Td>Gemessene Echo-Verzögerung</Table.Td>
+                <Table.Td>{t("audio.echoDelay")}</Table.Td>
                 <Table.Td>
                   {r.delay_estimate_s !== null
                     ? `${r.delay_estimate_s.toFixed(2)} s`
                     : "–"}{" "}
-                  (Konfidenz {r.delay_confidence.toFixed(0)})
+                  {t("audio.confidence", { c: r.delay_confidence.toFixed(0) })}
                 </Table.Td>
               </Table.Tr>
               <Table.Tr>
-                <Table.Td>Echodämpfung (ERLE)</Table.Td>
+                <Table.Td>{t("audio.erle")}</Table.Td>
                 <Table.Td>
                   {r.erle_db !== null ? `${r.erle_db.toFixed(1)} dB` : "–"}
                 </Table.Td>
               </Table.Tr>
               <Table.Tr>
-                <Table.Td>Duplex-Begründung</Table.Td>
+                <Table.Td>{t("audio.duplexReason")}</Table.Td>
                 <Table.Td>{r.duplex_reason}</Table.Td>
               </Table.Tr>
               <Table.Tr>
-                <Table.Td>Gesperrte Frames / unterdrückte Wakewords</Table.Td>
+                <Table.Td>{t("audio.gatedFrames")}</Table.Td>
                 <Table.Td>
                   {r.gated_frames} / {r.suppressed_wakes}
                 </Table.Td>
               </Table.Tr>
               <Table.Tr>
-                <Table.Td>Verarbeitungszeit</Table.Td>
-                <Table.Td>{r.processing_ms.toFixed(2)} ms pro Block</Table.Td>
+                <Table.Td>{t("audio.processing")}</Table.Td>
+                <Table.Td>
+                  {t("audio.perBlock", { ms: r.processing_ms.toFixed(2) })}
+                </Table.Td>
               </Table.Tr>
             </Table.Tbody>
           </Table>
@@ -200,18 +210,16 @@ function EndpointCard({
                 loading={recording}
                 onClick={record}
               >
-                Diagnoseaufnahme
+                {t("audio.recording")}
               </Button>
               <Text size="xs" c="dimmed">
-                nur auf ausdrückliche Anforderung, wird nicht gespeichert
+                {t("audio.recordingHint")}
               </Text>
             </Group>
           )}
         </Stack>
       ) : (
-        <Text c="dimmed">
-          Kein Audio aktiv (Mikrofon offline oder Endpoint inaktiv).
-        </Text>
+        <Text c="dimmed">{t("audio.inactive")}</Text>
       )}
     </Card>
   );
@@ -236,13 +244,11 @@ export function AudioPage() {
   );
   const name = (id: string) =>
     devices.data?.find((d) => d.id === id)?.name ?? id;
+  const t = useT();
 
   return (
     <Stack>
-      <PageHeader
-        title="Audio"
-        description="Live-Diagnose: Pegel, Sprachaktivität, Wakeword, Echo-Sperre und Audioausgabe"
-      />
+      <PageHeader title={t("nav.audio")} description={t("audio.desc")} />
       <SimpleGrid cols={{ base: 1, lg: 2 }}>
         {endpoints.data?.map((ep) => (
           <EndpointCard
@@ -256,16 +262,16 @@ export function AudioPage() {
       <SimpleGrid cols={{ base: 1, lg: 2 }}>
         <Card withBorder>
           <Title order={5} mb="xs">
-            Mikrofone
+            {t("audio.mics")}
           </Title>
           <Table fz="xs">
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>Gerät</Table.Th>
-                <Table.Th>Pegel</Table.Th>
-                <Table.Th>Blöcke</Table.Th>
-                <Table.Th>Überläufe</Table.Th>
-                <Table.Th>Letzte Daten</Table.Th>
+                <Table.Th>{t("dev.device")}</Table.Th>
+                <Table.Th>{t("audio.level")}</Table.Th>
+                <Table.Th>{t("audio.blocks")}</Table.Th>
+                <Table.Th>{t("audio.overruns")}</Table.Th>
+                <Table.Th>{t("audio.lastData")}</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -276,7 +282,9 @@ export function AudioPage() {
                   <Table.Td>{m.chunks}</Table.Td>
                   <Table.Td>{m.overruns}</Table.Td>
                   <Table.Td>
-                    {m.stale_s !== null ? `vor ${m.stale_s.toFixed(1)} s` : "–"}
+                    {m.stale_s !== null
+                      ? t("audio.ago", { s: m.stale_s.toFixed(1) })
+                      : "–"}
                   </Table.Td>
                 </Table.Tr>
               ))}
@@ -285,15 +293,15 @@ export function AudioPage() {
         </Card>
         <Card withBorder>
           <Title order={5} mb="xs">
-            Lautsprecher
+            {t("audio.speakers")}
           </Title>
           <Table fz="xs">
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>Gerät</Table.Th>
-                <Table.Th>Status</Table.Th>
-                <Table.Th>Latenz</Table.Th>
-                <Table.Th>Talkback</Table.Th>
+                <Table.Th>{t("dev.device")}</Table.Th>
+                <Table.Th>{t("audio.status")}</Table.Th>
+                <Table.Th>{t("audio.latency")}</Table.Th>
+                <Table.Th>{t("audio.talkback")}</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -302,15 +310,21 @@ export function AudioPage() {
                   <Table.Td>{name(id)}</Table.Td>
                   <Table.Td>
                     {s.playing ? (
-                      <Badge color="violet">spielt</Badge>
+                      <Badge color="violet">{t("audio.playing")}</Badge>
                     ) : (
-                      "bereit"
+                      t("audio.ready")
                     )}
                   </Table.Td>
                   <Table.Td>{s.latency_s.toFixed(1)} s</Table.Td>
                   <Table.Td>
                     {s.talkback
-                      ? `${s.talkback.connected ? "verbunden" : "getrennt"}, ${(s.talkback.bytes_pulled / 32000).toFixed(0)} s, ${s.talkback.dropped_frames} verworfen`
+                      ? t("audio.talkbackInfo", {
+                          state: s.talkback.connected
+                            ? t("audio.connected")
+                            : t("audio.disconnected"),
+                          s: (s.talkback.bytes_pulled / 32000).toFixed(0),
+                          dropped: s.talkback.dropped_frames,
+                        })
                       : "–"}
                   </Table.Td>
                 </Table.Tr>
@@ -321,7 +335,7 @@ export function AudioPage() {
       </SimpleGrid>
       <Card withBorder>
         <Title order={5} mb="xs">
-          Audio-Ereignisse
+          {t("audio.events")}
         </Title>
         {events.map((e) => (
           <Text key={e.id} size="xs" ff="monospace">

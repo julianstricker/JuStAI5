@@ -18,9 +18,16 @@ import {
   Textarea,
   Title,
 } from "@mantine/core";
-import { IconArrowDown, IconArrowUp, IconPlus, IconTrash } from "@tabler/icons-react";
+import {
+  IconArrowDown,
+  IconArrowUp,
+  IconPlus,
+  IconTrash,
+} from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+
+import { type Key, useT } from "@/shared/i18n";
 
 import { api } from "@/shared/api";
 
@@ -61,23 +68,37 @@ interface ProviderEntry {
   locality: string;
 }
 
-const ROLES: { role: string; kind: string; label: string }[] = [
-  { role: "realtime", kind: "realtime", label: "Realtime (Sprache ↔ Sprache)" },
-  { role: "conversation", kind: "llm", label: "Gespräch (Pipeline)" },
-  { role: "reasoning", kind: "llm", label: "Komplexes Reasoning" },
-  { role: "vision", kind: "llm", label: "Bildanalyse" },
-  { role: "memory", kind: "llm", label: "Gedächtnis-Extraktion" },
-  { role: "tool_generation", kind: "llm", label: "Tool-Entwicklung" },
-  { role: "background", kind: "llm", label: "Hintergrundaufgaben" },
-  { role: "stt", kind: "stt", label: "Spracherkennung (STT)" },
-  { role: "tts", kind: "tts", label: "Sprachausgabe (TTS)" },
-  { role: "embedding", kind: "embedding", label: "Embeddings" },
+const ROLES: { role: string; kind: string; label: Key }[] = [
+  { role: "realtime", kind: "realtime", label: "ai.roleRealtime" },
+  { role: "conversation", kind: "llm", label: "ai.roleConversation" },
+  { role: "reasoning", kind: "llm", label: "ai.roleReasoning" },
+  { role: "vision", kind: "llm", label: "ai.roleVision" },
+  { role: "memory", kind: "llm", label: "ai.roleMemory" },
+  { role: "tool_generation", kind: "llm", label: "ai.roleToolGen" },
+  { role: "background", kind: "llm", label: "ai.roleBackground" },
+  { role: "stt", kind: "stt", label: "ai.roleStt" },
+  { role: "tts", kind: "tts", label: "ai.roleTts" },
+  { role: "embedding", kind: "embedding", label: "ai.roleEmbedding" },
 ];
 
-function ModelSelect({ kind, provider, value, onChange }: { kind: string; provider: string; value: string; onChange: (v: string) => void }) {
+function ModelSelect({
+  kind,
+  provider,
+  value,
+  onChange,
+}: {
+  kind: string;
+  provider: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const t = useT();
   const models = useQuery({
     queryKey: ["models", kind, provider],
-    queryFn: () => api.get<{ id: string }[]>(`/api/ai/providers/${kind}/${encodeURIComponent(provider)}/models`),
+    queryFn: () =>
+      api.get<{ id: string }[]>(
+        `/api/ai/providers/${kind}/${encodeURIComponent(provider)}/models`,
+      ),
     enabled: !!provider && kind !== "tts",
     staleTime: 300_000,
   });
@@ -85,7 +106,7 @@ function ModelSelect({ kind, provider, value, onChange }: { kind: string; provid
   return (
     <Autocomplete
       size="xs"
-      placeholder="Modell-ID"
+      placeholder={t("ai.modelId")}
       data={options}
       value={value}
       onChange={onChange}
@@ -95,9 +116,28 @@ function ModelSelect({ kind, provider, value, onChange }: { kind: string; provid
   );
 }
 
-function RoleEditor({ kind, label, cfg, providers, onChange }: { kind: string; label: string; cfg: RoleConfig; providers: ProviderEntry[]; onChange: (c: RoleConfig) => void }) {
-  const options = providers.filter((p) => p.kind === kind).map((p) => ({ value: p.id, label: `${p.id} (${p.locality})` }));
-  const setRef = (i: number, ref: Partial<ModelRef>) => onChange({ ...cfg, chain: cfg.chain.map((r, j) => (j === i ? { ...r, ...ref } : r)) });
+function RoleEditor({
+  kind,
+  label,
+  cfg,
+  providers,
+  onChange,
+}: {
+  kind: string;
+  label: string;
+  cfg: RoleConfig;
+  providers: ProviderEntry[];
+  onChange: (c: RoleConfig) => void;
+}) {
+  const t = useT();
+  const options = providers
+    .filter((p) => p.kind === kind)
+    .map((p) => ({ value: p.id, label: `${p.id} (${p.locality})` }));
+  const setRef = (i: number, ref: Partial<ModelRef>) =>
+    onChange({
+      ...cfg,
+      chain: cfg.chain.map((r, j) => (j === i ? { ...r, ...ref } : r)),
+    });
   const move = (i: number, d: number) => {
     const chain = [...cfg.chain];
     const [x] = chain.splice(i, 1);
@@ -113,39 +153,99 @@ function RoleEditor({ kind, label, cfg, providers, onChange }: { kind: string; l
             size="xs"
             w={190}
             value={cfg.locality}
-            onChange={(v) => onChange({ ...cfg, locality: (v ?? "any") as RoleConfig["locality"] })}
+            onChange={(v) =>
+              onChange({
+                ...cfg,
+                locality: (v ?? "any") as RoleConfig["locality"],
+              })
+            }
             data={[
-              { value: "any", label: "lokal oder Cloud" },
-              { value: "prefer_local", label: "lokal bevorzugt" },
-              { value: "local_only", label: "nur lokal" },
+              { value: "any", label: t("ai.localOrCloud") },
+              { value: "prefer_local", label: t("ai.preferLocal") },
+              { value: "local_only", label: t("ai.localOnly") },
             ]}
           />
-          <NumberInput size="xs" w={90} value={cfg.timeout_s} suffix=" s" onChange={(v) => onChange({ ...cfg, timeout_s: Number(v) })} />
+          <NumberInput
+            size="xs"
+            w={90}
+            value={cfg.timeout_s}
+            suffix=" s"
+            onChange={(v) => onChange({ ...cfg, timeout_s: Number(v) })}
+          />
         </Group>
       </Group>
       <Stack gap="xs">
         {cfg.chain.map((ref, i) => (
           <Group key={i} gap="xs">
-            <Badge variant="light">{i === 0 ? "primär" : `Fallback ${i}`}</Badge>
-            <Select size="xs" w={200} data={options} value={ref.provider} onChange={(v) => setRef(i, { provider: v ?? "" })} />
+            <Badge variant="light">
+              {i === 0 ? t("ai.primary") : t("ai.fallback", { n: i })}
+            </Badge>
+            <Select
+              size="xs"
+              w={200}
+              data={options}
+              value={ref.provider}
+              onChange={(v) => setRef(i, { provider: v ?? "" })}
+            />
             {kind !== "tts" && kind !== "embedding" ? (
-              <ModelSelect kind={kind} provider={ref.provider} value={ref.model} onChange={(model) => setRef(i, { model })} />
+              <ModelSelect
+                kind={kind}
+                provider={ref.provider}
+                value={ref.model}
+                onChange={(model) => setRef(i, { model })}
+              />
             ) : (
-              <TextInput size="xs" w={260} placeholder="Modell (optional)" value={ref.model} onChange={(e) => setRef(i, { model: e.currentTarget.value })} />
+              <TextInput
+                size="xs"
+                w={260}
+                placeholder={t("ai.modelOptional")}
+                value={ref.model}
+                onChange={(e) => setRef(i, { model: e.currentTarget.value })}
+              />
             )}
-            <ActionIcon size="sm" variant="subtle" disabled={i === 0} onClick={() => move(i, -1)}>
+            <ActionIcon
+              size="sm"
+              variant="subtle"
+              disabled={i === 0}
+              onClick={() => move(i, -1)}
+            >
               <IconArrowUp size={14} />
             </ActionIcon>
-            <ActionIcon size="sm" variant="subtle" disabled={i === cfg.chain.length - 1} onClick={() => move(i, 1)}>
+            <ActionIcon
+              size="sm"
+              variant="subtle"
+              disabled={i === cfg.chain.length - 1}
+              onClick={() => move(i, 1)}
+            >
               <IconArrowDown size={14} />
             </ActionIcon>
-            <ActionIcon size="sm" variant="subtle" color="red" onClick={() => onChange({ ...cfg, chain: cfg.chain.filter((_, j) => j !== i) })}>
+            <ActionIcon
+              size="sm"
+              variant="subtle"
+              color="red"
+              onClick={() =>
+                onChange({ ...cfg, chain: cfg.chain.filter((_, j) => j !== i) })
+              }
+            >
               <IconTrash size={14} />
             </ActionIcon>
           </Group>
         ))}
-        <Button size="xs" variant="subtle" leftSection={<IconPlus size={14} />} onClick={() => onChange({ ...cfg, chain: [...cfg.chain, { provider: options[0]?.value ?? "", model: "", options: {} }] })}>
-          Provider hinzufügen
+        <Button
+          size="xs"
+          variant="subtle"
+          leftSection={<IconPlus size={14} />}
+          onClick={() =>
+            onChange({
+              ...cfg,
+              chain: [
+                ...cfg.chain,
+                { provider: options[0]?.value ?? "", model: "", options: {} },
+              ],
+            })
+          }
+        >
+          {t("ai.addProvider")}
         </Button>
       </Stack>
     </Card>
@@ -168,64 +268,118 @@ interface UsageRow {
 
 export function AIPage() {
   const isAdmin = useIsAdmin();
-  const settings = useQuery({ queryKey: ["ai-settings"], queryFn: () => api.get<AISettings>("/api/ai/settings") });
-  const providers = useQuery({ queryKey: ["ai-providers"], queryFn: () => api.get<ProviderEntry[]>("/api/ai/providers") });
-  const usage = useQuery({ queryKey: ["ai-usage"], queryFn: () => api.get<UsageRow[]>("/api/ai/usage"), enabled: isAdmin });
+  const settings = useQuery({
+    queryKey: ["ai-settings"],
+    queryFn: () => api.get<AISettings>("/api/ai/settings"),
+  });
+  const providers = useQuery({
+    queryKey: ["ai-providers"],
+    queryFn: () => api.get<ProviderEntry[]>("/api/ai/providers"),
+  });
+  const usage = useQuery({
+    queryKey: ["ai-usage"],
+    queryFn: () => api.get<UsageRow[]>("/api/ai/usage"),
+    enabled: isAdmin,
+  });
   const voices = useQuery({
     queryKey: ["voices"],
-    queryFn: () => api.get<{ id: string; language: string }[]>("/api/ai/providers/tts/piper/models"),
+    queryFn: () =>
+      api.get<{ id: string; language: string }[]>(
+        "/api/ai/providers/tts/piper/models",
+      ),
   });
   const [draft, setDraft] = useState<AISettings | null>(null);
+  const t = useT();
   useEffect(() => {
     if (settings.data) setDraft(settings.data);
   }, [settings.data]);
-  const save = useAction((s: AISettings) => api.put("/api/ai/settings", s), { invalidate: [["ai-settings"], ["ai-status"]], success: "KI-Einstellungen gespeichert" });
+  const save = useAction((s: AISettings) => api.put("/api/ai/settings", s), {
+    invalidate: [["ai-settings"], ["ai-status"]],
+    success: t("ai.saved"),
+  });
   if (!draft) return null;
-  const role = (r: string): RoleConfig => draft.roles[r] ?? { chain: [], locality: "any", timeout_s: 60 };
+  const role = (r: string): RoleConfig =>
+    draft.roles[r] ?? { chain: [], locality: "any", timeout_s: 60 };
   const privacy = (k: keyof AISettings["privacy"], label: string) => (
-    <Switch label={label} checked={draft.privacy[k]} onChange={(e) => setDraft({ ...draft, privacy: { ...draft.privacy, [k]: e.currentTarget.checked } })} />
+    <Switch
+      label={label}
+      checked={draft.privacy[k]}
+      onChange={(e) =>
+        setDraft({
+          ...draft,
+          privacy: { ...draft.privacy, [k]: e.currentTarget.checked },
+        })
+      }
+    />
   );
 
   return (
     <Stack>
       <PageHeader
-        title="KI-Provider"
-        description="Welche Modelle welche Aufgaben übernehmen, Fallbacks, Stimmen und Datenschutzregeln"
+        title={t("nav.ai")}
+        description={t("ai.desc")}
         actions={
           isAdmin && (
             <Button onClick={() => save.mutate(draft)} loading={save.isPending}>
-              Speichern
+              {t("common.save")}
             </Button>
           )
         }
       />
       <Tabs defaultValue="general">
         <Tabs.List>
-          <Tabs.Tab value="general">Allgemein</Tabs.Tab>
-          <Tabs.Tab value="models">Modelle & Fallbacks</Tabs.Tab>
-          <Tabs.Tab value="privacy">Datenschutz & Kosten</Tabs.Tab>
-          <Tabs.Tab value="usage">Nutzung</Tabs.Tab>
+          <Tabs.Tab value="general">{t("ai.tabGeneral")}</Tabs.Tab>
+          <Tabs.Tab value="models">{t("ai.tabModels")}</Tabs.Tab>
+          <Tabs.Tab value="privacy">{t("ai.tabPrivacy")}</Tabs.Tab>
+          <Tabs.Tab value="usage">{t("ai.tabUsage")}</Tabs.Tab>
         </Tabs.List>
         <Tabs.Panel value="general" pt="md">
           <Card withBorder>
             <Stack>
               <Group grow>
-                <TextInput label="Name des Assistenten" value={draft.assistant_name} onChange={(e) => setDraft({ ...draft, assistant_name: e.currentTarget.value })} />
+                <TextInput
+                  label={t("ai.assistantName")}
+                  value={draft.assistant_name}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      assistant_name: e.currentTarget.value,
+                    })
+                  }
+                />
                 <Select
-                  label="Gesprächsmodus"
+                  label={t("ai.conversationMode")}
                   data={[
-                    { value: "realtime", label: "Realtime (natives Sprachmodell)" },
-                    { value: "pipeline", label: "Pipeline (STT → LLM → TTS)" },
+                    { value: "realtime", label: t("ep.modeRealtime") },
+                    { value: "pipeline", label: t("ep.modePipeline") },
                   ]}
                   value={draft.conversation_mode}
-                  onChange={(v) => setDraft({ ...draft, conversation_mode: (v ?? "pipeline") as AISettings["conversation_mode"] })}
+                  onChange={(v) =>
+                    setDraft({
+                      ...draft,
+                      conversation_mode: (v ??
+                        "pipeline") as AISettings["conversation_mode"],
+                    })
+                  }
                 />
               </Group>
               <Group grow>
-                <Select label="Standardsprache" data={["de", "it", "en"]} value={draft.default_language} onChange={(v) => setDraft({ ...draft, default_language: v ?? "de" })} />
-                <MultiSelect label="Sprachen" data={["de", "it", "en"]} value={draft.languages} onChange={(v) => setDraft({ ...draft, languages: v })} />
+                <Select
+                  label={t("ai.defaultLanguage")}
+                  data={["de", "it", "en"]}
+                  value={draft.default_language}
+                  onChange={(v) =>
+                    setDraft({ ...draft, default_language: v ?? "de" })
+                  }
+                />
+                <MultiSelect
+                  label={t("ai.languages")}
+                  data={["de", "it", "en"]}
+                  value={draft.languages}
+                  onChange={(v) => setDraft({ ...draft, languages: v })}
+                />
               </Group>
-              <Title order={6}>Stimmen (Pipeline-TTS)</Title>
+              <Title order={6}>{t("ai.voices")}</Title>
               <Group grow>
                 {draft.languages.map((lang) => (
                   <Select
@@ -233,16 +387,23 @@ export function AIPage() {
                     label={lang}
                     data={(voices.data ?? []).map((v) => v.id)}
                     value={draft.voices[lang] ?? null}
-                    onChange={(v) => setDraft({ ...draft, voices: { ...draft.voices, [lang]: v ?? "" } })}
+                    onChange={(v) =>
+                      setDraft({
+                        ...draft,
+                        voices: { ...draft.voices, [lang]: v ?? "" },
+                      })
+                    }
                   />
                 ))}
               </Group>
               <Textarea
-                label="Zusätzlicher Systemprompt"
+                label={t("ai.systemPrompt")}
                 autosize
                 minRows={4}
                 value={draft.system_prompt}
-                onChange={(e) => setDraft({ ...draft, system_prompt: e.currentTarget.value })}
+                onChange={(e) =>
+                  setDraft({ ...draft, system_prompt: e.currentTarget.value })
+                }
               />
             </Stack>
           </Card>
@@ -250,7 +411,16 @@ export function AIPage() {
         <Tabs.Panel value="models" pt="md">
           <Stack>
             {ROLES.map(({ role: r, kind, label }) => (
-              <RoleEditor key={r} kind={kind} label={label} cfg={role(r)} providers={providers.data ?? []} onChange={(c) => setDraft({ ...draft, roles: { ...draft.roles, [r]: c } })} />
+              <RoleEditor
+                key={r}
+                kind={kind}
+                label={t(label)}
+                cfg={role(r)}
+                providers={providers.data ?? []}
+                onChange={(c) =>
+                  setDraft({ ...draft, roles: { ...draft.roles, [r]: c } })
+                }
+              />
             ))}
           </Stack>
         </Tabs.Panel>
@@ -258,26 +428,34 @@ export function AIPage() {
           <SimpleGrid cols={{ base: 1, md: 2 }}>
             <Card withBorder>
               <Stack>
-                <Title order={5}>Datenschutz</Title>
-                {privacy("cloud_allowed", "Cloud-KI generell erlaubt")}
-                {privacy("conversation_audio_to_cloud", "Gesprächsaudio an Cloud-Modelle")}
-                {privacy("camera_images_to_cloud", "Kamerabilder an Cloud-Modelle")}
-                {privacy("personal_memories_to_cloud", "Persönliche Erinnerungen an Cloud-Modelle")}
-                {privacy("announce_cloud_fallback", "Wechsel von lokal zu Cloud protokollieren")}
+                <Title order={5}>{t("ai.privacy")}</Title>
+                {privacy("cloud_allowed", t("ai.cloudAllowed"))}
+                {privacy("conversation_audio_to_cloud", t("ai.audioToCloud"))}
+                {privacy("camera_images_to_cloud", t("ai.imagesToCloud"))}
+                {privacy("personal_memories_to_cloud", t("ai.memoriesToCloud"))}
+                {privacy("announce_cloud_fallback", t("ai.announceFallback"))}
                 <Text size="xs" c="dimmed">
-                  Bei „nur lokal“ wird für eine Aufgabe niemals ein Cloud-Provider verwendet – auch nicht als Fallback.
+                  {t("ai.localOnlyHint")}
                 </Text>
               </Stack>
             </Card>
             <Card withBorder>
               <Stack>
-                <Title order={5}>Kostenlimit</Title>
+                <Title order={5}>{t("ai.costLimit")}</Title>
                 <NumberInput
-                  label="Tageslimit (USD)"
-                  description="Danach werden Cloud-Provider übersprungen"
+                  label={t("ai.dailyLimit")}
+                  description={t("ai.dailyLimitHint")}
                   value={draft.cost_limits.daily_usd ?? ""}
                   decimalScale={2}
-                  onChange={(v) => setDraft({ ...draft, cost_limits: { ...draft.cost_limits, daily_usd: typeof v === "number" ? v : null } })}
+                  onChange={(v) =>
+                    setDraft({
+                      ...draft,
+                      cost_limits: {
+                        ...draft.cost_limits,
+                        daily_usd: typeof v === "number" ? v : null,
+                      },
+                    })
+                  }
                 />
               </Stack>
             </Card>
@@ -287,15 +465,15 @@ export function AIPage() {
           <Table striped fz="sm">
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>Tag</Table.Th>
-                <Table.Th>Provider / Modell</Table.Th>
-                <Table.Th>Rolle</Table.Th>
-                <Table.Th>Anfragen</Table.Th>
-                <Table.Th>Fehler</Table.Th>
-                <Table.Th>Tokens ein/aus</Table.Th>
-                <Table.Th>Audio</Table.Th>
-                <Table.Th>Ø Latenz</Table.Th>
-                <Table.Th>Kosten</Table.Th>
+                <Table.Th>{t("ai.day")}</Table.Th>
+                <Table.Th>{t("ai.providerModel")}</Table.Th>
+                <Table.Th>{t("ai.role")}</Table.Th>
+                <Table.Th>{t("ai.requests")}</Table.Th>
+                <Table.Th>{t("ai.errors")}</Table.Th>
+                <Table.Th>{t("ai.tokens")}</Table.Th>
+                <Table.Th>{t("ai.audio")}</Table.Th>
+                <Table.Th>{t("ai.avgLatency")}</Table.Th>
+                <Table.Th>{t("ai.cost")}</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>

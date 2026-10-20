@@ -52,7 +52,8 @@ export function App() {
   const me = useQuery({
     queryKey: ["me"],
     queryFn: () => api.get<Me>("/api/auth/me"),
-    retry: (count, err) => !(err instanceof ApiError && err.status === 401) && count < 2,
+    retry: (count, err) =>
+      !(err instanceof ApiError && err.status === 401) && count < 2,
   });
   if (me.isLoading)
     return (

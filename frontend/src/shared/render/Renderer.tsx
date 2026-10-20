@@ -1,9 +1,28 @@
 // Render engine for presentation documents. Only these trusted components exist;
 // documents are data (validated by the core), never HTML or script.
-import { Badge, Button, Card, Group, Image, List, Notification, SimpleGrid, Stack, Table, Text, Title } from "@mantine/core";
-import { IconArrowDownRight, IconArrowRight, IconArrowUpRight } from "@tabler/icons-react";
+import {
+  Badge,
+  Button,
+  Card,
+  Group,
+  Image,
+  List,
+  Notification,
+  SimpleGrid,
+  Stack,
+  Table,
+  Text,
+  Title,
+} from "@mantine/core";
+import {
+  IconArrowDownRight,
+  IconArrowRight,
+  IconArrowUpRight,
+} from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import Markdown from "react-markdown";
+
+import { locale, useI18n, useT } from "@/shared/i18n";
 
 import { Chart } from "./Chart";
 import { LiveVideo } from "./LiveVideo";
@@ -17,20 +36,37 @@ export interface PresentationDocument {
   components: Component[];
 }
 
-export type InteractionHandler = (action: { component: string; action_id?: string; option_id?: string; label?: string }) => void;
+export type InteractionHandler = (action: {
+  component: string;
+  action_id?: string;
+  option_id?: string;
+  label?: string;
+}) => void;
 
 function Clock({ show_date = true }: { show_date?: boolean }) {
   const [now, setNow] = useState(new Date());
+  useI18n(); // re-render on language change
   useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(t);
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
   }, []);
   return (
     <Stack gap={0} align="center">
       <Text fz={64} fw={700}>
-        {now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
+        {now.toLocaleTimeString(locale(), {
+          hour: "2-digit",
+          minute: "2-digit",
+        })}
       </Text>
-      {show_date && <Text c="dimmed">{now.toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long" })}</Text>}
+      {show_date && (
+        <Text c="dimmed">
+          {now.toLocaleDateString(locale(), {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+          })}
+        </Text>
+      )}
     </Stack>
   );
 }
@@ -41,11 +77,23 @@ const TREND = {
   flat: { icon: IconArrowRight, color: "gray" },
 };
 
-function Render({ c, onInteract }: { c: Component; onInteract: InteractionHandler }) {
+function Render({
+  c,
+  onInteract,
+}: {
+  c: Component;
+  onInteract: InteractionHandler;
+}) {
+  const t = useT();
   switch (c.type) {
     case "text":
       return (
-        <Text size={{ s: "sm", m: "md", l: "lg", xl: "xl" }[c.size as string] ?? "md"} ta={c.align}>
+        <Text
+          size={
+            { s: "sm", m: "md", l: "lg", xl: "xl" }[c.size as string] ?? "md"
+          }
+          ta={c.align}
+        >
           {c.text}
         </Text>
       );
@@ -55,7 +103,9 @@ function Render({ c, onInteract }: { c: Component; onInteract: InteractionHandle
       // react-markdown does not render raw HTML unless explicitly enabled.
       return <Markdown>{c.markdown}</Markdown>;
     case "image":
-      return <Image src={c.src} alt={c.alt} fit={c.fit} radius="md" mah="70vh" />;
+      return (
+        <Image src={c.src} alt={c.alt} fit={c.fit} radius="md" mah="70vh" />
+      );
     case "table":
       return (
         <Table striped withTableBorder>
@@ -71,7 +121,9 @@ function Render({ c, onInteract }: { c: Component; onInteract: InteractionHandle
             {(c.rows as unknown[][]).map((row, i) => (
               <Table.Tr key={i}>
                 {row.map((cell, j) => (
-                  <Table.Td key={j}>{cell === null ? "–" : String(cell)}</Table.Td>
+                  <Table.Td key={j}>
+                    {cell === null ? "–" : String(cell)}
+                  </Table.Td>
                 ))}
               </Table.Tr>
             ))}
@@ -82,12 +134,14 @@ function Render({ c, onInteract }: { c: Component; onInteract: InteractionHandle
       return (
         <Table>
           <Table.Tbody>
-            {(c.items as { label: string; value: string | number }[]).map((it) => (
-              <Table.Tr key={it.label}>
-                <Table.Td c="dimmed">{it.label}</Table.Td>
-                <Table.Td fw={600}>{String(it.value)}</Table.Td>
-              </Table.Tr>
-            ))}
+            {(c.items as { label: string; value: string | number }[]).map(
+              (it) => (
+                <Table.Tr key={it.label}>
+                  <Table.Td c="dimmed">{it.label}</Table.Td>
+                  <Table.Td fw={600}>{String(it.value)}</Table.Td>
+                </Table.Tr>
+              ),
+            )}
           </Table.Tbody>
         </Table>
       );
@@ -103,7 +157,9 @@ function Render({ c, onInteract }: { c: Component; onInteract: InteractionHandle
               {String(c.value)}
             </Text>
             {c.unit && <Text>{c.unit}</Text>}
-            {trend && <trend.icon color={`var(--mantine-color-${trend.color}-6)`} />}
+            {trend && (
+              <trend.icon color={`var(--mantine-color-${trend.color}-6)`} />
+            )}
             {c.delta && <Text c={trend?.color}>{c.delta}</Text>}
           </Group>
         </Card>
@@ -140,7 +196,14 @@ function Render({ c, onInteract }: { c: Component; onInteract: InteractionHandle
                   {f.condition}
                 </Text>
                 <Text size="sm">
-                  {f.min !== null && f.min !== undefined ? Math.round(f.min) : "–"}° / {f.max !== null && f.max !== undefined ? Math.round(f.max) : "–"}°
+                  {f.min !== null && f.min !== undefined
+                    ? Math.round(f.min)
+                    : "–"}
+                  ° /{" "}
+                  {f.max !== null && f.max !== undefined
+                    ? Math.round(f.max)
+                    : "–"}
+                  °
                 </Text>
               </Stack>
             ))}
@@ -186,11 +249,19 @@ function Render({ c, onInteract }: { c: Component; onInteract: InteractionHandle
       return c.src ? (
         <LiveVideo src={c.src} />
       ) : (
-        <Text c="dimmed">Kamerabild nicht verfügbar</Text>
+        <Text c="dimmed">{t("render.noCamera")}</Text>
       );
     case "notification":
       return (
-        <Notification withCloseButton={false} color={{ info: "blue", success: "green", warning: "orange", error: "red" }[c.level as string]} title={c.title}>
+        <Notification
+          withCloseButton={false}
+          color={
+            { info: "blue", success: "green", warning: "orange", error: "red" }[
+              c.level as string
+            ]
+          }
+          title={c.title}
+        >
           {c.message}
         </Notification>
       );
@@ -202,7 +273,17 @@ function Render({ c, onInteract }: { c: Component; onInteract: InteractionHandle
           </Text>
           <Group>
             {(c.options as { id: string; label: string }[]).map((o) => (
-              <Button key={o.id} size="lg" onClick={() => onInteract({ component: "choice", option_id: o.id, label: o.label })}>
+              <Button
+                key={o.id}
+                size="lg"
+                onClick={() =>
+                  onInteract({
+                    component: "choice",
+                    option_id: o.id,
+                    label: o.label,
+                  })
+                }
+              >
                 {o.label}
               </Button>
             ))}
@@ -211,7 +292,16 @@ function Render({ c, onInteract }: { c: Component; onInteract: InteractionHandle
       );
     case "button":
       return (
-        <Button size="lg" onClick={() => onInteract({ component: "button", action_id: c.action_id, label: c.label })}>
+        <Button
+          size="lg"
+          onClick={() =>
+            onInteract({
+              component: "button",
+              action_id: c.action_id,
+              label: c.label,
+            })
+          }
+        >
           {c.label}
         </Button>
       );
@@ -225,7 +315,11 @@ function Render({ c, onInteract }: { c: Component; onInteract: InteractionHandle
               {c.title}
             </Title>
           )}
-          <Stack>{(c.children as Component[]).map((child, i) => <Render key={i} c={child} onInteract={onInteract} />)}</Stack>
+          <Stack>
+            {(c.children as Component[]).map((child, i) => (
+              <Render key={i} c={child} onInteract={onInteract} />
+            ))}
+          </Stack>
         </Card>
       );
     case "row":
@@ -238,18 +332,30 @@ function Render({ c, onInteract }: { c: Component; onInteract: InteractionHandle
       );
     case "grid":
       return (
-        <SimpleGrid cols={{ base: 1, sm: Math.min(2, c.columns ?? 2), lg: c.columns ?? 2 }}>
+        <SimpleGrid
+          cols={{
+            base: 1,
+            sm: Math.min(2, c.columns ?? 2),
+            lg: c.columns ?? 2,
+          }}
+        >
           {(c.children as Component[]).map((child, i) => (
             <Render key={i} c={child} onInteract={onInteract} />
           ))}
         </SimpleGrid>
       );
     default:
-      return <Text c="red">Unbekannte Komponente: {c.type}</Text>;
+      return <Text c="red">{t("render.unknown", { type: c.type })}</Text>;
   }
 }
 
-export function Renderer({ document, onInteract }: { document: PresentationDocument; onInteract: InteractionHandler }) {
+export function Renderer({
+  document,
+  onInteract,
+}: {
+  document: PresentationDocument;
+  onInteract: InteractionHandler;
+}) {
   const dashboard = document.layout === "dashboard";
   return (
     <Stack gap="lg">
@@ -261,7 +367,9 @@ export function Renderer({ document, onInteract }: { document: PresentationDocum
           ))}
         </SimpleGrid>
       ) : (
-        document.components.map((c, i) => <Render key={i} c={c} onInteract={onInteract} />)
+        document.components.map((c, i) => (
+          <Render key={i} c={c} onInteract={onInteract} />
+        ))
       )}
     </Stack>
   );

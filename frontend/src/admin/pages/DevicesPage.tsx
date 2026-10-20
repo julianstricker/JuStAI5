@@ -26,6 +26,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { api } from "@/shared/api";
+import { useT } from "@/shared/i18n";
 import { LiveVideo } from "@/shared/render/LiveVideo";
 import type { Device, Driver, Room } from "@/shared/types";
 
@@ -84,6 +85,7 @@ function AddDeviceModal({
   const [driverId, setDriverId] = useState<string | null>(
     initial?.driver_id ?? null,
   );
+  const t = useT();
   const [name, setName] = useState(initial?.name ?? "");
   const [room, setRoom] = useState<string | null>(null);
   const [config, setConfig] = useState<Record<string, unknown>>(
@@ -103,7 +105,7 @@ function AddDeviceModal({
       }),
     {
       invalidate: [["devices"]],
-      success: "Gerät angelegt",
+      success: t("dev.created"),
     },
   );
 
@@ -125,10 +127,10 @@ function AddDeviceModal({
   };
 
   return (
-    <Modal opened onClose={onClose} title="Gerät hinzufügen" size="lg">
+    <Modal opened onClose={onClose} title={t("dev.add")} size="lg">
       <Stack>
         <Select
-          label="Treiber"
+          label={t("dev.driver")}
           data={(drivers.data ?? []).map((d) => ({
             value: d.id,
             label: `${d.name} (${d.plugin_id})`,
@@ -137,13 +139,13 @@ function AddDeviceModal({
           onChange={setDriverId}
         />
         <TextInput
-          label="Name"
+          label={t("common.name")}
           value={name}
           onChange={(e) => setName(e.currentTarget.value)}
           required
         />
         <Select
-          label="Raum"
+          label={t("common.room")}
           clearable
           data={(rooms.data ?? []).map((r) => ({ value: r.id, label: r.name }))}
           value={room}
@@ -161,9 +163,7 @@ function AddDeviceModal({
         {probe && (
           <Alert
             color={probe.ok ? "green" : "red"}
-            title={
-              probe.ok ? "Verbindung erfolgreich" : "Verbindung fehlgeschlagen"
-            }
+            title={probe.ok ? t("dev.probeOk") : t("dev.probeFailed")}
           >
             {probe.error}
             {probe.ok && (
@@ -189,7 +189,7 @@ function AddDeviceModal({
             loading={probing}
             disabled={!driver}
           >
-            Verbindung testen
+            {t("dev.test")}
           </Button>
           <Button
             onClick={async () => {
@@ -199,7 +199,7 @@ function AddDeviceModal({
             loading={save.isPending}
             disabled={!driver || !name}
           >
-            Speichern
+            {t("common.save")}
           </Button>
         </Group>
       </Stack>
@@ -219,6 +219,7 @@ function DiscoveryModal({
     queryFn: () => api.get<{ cidrs: string[] }>("/api/discovery/settings"),
   });
   const [cidrs, setCidrs] = useState<string | null>(null);
+  const t = useT();
   const value = cidrs ?? settings.data?.cidrs.join(", ") ?? "";
   const scan = useAction(() =>
     api.post<Discovered[]>("/api/discovery/scan", {
@@ -229,11 +230,11 @@ function DiscoveryModal({
     }),
   );
   return (
-    <Modal opened onClose={onClose} title="Gerätesuche" size="xl">
+    <Modal opened onClose={onClose} title={t("dev.discovery")} size="xl">
       <Stack>
         <TextInput
-          label="Autorisierte Netzbereiche (CIDR)"
-          description="Es wird ausschließlich in diesen Bereichen gesucht."
+          label={t("dev.cidrs")}
+          description={t("dev.cidrsHint")}
           value={value}
           onChange={(e) => setCidrs(e.currentTarget.value)}
         />
@@ -242,14 +243,14 @@ function DiscoveryModal({
           onClick={() => scan.mutate(undefined)}
           loading={scan.isPending}
         >
-          Suchen
+          {t("common.search")}
         </Button>
         <Table>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th>Host</Table.Th>
-              <Table.Th>Gerät</Table.Th>
-              <Table.Th>Protokolle</Table.Th>
+              <Table.Th>{t("dev.host")}</Table.Th>
+              <Table.Th>{t("dev.device")}</Table.Th>
+              <Table.Th>{t("dev.protocols")}</Table.Th>
               <Table.Th />
             </Table.Tr>
           </Table.Thead>
@@ -270,14 +271,14 @@ function DiscoveryModal({
                 </Table.Td>
                 <Table.Td>
                   {d.known_device_id ? (
-                    <Badge color="green">bereits angelegt</Badge>
+                    <Badge color="green">{t("dev.known")}</Badge>
                   ) : (
                     <Button
                       size="xs"
                       disabled={!d.suggested_driver}
                       onClick={() => onAdd(d)}
                     >
-                      Hinzufügen
+                      {t("common.add")}
                     </Button>
                   )}
                 </Table.Td>
@@ -286,7 +287,7 @@ function DiscoveryModal({
           </Table.Tbody>
         </Table>
         {scan.data && !scan.data.length && (
-          <Text c="dimmed">Keine Geräte gefunden.</Text>
+          <Text c="dimmed">{t("dev.noneFound")}</Text>
         )}
       </Stack>
     </Modal>
@@ -301,6 +302,7 @@ function DeviceDrawer({
   onClose: () => void;
 }) {
   const isAdmin = useIsAdmin();
+  const t = useT();
   const [snapKey, setSnapKey] = useState(() => Date.now());
   const [live, setLive] = useState(true); // live by default; the switch falls back to snapshots
   const drivers = useQuery({
@@ -318,11 +320,11 @@ function DeviceDrawer({
   const ptz = device.capabilities.includes("camera.ptz.pan");
   const tone = useAction(
     () => api.post(`/api/devices/${device.id}/test-tone`),
-    { success: "Testton abgespielt" },
+    { success: t("dev.tonePlayed") },
   );
   const reconnect = useAction(
     () => api.post(`/api/devices/${device.id}/reconnect`),
-    { invalidate: [["devices"]], success: "Verbindung wird neu aufgebaut" },
+    { invalidate: [["devices"]], success: t("dev.reconnecting") },
   );
   const toggle = useAction(
     (enabled: boolean) => api.patch(`/api/devices/${device.id}`, { enabled }),
@@ -336,12 +338,12 @@ function DeviceDrawer({
       }),
     {
       invalidate: [["devices"]],
-      success: "Gespeichert",
+      success: t("common.saved"),
     },
   );
   const del = useAction(() => api.del(`/api/devices/${device.id}`), {
     invalidate: [["devices"]],
-    success: "Gerät gelöscht",
+    success: t("dev.deleted"),
   });
 
   return (
@@ -362,10 +364,8 @@ function DeviceDrawer({
           </Group>
           {isAdmin && (
             <Switch
-              label="Aktiviert"
-              description={
-                device.enabled ? undefined : "Einstellungen bleiben erhalten"
-              }
+              label={t("dev.enabled")}
+              description={device.enabled ? undefined : t("dev.keepsSettings")}
               checked={device.enabled}
               onChange={(e) => toggle.mutate(e.currentTarget.checked)}
             />
@@ -380,17 +380,14 @@ function DeviceDrawer({
         </Group>
         <Tabs defaultValue={camera ? "view" : "config"}>
           <Tabs.List>
-            {camera && <Tabs.Tab value="view">Bild</Tabs.Tab>}
-            <Tabs.Tab value="config">Konfiguration</Tabs.Tab>
-            <Tabs.Tab value="info">Info</Tabs.Tab>
+            {camera && <Tabs.Tab value="view">{t("dev.tabView")}</Tabs.Tab>}
+            <Tabs.Tab value="config">{t("dev.tabConfig")}</Tabs.Tab>
+            <Tabs.Tab value="info">{t("dev.tabInfo")}</Tabs.Tab>
           </Tabs.List>
           {camera && (
             <Tabs.Panel value="view" pt="sm">
               {!device.enabled ? (
-                <Text c="dimmed">
-                  Gerät deaktiviert – keine Verbindung zur Kamera. Oben rechts
-                  wieder aktivieren.
-                </Text>
+                <Text c="dimmed">{t("dev.disabledHint")}</Text>
               ) : (
                 <Stack>
                   {live ? (
@@ -400,15 +397,14 @@ function DeviceDrawer({
                       />
                     ) : (
                       <Text c="dimmed">
-                        Kamera verbindet sich ({device.status}) – das Livebild
-                        startet, sobald sie online ist.
+                        {t("dev.cameraConnecting", { status: device.status })}
                       </Text>
                     )
                   ) : (
                     <Image
                       src={`/api/devices/${device.id}/snapshot.jpg?k=${snapKey}`}
                       radius="md"
-                      alt="Snapshot"
+                      alt={t("dev.snapshot")}
                       fallbackSrc=""
                     />
                   )}
@@ -419,10 +415,10 @@ function DeviceDrawer({
                       leftSection={<IconRefresh size={14} />}
                       onClick={() => setSnapKey(Date.now())}
                     >
-                      Neuer Snapshot
+                      {t("dev.newSnapshot")}
                     </Button>
                     <Switch
-                      label="Live-Video"
+                      label={t("dev.liveVideo")}
                       checked={live}
                       onChange={(e) => setLive(e.currentTarget.checked)}
                     />
@@ -444,8 +440,8 @@ function DeviceDrawer({
                 />
               )}
               <TextInput
-                label="Geräte-Einstellungen (JSON)"
-                description="z. B. output_latency_s, preferred_output, Vision-/PTZ-Grenzen"
+                label={t("dev.settingsJson")}
+                description={t("dev.settingsHint")}
                 component="textarea"
                 value={settingsText}
                 onChange={(e) => setSettingsText(e.currentTarget.value)}
@@ -457,7 +453,7 @@ function DeviceDrawer({
                     onClick={() => saveConfig.mutate(undefined)}
                     loading={saveConfig.isPending}
                   >
-                    Speichern
+                    {t("common.save")}
                   </Button>
                 </Group>
               )}
@@ -483,7 +479,7 @@ function DeviceDrawer({
                 onClick={() => tone.mutate(undefined)}
                 loading={tone.isPending}
               >
-                Testton
+                {t("dev.testTone")}
               </Button>
             )}
             <Button
@@ -491,23 +487,19 @@ function DeviceDrawer({
               disabled={!device.enabled}
               onClick={() => reconnect.mutate(undefined)}
             >
-              Neu verbinden
+              {t("dev.reconnect")}
             </Button>
             <Button
               color="red"
               variant="light"
               onClick={async () => {
-                if (
-                  !confirm(
-                    `${device.name} endgültig löschen? Zugangsdaten und Zuordnungen gehen verloren.\n\nTipp: Nur vorübergehend nicht nutzen? Dann besser „Aktiviert“ ausschalten.`,
-                  )
-                )
+                if (!confirm(t("dev.confirmDelete", { name: device.name })))
                   return;
                 await del.mutateAsync(undefined);
                 onClose();
               }}
             >
-              Löschen
+              {t("common.delete")}
             </Button>
           </Group>
         )}
@@ -518,6 +510,7 @@ function DeviceDrawer({
 
 export function DevicesPage() {
   const isAdmin = useIsAdmin();
+  const t = useT();
   const devices = useQuery({
     queryKey: ["devices"],
     queryFn: () => api.get<Device[]>("/api/devices"),
@@ -541,8 +534,8 @@ export function DevicesPage() {
   return (
     <Stack>
       <PageHeader
-        title="Geräte"
-        description="Kameras, Mikrofone, Lautsprecher, Displays und Sensoren. Fähigkeiten werden zur Laufzeit ermittelt."
+        title={t("nav.devices")}
+        description={t("dev.desc")}
         actions={
           isAdmin && (
             <>
@@ -551,13 +544,13 @@ export function DevicesPage() {
                 leftSection={<IconRadar size={16} />}
                 onClick={() => setDiscover(true)}
               >
-                Suchen
+                {t("common.search")}
               </Button>
               <Button
                 leftSection={<IconPlus size={16} />}
                 onClick={() => setAdding({})}
               >
-                Gerät
+                {t("dev.addShort")}
               </Button>
             </>
           )
@@ -594,9 +587,7 @@ export function DevicesPage() {
         ))}
       </SimpleGrid>
       {devices.data && !devices.data.length && (
-        <Text c="dimmed">
-          Noch keine Geräte. Starte eine Suche oder lege ein Gerät manuell an.
-        </Text>
+        <Text c="dimmed">{t("dev.none")}</Text>
       )}
       {adding && (
         <AddDeviceModal initial={adding} onClose={() => setAdding(null)} />

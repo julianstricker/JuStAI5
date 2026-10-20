@@ -6,6 +6,8 @@
 // stays near the live edge and aborts the download when it is removed.
 import { useEffect, useRef, useState } from "react";
 
+import { useT } from "@/shared/i18n";
+
 const MAX_LAG_S = 2.5;
 
 export function LiveVideo({
@@ -24,6 +26,7 @@ export function LiveVideo({
 }
 
 function LiveMp4({ src, rounded }: { src: string; rounded: number }) {
+  const t = useT();
   const ref = useRef<HTMLVideoElement>(null);
   const [state, setState] = useState<"connecting" | "playing" | "error">(
     "connecting",
@@ -108,9 +111,7 @@ function LiveMp4({ src, rounded }: { src: string; rounded: number }) {
       />
       {state !== "playing" && (
         <Overlay>
-          {state === "error"
-            ? "Livebild nicht verfügbar – neuer Versuch …"
-            : "Verbinde mit Kamera …"}
+          {state === "error" ? t("live.unavailable") : t("live.connecting")}
         </Overlay>
       )}
     </div>
@@ -120,6 +121,7 @@ function LiveMp4({ src, rounded }: { src: string; rounded: number }) {
 const NO_FRAME_HINT_MS = 8000;
 
 function LiveMjpeg({ src, rounded }: { src: string; rounded: number }) {
+  const t = useT();
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<
     "connecting" | "playing" | "waiting" | "error"
@@ -158,7 +160,7 @@ function LiveMjpeg({ src, rounded }: { src: string; rounded: number }) {
       <img
         key={url}
         src={url}
-        alt="Livebild"
+        alt={t("live.alt")}
         onLoad={() => setState("playing")}
         onError={() => setState("error")}
         style={{ width: "100%", display: "block", borderRadius: rounded }}
@@ -166,10 +168,10 @@ function LiveMjpeg({ src, rounded }: { src: string; rounded: number }) {
       {state !== "playing" && (
         <Overlay>
           {state === "error"
-            ? "Livebild nicht verfügbar – neuer Versuch …"
+            ? t("live.unavailable")
             : state === "waiting"
-              ? "Kein Kamerabild – ist die Kamera in der Geräte-App eingeschaltet und die App im Vordergrund?"
-              : "Verbinde mit Kamera …"}
+              ? t("live.noFrames")
+              : t("live.connecting")}
         </Overlay>
       )}
     </div>

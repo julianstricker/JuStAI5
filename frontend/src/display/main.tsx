@@ -30,6 +30,17 @@ import {
 } from "react";
 import { createRoot } from "react-dom/client";
 
+import {
+  I18nProvider,
+  LANGS,
+  type Lang,
+  locale,
+  rich,
+  tg,
+  useI18n,
+  useT,
+} from "@/shared/i18n";
+
 import { type PresentationDocument, Renderer } from "@/shared/render/Renderer";
 
 import {
@@ -213,7 +224,7 @@ class PresentationBoundary extends Component<
 
   render() {
     return this.state.failed ? (
-      <Text c="dimmed">Inhalt konnte nicht dargestellt werden.</Text>
+      <Text c="dimmed">{tg("dc.renderFailed")}</Text>
     ) : (
       this.props.children
     );
@@ -228,52 +239,53 @@ function Setup({
   onDone: (f: MediaFeatures) => void;
 }) {
   const [f, setF] = useState(initial);
+  const { lang, setLang, t } = useI18n();
   const needsSecure = (f.mic || f.camera !== "off") && !window.isSecureContext;
   const httpsUrl = `https://${location.hostname}:8443${location.pathname}`;
   return (
     <Center mih="100vh" p="md">
       <Stack maw={460} w="100%">
-        <Title order={2}>JuStAI5 auf diesem Gerät</Title>
-        <Text c="dimmed">
-          Was soll dieses Gerät für den Assistenten sein? Der Bildschirm zeigt
-          immer Inhalte an.
-        </Text>
+        <Title order={2}>{t("dc.setupTitle")}</Title>
+        <SegmentedControl
+          value={lang}
+          onChange={(v) => setLang(v as Lang)}
+          data={LANGS.map((l) => ({ label: l.label, value: l.code }))}
+        />
+        <Text c="dimmed">{t("dc.setupIntro")}</Text>
         <Switch
           size="md"
-          label="Mikrofon – zuhören und auf „Hey Jarvis“ reagieren"
+          label={t("dc.mic")}
           checked={f.mic}
           onChange={(e) => setF({ ...f, mic: e.currentTarget.checked })}
         />
         <Switch
           size="md"
-          label="Lautsprecher – Antworten hier ausgeben"
+          label={t("dc.speaker")}
           checked={f.speaker}
           onChange={(e) => setF({ ...f, speaker: e.currentTarget.checked })}
         />
         <Stack gap={4}>
-          <Text size="sm">Kamera</Text>
+          <Text size="sm">{t("dc.camera")}</Text>
           <SegmentedControl
             value={f.camera}
             onChange={(v) => setF({ ...f, camera: v as CameraMode })}
             data={[
-              { label: "Aus", value: "off" },
-              { label: "Vorne", value: "user" },
-              { label: "Hinten", value: "environment" },
+              { label: t("dc.cameraOff"), value: "off" },
+              { label: t("dc.cameraFront"), value: "user" },
+              { label: t("dc.cameraBack"), value: "environment" },
             ]}
           />
         </Stack>
         {needsSecure && (
-          <Alert color="orange" title="HTTPS nötig">
-            Browser erlauben Mikrofon und Kamera nur über HTTPS. Öffne{" "}
-            <Anchor href={httpsUrl}>{httpsUrl}</Anchor>. Damit keine Warnung
-            erscheint, einmal das{" "}
-            <Anchor href="/api/tls/ca.crt">JuStAI5-Zertifikat</Anchor> auf
-            diesem Gerät installieren (Anleitung in der Admin-Oberfläche unter
-            Einstellungen).
+          <Alert color="orange" title={t("dc.httpsTitle")}>
+            {rich(t("dc.httpsHint"), {
+              url: <Anchor href={httpsUrl}>{httpsUrl}</Anchor>,
+              cert: <Anchor href="/api/tls/ca.crt">{t("dc.cert")}</Anchor>,
+            })}
           </Alert>
         )}
         <Button size="lg" onClick={() => onDone(f)} disabled={needsSecure}>
-          Starten
+          {t("dc.start")}
         </Button>
       </Stack>
     </Center>
@@ -287,6 +299,7 @@ function App() {
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [level, setLevel] = useState(0);
   const [audioBlocked, setAudioBlocked] = useState(false);
+  const t = useT();
   const media = useRef<DeviceMedia | null>(null);
   const previewRef = useRef<HTMLDivElement | null>(null);
   const renderFailed = useRef<string | null>(null);
@@ -460,21 +473,21 @@ function App() {
             ●{" "}
             {indicator.conversation
               ? indicator.cloud
-                ? "Gespräch (Cloud)"
-                : "Gespräch"
-              : "hört auf Wakeword"}
+                ? t("dc.conversationCloud")
+                : t("dc.conversation")
+              : t("dc.wakeword")}
           </Text>
         )}
         {running && audioBlocked && (
           <Text size="sm" c="orange">
-            Ton pausiert – einmal tippen
+            {t("dc.audioPaused")}
           </Text>
         )}
         <ActionIcon
           variant="subtle"
           color="gray"
           onClick={() => setSetupOpen(true)}
-          aria-label="Einstellungen"
+          aria-label={t("dc.settings")}
         >
           <IconSettings size={18} />
         </ActionIcon>
@@ -494,16 +507,14 @@ function App() {
         <Center h="90vh">
           <Stack align="center">
             <Button size="xl" onClick={() => void start(features)}>
-              Tippen zum Starten
+              {t("dc.tapToStart")}
             </Button>
             <Text c="dimmed" ta="center" maw={420}>
-              Mikrofon, Lautsprecher und Kamera dürfen erst nach einer Berührung
-              starten.
+              {t("dc.tapHint")}
             </Text>
             {mediaError && (
               <Alert color="red" maw={460}>
-                Konnte nicht starten ({mediaError}). Zugriff auf Mikrofon/Kamera
-                erlauben; über HTTPS öffnen.
+                {t("dc.startFailed", { error: mediaError })}
               </Alert>
             )}
           </Stack>
@@ -527,9 +538,9 @@ function App() {
       ) : state.code ? (
         <Center h="90vh">
           <Stack align="center">
-            <Title>Gerät koppeln</Title>
+            <Title>{t("dc.pairTitle")}</Title>
             <Text size="xl" ta="center">
-              Code in der Admin-Oberfläche unter „Displays“ freigeben:
+              {t("dc.pairHint")}
             </Text>
             <Text fz={96} fw={800} ff="monospace">
               {state.code}
@@ -540,15 +551,15 @@ function App() {
         <Center h="90vh">
           <Stack align="center">
             <Text fz={80} fw={700}>
-              {new Date().toLocaleTimeString("de-DE", {
+              {new Date().toLocaleTimeString(locale(), {
                 hour: "2-digit",
                 minute: "2-digit",
               })}
             </Text>
             <Text c="dimmed">
               {state.connected
-                ? `${state.name ?? "Gerät"} bereit${state.room ? ` · ${state.room}` : ""}`
-                : "Verbinde mit JuStAI5 …"}
+                ? `${t("dc.ready", { name: state.name ?? t("dc.device") })}${state.room ? ` · ${state.room}` : ""}`
+                : t("dc.connecting")}
             </Text>
             {state.error && <Text c="red">{state.error}</Text>}
           </Stack>
@@ -561,7 +572,9 @@ function App() {
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <MantineProvider defaultColorScheme="dark">
-      <App />
+      <I18nProvider>
+        <App />
+      </I18nProvider>
     </MantineProvider>
   </StrictMode>,
 );

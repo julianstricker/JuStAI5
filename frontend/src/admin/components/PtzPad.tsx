@@ -21,6 +21,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 
 import { api } from "@/shared/api";
+import { useT } from "@/shared/i18n";
 
 import { useAction } from "./common";
 
@@ -31,6 +32,7 @@ interface PtzStatus {
 }
 
 export function PtzPad({ deviceId }: { deviceId: string }) {
+  const t = useT();
   const status = useQuery({
     queryKey: ["ptz", deviceId],
     queryFn: () => api.get<PtzStatus>(`/api/ptz/${deviceId}/status`),
@@ -46,10 +48,10 @@ export function PtzPad({ deviceId }: { deviceId: string }) {
   );
   const stop = useAction(() => api.post(`/api/ptz/${deviceId}/stop`));
   const home = useAction(() => api.post(`/api/ptz/${deviceId}/home`), {
-    success: "Ausgangsposition",
+    success: t("ptz.home"),
   });
   const setHome = useAction(() => api.post(`/api/ptz/${deviceId}/home/set`), {
-    success: "Aktuelle Ansicht als Home gespeichert",
+    success: t("ptz.homeSaved"),
     invalidate: [["ptz-presets", deviceId]],
   });
   const goto = useAction((id: string) =>
@@ -71,7 +73,10 @@ export function PtzPad({ deviceId }: { deviceId: string }) {
           <Text fw={600}>PTZ</Text>
           {tracking?.active && (
             <Badge color="teal">
-              Tracking: {tracking.target} ({tracking.state})
+              {t("ptz.tracking", {
+                target: tracking.target ?? "",
+                state: tracking.state,
+              })}
             </Badge>
           )}
         </Group>
@@ -119,36 +124,35 @@ export function PtzPad({ deviceId }: { deviceId: string }) {
             leftSection={<IconHome size={14} />}
             onClick={() => home.mutate(undefined)}
           >
-            Home
+            {t("ptz.homeButton")}
           </Button>
           <Button
             size="xs"
             variant="subtle"
             onClick={() =>
-              confirm("Aktuelle Kameraansicht als Home-Position speichern?") &&
-              setHome.mutate(undefined)
+              confirm(t("ptz.confirmSetHome")) && setHome.mutate(undefined)
             }
             loading={setHome.isPending}
           >
-            Als Home speichern
+            {t("ptz.setHome")}
           </Button>
           {!!presets.data?.length && (
             <Select
               size="xs"
-              placeholder="Preset …"
+              placeholder={t("ptz.preset")}
               data={presets.data.map((p) => ({ value: p.id, label: p.name }))}
               value={null}
               onChange={(v) => v && goto.mutate(v)}
             />
           )}
           <Switch
-            label="Person folgen"
+            label={t("ptz.follow")}
             checked={Boolean(tracking?.active)}
             onChange={(e) => track.mutate(e.currentTarget.checked)}
           />
         </Group>
         <Text size="xs" c="dimmed">
-          Manuelle Steuerung hat Vorrang und pausiert automatisches Tracking.
+          {t("ptz.manualHint")}
         </Text>
       </Stack>
     </Card>

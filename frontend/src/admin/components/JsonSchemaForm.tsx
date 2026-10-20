@@ -1,9 +1,19 @@
 // Renders a form for a (flat) JSON schema: string/number/integer/boolean/enum
 // fields; arrays and objects are edited as JSON. Secret fields are password inputs
 // that stay empty unless the user types a new value.
-import { Checkbox, JsonInput, NumberInput, PasswordInput, Select, Stack, TextInput } from "@mantine/core";
+import {
+  Checkbox,
+  JsonInput,
+  NumberInput,
+  PasswordInput,
+  Select,
+  Stack,
+  TextInput,
+} from "@mantine/core";
 
 import type { JsonSchema } from "@/shared/types";
+
+import { useT } from "@/shared/i18n";
 
 interface Props {
   schema: JsonSchema;
@@ -13,7 +23,14 @@ interface Props {
   secretsSet?: string[];
 }
 
-export function JsonSchemaForm({ schema, value, onChange, secretFields = [], secretsSet = [] }: Props) {
+export function JsonSchemaForm({
+  schema,
+  value,
+  onChange,
+  secretFields = [],
+  secretsSet = [],
+}: Props) {
+  const t = useT();
   const props = schema.properties ?? {};
   const required = new Set(schema.required ?? []);
   const set = (key: string, v: unknown) => onChange({ ...value, [key]: v });
@@ -30,7 +47,11 @@ export function JsonSchemaForm({ schema, value, onChange, secretFields = [], sec
             <PasswordInput
               key={key}
               label={label}
-              description={secretsSet.includes(key) ? `${description ?? ""} (gespeichert – leer lassen zum Beibehalten)` : description}
+              description={
+                secretsSet.includes(key)
+                  ? t("form.secretStored", { desc: description ?? "" })
+                  : description
+              }
               value={(value[key] as string) ?? ""}
               onChange={(e) => set(key, e.currentTarget.value)}
               autoComplete="new-password"
@@ -85,7 +106,11 @@ export function JsonSchemaForm({ schema, value, onChange, secretFields = [], sec
               autosize
               minRows={3}
               formatOnBlur
-              defaultValue={JSON.stringify(current ?? (type === "array" ? [] : {}), null, 2)}
+              defaultValue={JSON.stringify(
+                current ?? (type === "array" ? [] : {}),
+                null,
+                2,
+              )}
               onChange={(text) => {
                 try {
                   set(key, JSON.parse(text));

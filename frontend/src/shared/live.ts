@@ -46,7 +46,10 @@ class LiveFeed {
 
 export const liveFeed = new LiveFeed();
 
-export function useLiveEvents(limit = 200, filter?: (e: JEvent) => boolean): JEvent[] {
+export function useLiveEvents(
+  limit = 200,
+  filter?: (e: JEvent) => boolean,
+): JEvent[] {
   const [events, setEvents] = useState<JEvent[]>([]);
   const filterRef = useRef(filter);
   useEffect(() => {
@@ -70,7 +73,10 @@ export function useTelemetry<T>(prefix: string): Record<string, T> {
     () =>
       liveFeed.subscribe((m) => {
         if (m.kind !== "telemetry" || !m.topic.startsWith(prefix)) return;
-        setData((prev) => ({ ...prev, [m.topic.slice(prefix.length)]: m.data as T }));
+        setData((prev) => ({
+          ...prev,
+          [m.topic.slice(prefix.length)]: m.data as T,
+        }));
       }),
     [prefix],
   );

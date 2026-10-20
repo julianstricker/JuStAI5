@@ -109,7 +109,10 @@ markiert.
 Der `DeviceManager` hält pro Gerät eine Laufzeit (Handle, Fähigkeiten, Status
 `online`/`connecting`/`offline`/`disabled`/`no_driver`). Fällt ein Gerät aus, wird mit Backoff neu
 verbunden; Statuswechsel erzeugen `device.status.changed`. Der Talkback-Pfad
-verbindet sich automatisch neu. Endpoints mit fehlenden Geräten melden ihren
+verbindet sich automatisch neu. Beim Stoppen (Deaktivieren, Löschen, Neu verbinden)
+hat jeder Schritt (Audio, Vision, Treiber, go2rtc-Streams) höchstens 10 s; ein
+hängender Teil blockiert die anderen nicht und steht als `device step timed out`
+bzw. `supervised task did not stop` (mit der Stelle, an der er wartet) im Log. Endpoints mit fehlenden Geräten melden ihren
 Zustand in der UI, statt auf andere Räume auszuweichen.
 
 ## Diagnose

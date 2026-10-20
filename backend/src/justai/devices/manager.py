@@ -8,7 +8,7 @@ retried with backoff and marked offline; this never affects other devices or roo
 from __future__ import annotations
 
 import asyncio
-import contextlib
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 
@@ -67,6 +67,7 @@ class DeviceRuntime:
 
 class DeviceManager:
     HEALTH_INTERVAL_S = 30.0
+    STEP_TIMEOUT_S = 10.0  # per listener/close step when a device stops (30 s when it starts)
 
     def __init__(
         self,
@@ -108,10 +109,12 @@ class DeviceManager:
                               max_backoff_s=120)
 
     async def deactivate(self, device_id: str) -> None:
+        t0 = time.monotonic()
         await self.supervisor.stop(f"device:{device_id}")
         runtime = self._runtimes.pop(device_id, None)
         if runtime is not None:
             await self._teardown(runtime)
+            log.info("device stopped", device=device_id, seconds=round(time.monotonic() - t0, 1))
 
     async def reload(self, device_id: str) -> None:
         device = await self.devices.get(device_id)
@@ -238,19 +241,34 @@ class DeviceManager:
     async def _teardown(self, runtime: DeviceRuntime) -> None:
         handle, runtime.handle = runtime.handle, None
         if handle is not None:
-            with contextlib.suppress(Exception):
-                await handle.close()
+            await self._timed(runtime, f"driver {runtime.driver_id}: close", handle.close())
         for name in (runtime.stream, runtime.sub_stream):
             if name:
-                await self.go2rtc.delete_stream(name)
+                await self._timed(runtime, f"go2rtc: delete {name}", self.go2rtc.delete_stream(name))
         runtime.stream = runtime.sub_stream = None
 
     async def _notify(self, runtime: DeviceRuntime, ready: bool) -> None:
         for listener in self._listeners:
-            try:
-                await listener(runtime, ready)
-            except Exception as exc:
-                log.warning("device listener failed", device=runtime.device_id, error=str(exc))
+            await self._timed(runtime, _name(listener), listener(runtime, ready),
+                              timeout_s=self.STEP_TIMEOUT_S * (3 if ready else 1))
+
+    async def _timed(self, runtime: DeviceRuntime, step: str, work: Awaitable[object],
+                     timeout_s: float | None = None) -> None:
+        """One step of starting/stopping a device: a stuck component must not block the rest
+        (disabling a camera hung > 2 min); slow steps are logged by name."""
+        t0 = time.monotonic()
+        try:
+            await asyncio.wait_for(work, timeout=timeout_s or self.STEP_TIMEOUT_S)
+        except TimeoutError:
+            log.warning("device step timed out", device=runtime.device_id, step=step,
+                        timeout_s=timeout_s or self.STEP_TIMEOUT_S)
+            return
+        except Exception as exc:
+            log.warning("device step failed", device=runtime.device_id, step=step, error=str(exc))
+            return
+        elapsed = time.monotonic() - t0
+        if elapsed > 2.0:
+            log.info("device step slow", device=runtime.device_id, step=step, seconds=round(elapsed, 1))
 
     async def _set_status(self, runtime: DeviceRuntime, status: str, detail: str | None,
                           *, persist: bool = True) -> None:
@@ -266,3 +284,9 @@ class DeviceManager:
                 payload={"device_id": runtime.device_id, "name": runtime.name,
                          "status": status, "detail": detail},
             ))
+
+
+def _name(listener: object) -> str:
+    owner = getattr(listener, "__self__", None)
+    func = getattr(listener, "__name__", repr(listener))
+    return f"{type(owner).__name__}.{func}" if owner is not None else func

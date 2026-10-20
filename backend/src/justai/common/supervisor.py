@@ -12,6 +12,7 @@ import contextlib
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
+from typing import Any
 
 from justai.logging import get_logger
 
@@ -36,6 +37,26 @@ class _Entry:
     backoff_s: float = 1.0
     max_backoff_s: float = 60.0
     stop_event: asyncio.Event = field(default_factory=asyncio.Event)
+
+
+STOP_TIMEOUT_S = 5.0
+
+
+def await_chain(task: asyncio.Task[Any]) -> list[str]:
+    """Where a task is waiting: the chain of awaited coroutines/generators (innermost last)."""
+    out: list[str] = []
+    obj: Any = task.get_coro()
+    for _ in range(40):
+        frame = getattr(obj, "cr_frame", None) or getattr(obj, "ag_frame", None) or getattr(obj, "gi_frame", None)
+        if frame is not None:
+            out.append(f"{frame.f_code.co_filename.rsplit('/', 2)[-1]}:{frame.f_lineno} {frame.f_code.co_name}")
+        nxt = getattr(obj, "cr_await", None) or getattr(obj, "ag_await", None) or getattr(obj, "gi_yieldfrom", None)
+        if nxt is None:
+            if obj is not None and frame is None:
+                out.append(repr(obj)[:120])
+            break
+        obj = nxt
+    return out
 
 
 class Supervisor:
@@ -84,15 +105,27 @@ class Supervisor:
                 await asyncio.wait_for(entry.stop_event.wait(), timeout=entry.backoff_s)
             entry.backoff_s = min(entry.backoff_s * 2, entry.max_backoff_s)
 
-    async def stop(self, name: str) -> None:
+    async def stop(self, name: str, timeout_s: float = STOP_TIMEOUT_S) -> None:
+        """Cancel a supervised task and wait (bounded) until it has ended.
+
+        A task that does not end on cancellation is reported with the place it is stuck at
+        instead of blocking the caller (disabling a camera once hung for minutes). The
+        caller's own cancellation is not swallowed."""
         entry = self._entries.pop(name, None)
         if entry is None:
             return
         entry.stop_event.set()
-        if entry.task:
-            entry.task.cancel()
-            with contextlib.suppress(asyncio.CancelledError, Exception):
-                await entry.task
+        task = entry.task
+        if task is None or task.done():
+            return
+        task.cancel()
+        done, _ = await asyncio.wait({task}, timeout=timeout_s)
+        if not done:
+            log.warning("supervised task did not stop", task=name, waited_s=timeout_s,
+                        stuck_at=await_chain(task))
+            return
+        if not task.cancelled():
+            task.exception()  # retrieved: no "exception was never retrieved" warning
 
     async def stop_all(self) -> None:
         for name in list(self._entries):

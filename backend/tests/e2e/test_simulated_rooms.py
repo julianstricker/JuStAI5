@@ -358,8 +358,14 @@ def test_voice_profile_enrolled_in_conversation_identifies_the_speaker_later(wor
         assert wait_for(lambda: world.session("Wohnzimmer") is None, 30)
 
         def started_person(voice: str) -> str | None:
-            world.say("Wohnzimmer", "Hey Jarvis!", voice=voice)
-            sess = wait_for(lambda: world.session("Wohnzimmer"), 15)
+            # openWakeWord misses the synthetic Italian "Hey Jarvis" now and then (Piper output
+            # varies per run; measured: some renditions are not detected at all): retry.
+            sess = None
+            for _ in range(3):
+                world.say("Wohnzimmer", "Hey Jarvis!", voice=voice)
+                sess = wait_for(lambda: world.session("Wohnzimmer"), 15)
+                if sess:
+                    break
             assert sess, "wakeword did not start a session"
             api.post(f"/api/conversations/{sess['id']}/end")
             assert wait_for(lambda: world.session("Wohnzimmer") is None, 30)

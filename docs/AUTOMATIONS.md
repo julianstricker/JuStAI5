@@ -48,7 +48,7 @@ JSON-Dokument (Modell: `automation/model.py`, Schema:
 | `event` | `event` (Wildcards erlaubt, z. B. `vision.object.*`), `match` (Payload-Felder müssen gleich sein), optional `room_id` |
 | `cron` | 5 Felder: Minute Stunde Tag Monat Wochentag (0 = Sonntag) |
 | `interval` | `seconds` (≥ 30) |
-| `at` | Zeitpunkt (einmalig) |
+| `at` | Zeitpunkt (einmalig; die Automation wird nach dem Lauf deaktiviert) |
 
 Zeitangaben gelten in der Zeitzone aus *Einstellungen → System* (Standard
 `Europe/Rome`).

@@ -312,24 +312,29 @@ class AutomationEngine:
     async def _schedule_loop(self) -> None:
         while True:
             await asyncio.sleep(5)
-            now = datetime.now(self.tz)
-            minute_key = now.strftime("%Y%m%d%H%M")
-            new_minute = minute_key != self._last_tick_minute
-            self._last_tick_minute = minute_key
-            for auto, definition in list(self._cache):
-                trig = definition.trigger
-                fire = False
-                if isinstance(trig, CronTrigger) and new_minute:
-                    fire = CronExpr(trig.cron).matches(now)
-                elif isinstance(trig, IntervalTrigger):
-                    fire = time.time() - float((auto.state or {}).get("last_triggered", 0)) >= trig.seconds
-                elif isinstance(trig, AtTrigger):
-                    at = trig.at if trig.at.tzinfo else trig.at.replace(tzinfo=self.tz)
-                    fire = at <= now and not (auto.state or {}).get("run_count")
-                if fire:
-                    tick = Event(type="schedule.tick", payload={"automation_id": auto.id},
-                                 source=EventSource(kind="system", room_id=getattr(trig, "room_id", None)))
-                    await self._maybe_queue(auto, definition, tick)
+            await self._tick(datetime.now(self.tz))
+
+    async def _tick(self, now: datetime) -> None:
+        minute_key = now.strftime("%Y%m%d%H%M")
+        new_minute = minute_key != self._last_tick_minute
+        self._last_tick_minute = minute_key
+        for auto, definition in list(self._cache):
+            trig = definition.trigger
+            fire = False
+            if isinstance(trig, CronTrigger) and new_minute:
+                fire = CronExpr(trig.cron).matches(now)
+            elif isinstance(trig, IntervalTrigger):
+                fire = time.time() - float((auto.state or {}).get("last_triggered", 0)) >= trig.seconds
+            elif isinstance(trig, AtTrigger):
+                # Once: "last_triggered" is set on the cached automation when the run is queued.
+                # (run_count is only updated in the database by the job; checking it here made a
+                # reminder repeat every 5 s.)
+                at = self._aware(trig.at)
+                fire = at <= now and float((auto.state or {}).get("last_triggered", 0)) < at.timestamp()
+            if fire:
+                tick = Event(type="schedule.tick", payload={"automation_id": auto.id},
+                             source=EventSource(kind="system", room_id=getattr(trig, "room_id", None)))
+                await self._maybe_queue(auto, definition, tick)
 
     # ------------------------------------------------------------- execution
     async def _run_job(self, payload: dict[str, Any]) -> None:
@@ -360,10 +365,11 @@ class AutomationEngine:
         state = dict(auto.state or {})
         state["run_count"] = int(state.get("run_count", 0)) + 1
         state["last_run_at"] = datetime.now(UTC).isoformat()
-        disable = definition.options.once and not payload.get("manual")
+        # A one-time trigger can never fire again: done like "once".
+        disable = (definition.options.once or isinstance(definition.trigger, AtTrigger)) \
+            and not payload.get("manual")
         await self.service.update(auto.id, state=state, enabled=False if disable else None)
-        if disable:
-            await self.reload()
+        await self.reload()  # the cache must not keep the state from before this run
         await self._publish(auto, event, "automation.run.finished", {"run_id": run_id, "status": "succeeded"})
 
     async def _finish_run(self, run_id: str, status: str, entries: list[dict[str, Any]],

@@ -118,3 +118,42 @@ def test_not_before_and_expires_at_guard_triggers_in_local_time() -> None:
     assert run(definition(expires_at=local(timedelta(minutes=-1)))) is False
     assert run(definition(expires_at=local(timedelta(hours=1)))) is True
     assert queued == ["automation.run", "automation.run"]
+
+
+def test_at_trigger_fires_once_although_the_job_updates_only_the_database() -> None:
+    """A reminder 'in a quarter of an hour' repeated every 5 s: the scheduler checked
+    run_count on its cached copy, which only the job (in the database) increments."""
+    import asyncio
+    from datetime import timedelta
+    from types import SimpleNamespace
+    from zoneinfo import ZoneInfo
+
+    from justai.automation.engine import AutomationEngine
+    from justai.automation.model import AutomationDefinition
+
+    tz = ZoneInfo("Europe/Rome")
+    queued: list[str] = []
+
+    class _Service:
+        async def update(self, *_: object, **__: object) -> None:
+            return None
+
+    class _Jobs:
+        async def enqueue(self, kind: str, *_: object, **__: object) -> None:
+            queued.append(kind)
+
+    engine = AutomationEngine(SimpleNamespace(conversations=SimpleNamespace(active=list)),  # type: ignore[arg-type]
+                              _Service(), bus=None, jobs=_Jobs(), timezone="Europe/Rome")  # type: ignore[arg-type]
+    at = (datetime.now(tz) - timedelta(seconds=30)).replace(tzinfo=None).isoformat(timespec="seconds")
+    definition = AutomationDefinition.model_validate({
+        "trigger": {"type": "at", "at": at},
+        "actions": [{"type": "speak", "text": "Denk an den Trockner.", "room": "here"}]})
+    auto = SimpleNamespace(id="a1", state={})  # cached copy: run_count never changes here
+    engine._cache = [(auto, definition)]  # type: ignore[list-item]
+
+    async def ticks() -> None:
+        for i in range(6):  # 30 s of scheduler ticks
+            await engine._tick(datetime.now(tz) + timedelta(seconds=5 * i))
+
+    asyncio.run(ticks())
+    assert queued == ["automation.run"]

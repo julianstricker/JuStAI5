@@ -102,6 +102,15 @@ class VideoSource(Protocol):
     async def frame(self) -> np.ndarray | None: ...
 
 
+@runtime_checkable
+class PrivacyControl(Protocol):
+    """Camera privacy mode (lens covered / stream off), e.g. Tapo."""
+
+    async def get(self) -> bool: ...
+
+    async def set(self, enabled: bool) -> None: ...
+
+
 class DeviceHandle(Protocol):
     device_id: str
 
@@ -168,6 +177,10 @@ class BaseDeviceHandle:
         return None
 
     def display(self) -> DisplaySink | None:
+        return None
+
+    def privacy(self) -> PrivacyControl | None:
+        """Optional: privacy mode (capability camera.privacy_mode)."""
         return None
 
     async def snapshot(self) -> bytes | None:

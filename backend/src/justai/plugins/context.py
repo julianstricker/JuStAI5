@@ -6,8 +6,9 @@ removes exactly what it contributed. All capabilities are permission-checked.
 
 from __future__ import annotations
 
+import asyncio
 import logging
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import Any, Protocol
 
 from justai_sdk.events import Event, EventSource
@@ -161,6 +162,7 @@ class InProcessPluginContext(PluginContext):
         self._tools = tools
         self._components = components
         self._unsubscribers: list[Callable[[], None]] = []
+        self._jobs: list[asyncio.Task[None]] = []
         self._http = AllowlistHttp(manifest.id, manifest.network_allowlist,
                                    allow_lan=Permission.NETWORK_LAN in granted)
         self._store = DbPluginStore(db, manifest.id)
@@ -193,6 +195,15 @@ class InProcessPluginContext(PluginContext):
             type = f"plugin.{self.plugin_id}.{type}"
         self._bus.catalog.register(EventTypeSpec(type, description, durable=durable,
                                                  owner=f"plugin:{self.plugin_id}"))
+
+    # background jobs ----------------------------------------------------------------
+    def run_every(self, seconds: float, callback: Callable[[], Awaitable[None]], *,
+                  name: str = "job") -> None:
+        from justai_sdk.jobs import run_periodic
+
+        self._jobs.append(asyncio.create_task(
+            run_periodic(max(1.0, seconds), callback, self.logger, name),
+            name=f"plugin-job:{self.plugin_id}:{name}"))
 
     # events ----------------------------------------------------------------------
     async def publish(self, event: Event) -> None:
@@ -228,6 +239,9 @@ class InProcessPluginContext(PluginContext):
         for unsub in self._unsubscribers:
             unsub()
         self._unsubscribers.clear()
+        for job in self._jobs:
+            job.cancel()
+        self._jobs.clear()
         self._tools.unregister_owner(self.plugin_id)
         self._providers.unregister_plugin(self.plugin_id)
         self._components.unregister_owner(self.plugin_id)

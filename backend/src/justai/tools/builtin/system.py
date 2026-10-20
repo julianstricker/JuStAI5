@@ -17,7 +17,7 @@ STARTED = time.time()
 
 class DeviceFilter(BaseModel):
     room: str | None = Field(None, description="Room name or ID (optional)")
-    capability: str | None = Field(None, description="z. B. video.input, audio.output, display.text")
+    capability: str | None = Field(None, description="e.g. video.input, audio.output, display.text")
 
 
 class DeviceRef(BaseModel):
@@ -26,6 +26,18 @@ class DeviceRef(BaseModel):
 
 def register(c: Container) -> None:
     reg = c.tools
+
+    async def event_types(_: NoParams, ctx: ToolContext) -> ToolResult:
+        specs = [s for s in c.bus.catalog.all() if s.type.startswith(("plugin.", "vision.", "display.",
+                                                                       "device.", "conversation.session"))]
+        return ToolResult.success([{"type": s.type, "description": s.description} for s in specs])
+
+    reg.register(ToolDefinition(
+        name="events.types",
+        description="Event types that automations can react to, including those of plugins "
+                    "(plugin.<id>.<name>), e.g. to build 'when X happens, tell me'. When talking to "
+                    "the user, describe events by what they mean, never read out the type names.",
+        parameters=NoParams, category="system", permissions=[Permission.AUTOMATION_MANAGE]), event_types)
 
     async def status(_: NoParams, ctx: ToolContext) -> ToolResult:
         runtimes = c.devices.runtimes()

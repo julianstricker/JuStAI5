@@ -33,6 +33,7 @@ class Permission(StrEnum):
     # Infrastructure
     DEVICES_READ = "devices.read"
     DEVICES_MANAGE = "devices.manage"
+    DEVICES_CONTROL = "devices.control"
     DEVICES_PROVIDE = "devices.provide"
     NETWORK_HTTP = "network.http"
     NETWORK_LAN = "network.lan"
@@ -49,36 +50,37 @@ class Permission(StrEnum):
 
 
 PERMISSION_DESCRIPTIONS: dict[str, str] = {
-    Permission.CAMERA_READ: "Kamerabilder und Snapshots lesen",
-    Permission.CAMERA_PTZ: "Bewegliche Kameras steuern",
-    Permission.MICROPHONE_READ: "Mikrofon-Audio lesen",
-    Permission.SPEAKER_WRITE: "Audio über Lautsprecher ausgeben (über den Output Router)",
-    Permission.DISPLAY_WRITE: "Inhalte auf Bildschirmen darstellen (über den Output Router)",
-    Permission.OUTPUT_CROSS_ROOM: "Ausgaben in einem anderen Raum als dem der Anfrage",
-    Permission.MEMORY_READ: "Erinnerungen lesen",
-    Permission.MEMORY_WRITE: "Erinnerungen speichern, ändern und löschen",
-    Permission.IDENTITY_READ: "Bekannte Personen abfragen",
-    Permission.IDENTITY_MANAGE: "Personenprofile verwalten",
-    Permission.BIOMETRIC_ENROLL: "Biometrische Profile (Gesicht/Stimme) anlegen",
-    Permission.AUTOMATION_MANAGE: "Automationen anlegen, ändern und löschen",
-    Permission.EVENTS_PUBLISH: "Ereignisse veröffentlichen",
-    Permission.EVENTS_SUBSCRIBE: "Ereignisse abonnieren",
-    Permission.ASSISTANT_INVOKE: "Den Assistenten aktiv auslösen (proaktive Gespräche)",
-    Permission.DEVICES_READ: "Geräte und Fähigkeiten abfragen",
-    Permission.DEVICES_MANAGE: "Geräte anlegen und konfigurieren",
-    Permission.DEVICES_PROVIDE: "Gerätetreiber bereitstellen",
-    Permission.NETWORK_HTTP: "HTTP-Anfragen an erlaubte Hosts",
-    Permission.NETWORK_LAN: "Verbindungen zu Geräten im lokalen Netz",
-    Permission.NETWORK_DISCOVERY: "Netzwerksuche in autorisierten Bereichen",
-    Permission.STORAGE_PLUGIN: "Eigener, isolierter Datenspeicher",
-    Permission.AI_INVOKE: "KI-Modelle aufrufen",
-    Permission.AI_PROVIDE: "KI-Provider bereitstellen",
-    Permission.VISION_ANALYZE: "Bildanalyse ausführen",
-    Permission.VISION_MANAGE: "Analyseaufgaben konfigurieren",
-    Permission.TOOLS_PROVIDE: "Werkzeuge für den Assistenten bereitstellen",
-    Permission.TOOLS_DEVELOP: "Neue Werkzeuge generieren und testen",
-    Permission.SYSTEM_READ: "Systemstatus lesen",
-    Permission.SYSTEM_MANAGE: "Systemkonfiguration ändern",
+    Permission.CAMERA_READ: "Read camera images and snapshots",
+    Permission.CAMERA_PTZ: "Control movable cameras",
+    Permission.MICROPHONE_READ: "Read microphone audio",
+    Permission.SPEAKER_WRITE: "Play audio through speakers (via the output router)",
+    Permission.DISPLAY_WRITE: "Show content on screens (via the output router)",
+    Permission.OUTPUT_CROSS_ROOM: "Output in a room other than the one of the request",
+    Permission.MEMORY_READ: "Read memories",
+    Permission.MEMORY_WRITE: "Store, change and delete memories",
+    Permission.IDENTITY_READ: "Look up known people",
+    Permission.IDENTITY_MANAGE: "Manage person profiles",
+    Permission.BIOMETRIC_ENROLL: "Create biometric profiles (face/voice)",
+    Permission.AUTOMATION_MANAGE: "Create, change and delete automations",
+    Permission.EVENTS_PUBLISH: "Publish events",
+    Permission.EVENTS_SUBSCRIBE: "Subscribe to events",
+    Permission.ASSISTANT_INVOKE: "Actively trigger the assistant (proactive conversations)",
+    Permission.DEVICES_READ: "Look up devices and capabilities",
+    Permission.DEVICES_MANAGE: "Add and configure devices",
+    Permission.DEVICES_CONTROL: "Operate devices (privacy mode, reconnect, test tone, listening pause)",
+    Permission.DEVICES_PROVIDE: "Provide device drivers",
+    Permission.NETWORK_HTTP: "HTTP requests to allowed hosts",
+    Permission.NETWORK_LAN: "Connections to devices on the local network",
+    Permission.NETWORK_DISCOVERY: "Network search in authorised ranges",
+    Permission.STORAGE_PLUGIN: "Own, isolated data storage",
+    Permission.AI_INVOKE: "Call AI models",
+    Permission.AI_PROVIDE: "Provide AI providers",
+    Permission.VISION_ANALYZE: "Run image analysis",
+    Permission.VISION_MANAGE: "Configure analysis tasks",
+    Permission.TOOLS_PROVIDE: "Provide tools for the assistant",
+    Permission.TOOLS_DEVELOP: "Generate and test new tools",
+    Permission.SYSTEM_READ: "Read the system status",
+    Permission.SYSTEM_MANAGE: "Change the system configuration",
 }
 
 KNOWN_PERMISSIONS: frozenset[str] = frozenset(p.value for p in Permission)
@@ -87,6 +89,7 @@ KNOWN_PERMISSIONS: frozenset[str] = frozenset(p.value for p in Permission)
 TRUSTED_ONLY_PERMISSIONS: frozenset[str] = frozenset(
     {
         Permission.DEVICES_PROVIDE,
+        Permission.DEVICES_CONTROL,
         Permission.AI_PROVIDE,
         Permission.NETWORK_LAN,
         Permission.NETWORK_DISCOVERY,

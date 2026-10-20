@@ -14,11 +14,12 @@ import importlib.util
 import json
 import logging
 import sys
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any
 
 from justai_sdk.events import Event
+from justai_sdk.jobs import SANDBOX_MAX_JOBS, SANDBOX_MIN_INTERVAL_S, run_periodic
 from justai_sdk.manifest import PluginManifest
 from justai_sdk.plugin import (
     CoreServices,
@@ -117,6 +118,8 @@ class SandboxContext(PluginContext):
         self.peer = peer
         self.tools: dict[str, tuple[ToolDefinition, ToolHandler]] = {}
         self.components: list[DisplayComponentSpec] = []
+        self.event_types: list[dict[str, Any]] = []
+        self.jobs: list[asyncio.Task[None]] = []
         self._http = ProxyHttp(peer)
         self._store = ProxyStore(peer)
         self._services = ProxyServices(peer)
@@ -133,7 +136,16 @@ class SandboxContext(PluginContext):
         self.components.append(spec)
 
     def register_event_type(self, type: str, description: str, *, durable: bool = False) -> None:
-        return None
+        if not type.startswith(f"plugin.{self.plugin_id}."):
+            type = f"plugin.{self.plugin_id}.{type}"
+        self.event_types.append({"type": type, "description": description, "durable": durable})
+
+    def run_every(self, seconds: float, callback: Callable[[], Awaitable[None]], *,
+                  name: str = "job") -> None:
+        if len(self.jobs) >= SANDBOX_MAX_JOBS:
+            raise PermissionError(f"at most {SANDBOX_MAX_JOBS} background jobs per plugin")
+        self.jobs.append(asyncio.create_task(
+            run_periodic(max(SANDBOX_MIN_INTERVAL_S, seconds), callback, self.logger, name)))
 
     async def publish(self, event: Event) -> None:
         self.require("events.publish")
@@ -186,7 +198,8 @@ async def main(plugin_dir: str) -> None:
                 "permissions": d.permissions, "side_effect": d.side_effect.value,
                 "requires_confirmation": d.requires_confirmation, "timeout_s": d.timeout_s,
                 "category": d.category} for d, _ in ctx.tools.values()],
-                "components": [c.model_dump() for c in ctx.components]}
+                "components": [c.model_dump() for c in ctx.components],
+                "events": ctx.event_types}
         if method == "tool":
             ctx = state["ctx"]
             definition, handler = ctx.tools[params["name"]]

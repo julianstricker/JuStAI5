@@ -36,6 +36,7 @@ _RESIDENT: frozenset[str] = frozenset(
         Permission.AUTOMATION_MANAGE,
         Permission.ASSISTANT_INVOKE,
         Permission.DEVICES_READ,
+        Permission.DEVICES_CONTROL,
         Permission.NETWORK_HTTP,
         Permission.AI_INVOKE,
         Permission.VISION_ANALYZE,

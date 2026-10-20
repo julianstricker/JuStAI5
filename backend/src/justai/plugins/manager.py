@@ -195,6 +195,20 @@ class PluginManager:
             await self._stop_plugin(plugin_id)
             await self._set(plugin_id, enabled=False, status="disabled", error=None)
 
+    async def config_of(self, plugin_id: str) -> dict[str, Any]:
+        """Effective configuration including secrets (core use only, never for the API)."""
+        row = await self.get_row(plugin_id)
+        return await self._full_config(plugin_id, row.config)
+
+    async def grant(self, plugin_id: str, permissions: builtins.list[str]) -> None:
+        """Grant permissions without touching (or validating) the configuration."""
+        row = await self.get_row(plugin_id)
+        manifest = PluginManifest.model_validate(row.manifest)
+        unknown = set(permissions) - set(manifest.permissions)
+        if unknown:
+            raise ValidationFailed(f"permissions not requested by the plugin: {sorted(unknown)}")
+        await self._set(plugin_id, granted_permissions=sorted(permissions))
+
     async def configure(self, plugin_id: str, config: dict[str, Any],
                         granted_permissions: builtins.list[str] | None = None) -> None:
         row = await self.get_row(plugin_id)

@@ -158,6 +158,21 @@ function ProjectCard({ project }: { project: Project }) {
         „{project.request}“ · Plugin {project.plugin_id} ·{" "}
         {fmtTime(project.created_at)}
       </Text>
+      {project.status === "needs_config" && (
+        <Alert color="orange" mt="xs">
+          {t("tools.needsConfigHint", { plugin: project.plugin_id })}
+        </Alert>
+      )}
+      {!!(project.versions[0]?.spec?.events as { type: string }[] | undefined)
+        ?.length && (
+        <Text size="xs" c="dimmed">
+          {t("tools.events", {
+            list: (project.versions[0].spec.events as { type: string }[])
+              .map((e) => e.type)
+              .join(", "),
+          })}
+        </Text>
+      )}
       <Accordion mt="sm">
         {project.versions.map((v) => (
           <Accordion.Item key={v.id} value={v.id}>
@@ -279,7 +294,7 @@ export function ToolsPage() {
               <Stack>
                 <Textarea
                   label={t("tools.newCapability")}
-                  description={t("tools.newCapabilityHint")}
+                  description={t("tools.newCapabilityHint2")}
                   value={request}
                   onChange={(e) => setRequest(e.currentTarget.value)}
                   placeholder={t("tools.placeholder")}

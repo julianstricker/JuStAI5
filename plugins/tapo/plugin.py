@@ -98,12 +98,13 @@ def rtsp_source(host: str, config: dict[str, Any], stream: int) -> str | None:
 class PytapoPtz:
     """PTZ through the local Tapo API (pytapo, synchronous -> worker thread)."""
 
-    def __init__(self, tapo: Any, hfov: float, vfov: float, presets: bool) -> None:
+    def __init__(self, tapo: Any, hfov: float, vfov: float, presets: bool,
+                 lock: asyncio.Lock | None = None) -> None:
         self._tapo = tapo
         self._caps = PtzCapabilities(pan=True, tilt=True, relative=True, presets=presets,
                                      home=presets, horizontal_fov_deg=hfov, vertical_fov_deg=vfov,
                                      pan_range_deg=340, tilt_range_deg=114)
-        self._lock = asyncio.Lock()
+        self._lock = lock or asyncio.Lock()
 
     @property
     def ptz_capabilities(self) -> PtzCapabilities:
@@ -159,13 +160,34 @@ class PytapoPtz:
         raise NotImplementedError("no preset named 'home'")
 
 
+class TapoPrivacy:
+    """Privacy mode through the local Tapo API: lens off, no video or audio."""
+
+    def __init__(self, tapo: Any, lock: asyncio.Lock) -> None:
+        self._tapo = tapo
+        self._lock = lock
+
+    async def get(self) -> bool:
+        async with self._lock:
+            state = await asyncio.to_thread(self._tapo.getPrivacyMode)
+        return str((state or {}).get("enabled", "off")) == "on"
+
+    async def set(self, enabled: bool) -> None:
+        async with self._lock:
+            await asyncio.to_thread(self._tapo.setPrivacyMode, enabled)
+
+
 class TapoHandle(BaseDeviceHandle):
     def __init__(self, device_id: str, caps: set[str], media: Go2rtcMedia | None,
-                 ptz: PtzController | None, host: str) -> None:
+                 ptz: PtzController | None, host: str, privacy: TapoPrivacy | None = None) -> None:
         super().__init__(device_id, caps)
         self._media = media
         self._ptz = ptz
+        self._privacy = privacy
         self.host = host
+
+    def privacy(self) -> TapoPrivacy | None:
+        return self._privacy
 
     def media(self) -> Go2rtcMedia | None:
         return self._media
@@ -272,13 +294,19 @@ class TapoDriver:
         hfov = float(config.get("horizontal_fov_deg", 95))
         vfov = float(config.get("vertical_fov_deg", 54))
         ptz: PtzController | None = None
+        privacy: TapoPrivacy | None = None
+        tapo: Any = None
+        lock = asyncio.Lock()  # pytapo is synchronous and not thread-safe: one call at a time
+        if config.get("cloud_password") and (Capability.PTZ_PAN in caps or Capability.CAMERA_PRIVACY_MODE in caps):
+            with contextlib.suppress(Exception):
+                tapo = await self._pytapo(host, config)
+        if tapo is not None and Capability.CAMERA_PRIVACY_MODE in caps:
+            privacy = TapoPrivacy(tapo, lock)
+        else:
+            caps.discard(Capability.CAMERA_PRIVACY_MODE)
         if Capability.PTZ_PAN in caps:
-            if config.get("cloud_password"):
-                try:
-                    tapo = await self._pytapo(host, config)
-                    ptz = PytapoPtz(tapo, hfov, vfov, Capability.PTZ_PRESETS in caps)
-                except Exception:
-                    ptz = None
+            if tapo is not None:
+                ptz = PytapoPtz(tapo, hfov, vfov, Capability.PTZ_PRESETS in caps, lock)
             if ptz is None and config.get("camera_username"):
                 from justai_sdk.contrib.onvif_ptz import OnvifPtz
 
@@ -294,7 +322,7 @@ class TapoDriver:
                     ptz = None
             if ptz is None:
                 caps -= {Capability.PTZ_PAN, Capability.PTZ_TILT, Capability.PTZ_PRESETS}
-        return TapoHandle(device_id, caps, probe.media, ptz, host)
+        return TapoHandle(device_id, caps, probe.media, ptz, host, privacy)
 
 
 class TapoDiscovery:

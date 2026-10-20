@@ -14,6 +14,7 @@ from justai_sdk.tools import SideEffect, ToolContext, ToolDefinition, ToolResult
 from pydantic import BaseModel, ConfigDict
 
 from justai.common.errors import Unavailable
+from justai.events.catalog import EventTypeSpec
 from justai.logging import get_logger
 
 if TYPE_CHECKING:
@@ -82,6 +83,11 @@ class SandboxClient:
             self._register_proxy_tool(manifest, spec, granted)
         for comp in data.get("components", []):
             self.c.components.register(DisplayComponentSpec.model_validate(comp), owner=manifest.id)
+        for ev in data.get("events", []):
+            if str(ev.get("type", "")).startswith(f"plugin.{manifest.id}."):
+                self.c.bus.catalog.register(EventTypeSpec(
+                    str(ev["type"]), str(ev.get("description", ""))[:300], durable=bool(ev.get("durable")),
+                    owner=f"plugin:{manifest.id}"))
 
     def _register_proxy_tool(self, manifest: PluginManifest, spec: dict[str, Any], granted: frozenset[str]) -> None:
         schema = spec.get("parameters") or {"type": "object"}
@@ -122,6 +128,7 @@ class SandboxClient:
         self.granted.pop(plugin_id, None)
         self.manifests.pop(plugin_id, None)
         self.c.components.unregister_owner(plugin_id)
+        self.c.bus.catalog.unregister_owner(f"plugin:{plugin_id}")
         try:
             await self._http.post(f"/plugins/{plugin_id}/stop")
         except httpx.HTTPError as exc:

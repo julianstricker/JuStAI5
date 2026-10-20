@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import fnmatch
+import json as json_module
 import logging
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import Any
 from urllib.parse import urlparse
 
@@ -24,13 +25,15 @@ from justai_sdk.plugin import (
 from justai_sdk.tools import InvocationOrigin, ToolContext, ToolDefinition, ToolHandler, ToolResult
 
 FakeRoute = Callable[[str, str, dict[str, Any] | None, Any], HttpResponse]
+# A route answer can be a function, a ready HttpResponse, JSON data (dict/list) or text.
+RouteAnswer = FakeRoute | HttpResponse | dict[str, Any] | list[Any] | str
 
 
 __all__ = ["FakeHttp", "FakePluginContext", "FakeServices", "MemoryStore", "load_manifest"]
 
 
 class FakeHttp(PluginHttp):
-    def __init__(self, allowlist: list[str], routes: dict[str, FakeRoute] | None = None) -> None:
+    def __init__(self, allowlist: list[str], routes: dict[str, RouteAnswer] | None = None) -> None:
         self.allowlist = allowlist
         self.routes = routes or {}
         self.requests: list[tuple[str, str]] = []
@@ -50,9 +53,22 @@ class FakeHttp(PluginHttp):
             raise PermissionDenied("network.http", f"host {host} not in allowlist")
         self.requests.append((method, url))
         for pattern, route in self.routes.items():
-            if fnmatch.fnmatch(url, pattern):
-                return route(method, url, params, json)
+            # Patterns may be full URLs with wildcards or just "host/path*" without scheme.
+            if fnmatch.fnmatch(url, pattern) or fnmatch.fnmatch(url.split("://", 1)[-1], pattern):
+                return _answer(route, method, url, params, json)
         return HttpResponse(status=404, text="no fake route")
+
+
+def _answer(route: RouteAnswer, method: str, url: str, params: dict[str, Any] | None,
+            body: Any) -> HttpResponse:
+    if isinstance(route, HttpResponse):
+        return route
+    if isinstance(route, dict | list):
+        return HttpResponse(status=200, headers={"content-type": "application/json"},
+                            text=json_module.dumps(route))
+    if isinstance(route, str):
+        return HttpResponse(status=200, text=route)
+    return route(method, url, params, body)
 
 
 class MemoryStore(PluginStore):
@@ -116,7 +132,7 @@ class FakePluginContext(PluginContext):
         manifest: PluginManifest | dict[str, Any],
         config: dict[str, Any] | None = None,
         *,
-        http_routes: dict[str, FakeRoute] | None = None,
+        http_routes: dict[str, RouteAnswer] | None = None,
     ) -> None:
         if isinstance(manifest, dict):
             manifest = PluginManifest.model_validate(manifest)
@@ -129,6 +145,8 @@ class FakePluginContext(PluginContext):
         self.providers: list[tuple[str, Any]] = []
         self.components: list[DisplayComponentSpec] = []
         self.events: list[Event] = []
+        self.event_types: dict[str, str] = {}
+        self.jobs: list[tuple[float, Callable[[], Awaitable[None]], str]] = []
         self.subscriptions: list[tuple[str, EventHandler]] = []
         self._http = FakeHttp(manifest.network_allowlist, http_routes)
         self._store = MemoryStore()
@@ -145,7 +163,19 @@ class FakePluginContext(PluginContext):
         self.components.append(spec)
 
     def register_event_type(self, type: str, description: str, *, durable: bool = False) -> None:
-        return None
+        if not type.startswith(f"plugin.{self.plugin_id}."):
+            type = f"plugin.{self.plugin_id}.{type}"
+        self.event_types[type] = description
+
+    def run_every(self, seconds: float, callback: Callable[[], Awaitable[None]], *,
+                  name: str = "job") -> None:
+        """Recorded, not scheduled: tests run the jobs with ``await ctx.run_jobs()``."""
+        self.jobs.append((seconds, callback, name))
+
+    async def run_jobs(self) -> None:
+        """Run every registered background job once (like one tick)."""
+        for _, callback, _ in list(self.jobs):
+            await callback()
 
     async def publish(self, event: Event) -> None:
         self.require(Permission.EVENTS_PUBLISH)

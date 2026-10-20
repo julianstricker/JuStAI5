@@ -165,6 +165,14 @@ class PluginContext(abc.ABC):
     @abc.abstractmethod
     def register_event_type(self, type: str, description: str, *, durable: bool = False) -> None: ...
 
+    # -- background jobs -----------------------------------------------------------
+    def run_every(self, seconds: float, callback: Callable[[], Awaitable[None]], *,
+                  name: str = "job") -> None:
+        """Run ``callback`` now and then every ``seconds`` while the plugin runs, e.g. to
+        poll an API and publish an event when a value changes. Errors are logged and do not
+        end the job. In the sandbox: at least 60 s apart, at most 5 jobs."""
+        raise NotImplementedError("background jobs are not supported by this host")
+
     # -- events --------------------------------------------------------------------
     @abc.abstractmethod
     async def publish(self, event: Event) -> None: ...

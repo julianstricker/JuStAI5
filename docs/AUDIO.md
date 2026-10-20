@@ -28,22 +28,35 @@ Antwort ─► Output Router ─► SpeakerChannel (Echtzeit-Pacing)
   ─► jedes ausgegebene Frame mit Ausgabezeitpunkt ─► ReferenceBuffer + PlaybackTracker
 ```
 
-**Kein abgeschnittener Anfang:** Der Kanal zum Kameralautsprecher wird geöffnet,
-sobald die Kamera online ist, und bleibt offen; in Ruhe wird Stille gesendet (ca.
-32 KB/s lokal, das Mikrofon der C200 bleibt dabei aktiv, live geprüft). Nach jedem
-(Wieder-)Aufbau hält der Core Sprache zurück, bis go2rtc tatsächlich abholt plus
-`talkback_settle_s` (Standard 1,5 s), statt sie in die noch nicht verbundene
-Leitung zu schicken. Vorher wurde der Kanal nach 2 Minuten Stille geschlossen, und
-die erste Ausgabe danach (z. B. der erste Testton) ging verloren. Für Akku-Kameras
-lässt sich das Schließen per Geräte-Einstellung `speaker_idle_close_s` wieder
-aktivieren.
+**Eigene Lautsprecher-Verbindung pro Gespräch:** Eine Tapo-Kamera spielt nur die
+Sprech-Sitzung ab, die zuletzt geöffnet wurde. Früher blieb der Kanal zum
+Kameralautsprecher stundenlang auf der Hauptverbindung offen. Hatte zwischendurch
+ein anderer Client gesprochen (z. B. die Tapo-App), kamen weiter Bytes an der
+Kamera an, aber nichts war zu hören. go2rtc erneuert diese Sitzung nicht, solange
+das Video die Verbindung am Leben hält. Live beobachtet an der C200 (2026-10-20):
+Zustellung vollständig, nichts hörbar, auch nach go2rtc- und Kamera-Neustart; eine
+frisch geöffnete zweite Verbindung spielte sofort. Deshalb:
+
+* Der Lautsprecher hat einen eigenen go2rtc-Stream `<stream>_talk` (gleiche Quelle
+  wie der Hauptstream, also eine eigene Kameraverbindung). Er wird bei jedem Öffnen
+  neu angelegt: beim Wakeword (Vorwärmen), für Testtöne und Automationen.
+* Nach 90 s ohne Ausgabe wird er geschlossen und gelöscht
+  (`speaker_idle_close_s` pro Gerät überschreibbar). Damit ist die Sprech-Sitzung
+  der Kamera auch wieder für die Tapo-App frei.
+* Der Tapo-Login der neuen Verbindung dauert gemessen ca. 4 s. Bis dahin hält der
+  Core Sprache zurück (plus `talkback_settle_s`, Standard 1,5 s), statt sie in die
+  noch nicht verbundene Leitung zu schicken; der Anfang geht nicht verloren.
 
 **Zustellung prüfen statt annehmen:** go2rtc holt den Audiostrom auch dann weiter ab,
 wenn die Verbindung zum Kameralautsprecher verloren ging (z. B. nach einem
 Kamera-Reconnect). Das Audio verschwand dann lautlos. Der Core fragt deshalb jede
 Sekunde bei go2rtc ab, ob tatsächlich Bytes an die Kamera gehen. Erst dann gibt er
 Sprache frei, und nach 6 s ohne Zustellung baut er die Strecke neu auf (bei
-offline-Kamera mit wachsendem Abstand bis 60 s). Live geprüft: Nach „Neu verbinden“
+offline-Kamera mit wachsendem Abstand bis 60 s). Eine frisch geöffnete Verbindung hat
+20 s Zeit für den Login. Gezählt werden die Bytes an die Kamera auch dann, wenn
+go2rtc die Kameraverbindung als „Consumer“ führt (Stream nur für den Lautsprecher);
+sonst hielt der Wächter funktionierende Verbindungen für tot und baute sie ständig
+neu auf. Live geprüft: Nach „Neu verbinden“
 der C200 war die Strecke nach ~15 s wieder da (8 KB/s an die Kamera, stabil).
 
 **Talkback zu Kameras:** Der Core stellt pro Lautsprecher einen Live-WAV-Stream

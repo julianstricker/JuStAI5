@@ -226,11 +226,21 @@ class Go2rtcTalkbackSink:
 
     go2rtc pulls an endless, real-time paced WAV stream from the core
     (``/internal/talkback/<token>.wav``) and forwards it to the device.
+
+    The speaker gets its own camera connection (go2rtc stream ``<stream>_talk``), opened
+    fresh every time the sink opens. A Tapo camera plays only the talk session opened
+    last: once another client (the Tapo app, a second connection) has opened one, a
+    long-lived session keeps receiving bytes but stays silent, and go2rtc never renews it
+    while video keeps the main connection alive (seen on a C200: audio delivered,
+    nothing audible, even after camera restarts; a fresh connection played at once).
     """
 
     continuous = True
     CHECK_INTERVAL_S = 1.0
     DELIVERY_TIMEOUT_S = 6.0
+    # A freshly opened camera connection needs the Tapo login before go2rtc pulls and sends
+    # anything; rebuilding earlier restarts the login over and over (seen: never delivering).
+    CONNECT_TIMEOUT_S = 20.0
 
     def __init__(self, go2rtc: Go2rtcClient, stream: str, routes: TalkbackRoutes,
                  core_url: str, latency_hint_s: float = 2.0, settle_s: float = 1.5) -> None:
@@ -239,6 +249,8 @@ class Go2rtcTalkbackSink:
         # this phase is lost (the first test tone after a pause was never audible).
         self.settle_s = settle_s
         self.stream = stream
+        self.talk_stream = f"{stream}_talk"
+        self._target = stream  # go2rtc stream the audio is sent to
         self.routes = routes
         self.core_url = core_url.rstrip("/")
         self.sample_rate = SR
@@ -250,6 +262,7 @@ class Go2rtcTalkbackSink:
         # is gone (after a camera reconnect) - audio would vanish silently.
         self._monitor: asyncio.Task[None] | None = None
         self._delivering = False
+        self._connecting = False
         self._restart_requested = False
         self._failed_restarts = 0
         self._next_restart = 0.0
@@ -261,7 +274,16 @@ class Go2rtcTalkbackSink:
         self._opened_at = time.monotonic()
         url = f"{self.core_url}/internal/talkback/{self._token}.wav"
         self._delivering = False
-        await self.go2rtc.play_live(self.stream, url)
+        self._connecting = True  # until the first bytes reach the device
+        source = self.go2rtc.source(self.stream)
+        if source:
+            # Own, freshly opened camera connection -> a new talk session on the camera.
+            await self.go2rtc.delete_stream(self.talk_stream)
+            await self.go2rtc.set_stream(self.talk_stream, [source])
+            self._target = self.talk_stream
+        else:
+            self._target = self.stream
+        await self.go2rtc.play_live(self._target, url)
         if self._monitor is None or self._monitor.done():
             self._monitor = asyncio.create_task(self._watch_delivery(), name=f"talkback-watch:{self.stream}")
 
@@ -273,17 +295,20 @@ class Go2rtcTalkbackSink:
             if self._token is None:
                 continue
             try:
-                sent = await self.go2rtc.backchannel_bytes(self.stream)
+                sent = await self.go2rtc.backchannel_bytes(self._target)
             except Exception:
                 sent = None
             now = time.monotonic()
+            limit = self.CONNECT_TIMEOUT_S if self._connecting else self.DELIVERY_TIMEOUT_S
             if sent is not None and last is not None and sent > last:
                 last_change = now
                 if not self._delivering:
-                    log.info("talkback delivering to device", stream=self.stream)
+                    log.info("talkback delivering to device", stream=self._target,
+                             after_s=round(now - self._opened_at, 1))
                 self._delivering = True
+                self._connecting = False
                 self._failed_restarts = 0
-            elif now - max(last_change, self._opened_at) > self.DELIVERY_TIMEOUT_S:
+            elif now - max(last_change, self._opened_at) > limit:
                 self._delivering = False
                 if now >= self._next_restart and not self._restart_requested:
                     log.warning("talkback not reaching the device, rebuilding the route",
@@ -317,7 +342,9 @@ class Go2rtcTalkbackSink:
             if st is not None:
                 st.dropped_frames += 1
                 # go2rtc stopped pulling (e.g. camera reconnected): re-establish the stream.
-                if time.monotonic() - max(st.last_pull, self._opened_at) > 3.0:
+                now = time.monotonic()
+                if (st.last_pull and now - max(st.last_pull, self._opened_at) > 3.0) or \
+                        (not st.last_pull and now - self._opened_at > self.CONNECT_TIMEOUT_S):
                     log.warning("talkback stream stalled, reconnecting", stream=self.stream)
                     await self.flush()
                     return
@@ -334,7 +361,11 @@ class Go2rtcTalkbackSink:
             self.routes.remove(self._token)
             self._token, self._queue = None, None
             with contextlib.suppress(Exception):
-                await self.go2rtc.stop_playback(self.stream)
+                await self.go2rtc.stop_playback(self._target)
+            if self._target == self.talk_stream:
+                # Drop the speaker connection: frees the camera's talk session (Tapo app).
+                with contextlib.suppress(Exception):
+                    await self.go2rtc.delete_stream(self.talk_stream)
 
     async def shutdown(self) -> None:
         """Final close (device removed): also stops the delivery check."""

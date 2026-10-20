@@ -39,3 +39,25 @@ async def test_lost_streams_are_restored_and_deleted_ones_stay_deleted() -> None
     assert await c.ensure_streams() == ["cam1"]
     assert fake.streams == {"cam1": "tapo://secret@192.168.0.2"}
     assert c.restored == 1
+
+
+
+def test_backchannel_bytes_found_on_producers_and_on_device_consumers() -> None:
+    from justai.media.go2rtc import backchannel_sent
+
+    audio = {"codec_type": "audio", "codec_name": "pcm_alaw"}
+    # Stream running for video: the camera connection is a producer.
+    main = {"producers": [{"medias": ["video, recvonly, H264", "audio, sendonly, PCMA/8000"],
+                           "senders": [{"codec": audio, "bytes": 800}]}],
+            "consumers": [{"format_name": "rtsp", "medias": ["video, sendonly, H264"],
+                           "senders": [{"codec": {"codec_type": "video"}, "bytes": 99999}]}]}
+    assert backchannel_sent(main) == 800
+    # Stream only for the speaker: the camera connection is listed as a consumer.
+    talk = {"producers": [{"url": "tapo://x"}, {"format_name": "wav", "receivers": [{"bytes": 15040}]}],
+            "consumers": [{"format_name": "tapo",
+                           "medias": ["video, recvonly, H264", "audio, recvonly, PCMA/8000",
+                                      "audio, sendonly, PCMA/8000"],
+                           "senders": [{"codec": audio, "bytes": 15040}]}]}
+    assert backchannel_sent(talk) == 15040
+    assert backchannel_sent({"producers": [{"url": "tapo://x"}], "consumers": []}) is None
+    assert backchannel_sent(None) is None

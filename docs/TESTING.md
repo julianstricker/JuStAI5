@@ -8,7 +8,7 @@ und **nicht getestet**.
 
 | Suite | Ort | Braucht | Ergebnis |
 | --- | --- | --- | --- |
-| Unit | `backend/tests/unit` | nichts | 122 bestanden |
+| Unit | `backend/tests/unit` | nichts | 125 bestanden |
 | Audio mit echten Modellen | `backend/tests/audio` | Modelle (`JUSTAI_TEST_MODELS_DIR`) | 9 bestanden; `test_speaker.py` schlägt in etwa 1 von 4 Läufen fehl (Piper-Synthese ist zufällig, fremde Stimme dann 0,49 statt < 0,45) |
 | Datenbank | `backend/tests/db` | PostgreSQL + pgvector (`JUSTAI_TEST_DATABASE_URL`) | 3 bestanden |
 | End-to-End | `backend/tests/e2e` | laufende Instanz (`JUSTAI_E2E_URL`, `JUSTAI_E2E_PASSWORD`), Gemini | 13 bestanden (siehe Hinweis) |
@@ -132,6 +132,7 @@ Unit-Tests abgedeckt hatten:
 | Sandbox-Testlauf je nach Zufalls-Verzeichnisname nicht importierbar | fester Pfad, `pythonpath` |
 | Generierter Klassenname umbenannt, Tests fanden ihn nicht | Alias statt Umbenennen |
 | Zweites Tool-Projekt mit gleichem Namen brach ab (Unique-Constraint) | eindeutige Plugin-IDs |
+| Kameralautsprecher (C200) stumm, obwohl alle Bytes an der Kamera ankamen; auch nach go2rtc- und Kamera-Neustart. Eine frische zweite Verbindung und die Tapo-App waren hörbar | eigene, pro Gespräch neu geöffnete Lautsprecher-Verbindung (`<stream>_talk`), Schließen nach 90 s Stille; Zustellprüfung erkennt jetzt auch Kameraverbindungen, die go2rtc als Consumer führt ([AUDIO.md](AUDIO.md)). Testton danach technisch zugestellt (Login 4,1 s) |
 | „Hey Jarvis, wie spät ist es?“ ohne Pause blieb unbeantwortet: Audio zwischen Wakeword und bereiter Session (1,4–1,7 s) wurde verworfen | behoben: Puffer pro Endpoint, Wiedergabe ab dem Wakeword mit VAD-Entscheidung Pause/keine Pause, Pipeline ignoriert Kurz-Äußerungen; E2E in beiden Modi ([AUDIO.md](AUDIO.md#sprechen-ohne-pause-nach-dem-wakeword)) |
 | Installation: mit geändertem `JUSTAI_HTTPS_PORT` (z. B. 8444, weil 8443 belegt) lauschte der Core im Container auf 8444, Docker leitete aber auf 8443 weiter – HTTPS nicht erreichbar | behoben: Container-Port fest 8443, `JUSTAI_HTTPS_PORT` nur noch Host-Port und Anzeige |
 | Geräte-App: Livebild in der Admin-UI „nicht verfügbar“ (fragte MP4 von go2rtc an, App-Kameras haben keinen Stream); nach dem automatischen Neuladen bei Updates keine Kamera/kein Mikrofon mehr, bis jemand tippt | behoben: MJPEG-Livebild, Selbststart, Ton per Berührung nachholbar; im Browser geprüft |

@@ -69,6 +69,10 @@ class Go2rtcClient:
             raise Unavailable(f"go2rtc rejected stream {name}: {redact_text(r.text)[:200]}")
         self._desired[name] = sources[0]
 
+    def source(self, name: str) -> str | None:
+        """Source URL a stream was registered with (None: unknown)."""
+        return self._desired.get(name)
+
     async def delete_stream(self, name: str) -> None:
         self._desired.pop(name, None)
         try:
@@ -160,11 +164,7 @@ class Go2rtcClient:
 
     async def backchannel_bytes(self, name: str) -> int | None:
         """Bytes go2rtc has sent to the device speaker of this stream (None: no route)."""
-        info = await self.stream_info(name)
-        senders = [s for p in (info or {}).get("producers") or [] for s in p.get("senders") or []]
-        if not senders:
-            return None
-        return sum(int(s.get("bytes") or 0) for s in senders)
+        return backchannel_sent(await self.stream_info(name))
 
     async def stop_playback(self, name: str) -> None:
         """Remove the talkback producer (flushes go2rtc-side buffers)."""
@@ -183,3 +183,24 @@ class Go2rtcClient:
                 if isinstance(media, str) and media.startswith("audio, sendonly"):
                     return True
         return False
+
+
+def backchannel_sent(info: dict[str, Any] | None) -> int | None:
+    """Bytes sent to a device backchannel according to go2rtc's stream info (None: no route).
+
+    The device connection shows up as a producer when the stream already runs for video,
+    but as a *consumer* (``format_name: tapo``) when the stream only exists for the speaker.
+    Viewers (RTSP/MP4 clients) are consumers too; they only receive, so they are skipped.
+    """
+    if not info:
+        return None
+    senders = [s for p in info.get("producers") or [] for s in p.get("senders") or []]
+    for c in info.get("consumers") or []:
+        medias = [m for m in c.get("medias") or [] if isinstance(m, str)]
+        is_device = any("recvonly" in m for m in medias) and any(m.startswith("audio, sendonly") for m in medias)
+        if is_device:
+            senders += [s for s in c.get("senders") or []
+                        if (s.get("codec") or {}).get("codec_type", "audio") == "audio"]
+    if not senders:
+        return None
+    return sum(int(s.get("bytes") or 0) for s in senders)

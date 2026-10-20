@@ -58,6 +58,7 @@ log = get_logger(__name__)
 FrameListener = Callable[[ProcessedFrame], None]
 WakeHandler = Callable[[WakeCandidate, ArbitrationResult], Awaitable[None]]
 RECENT_FRAMES = 1000  # 10 s of 10 ms frames
+TALKBACK_IDLE_CLOSE_S = 90.0
 
 DEFAULT_NETWORK_LATENCY_S = 2.2  # conservative until calibrated (C200 measured ~1.8 s)
 DEFAULT_LOCAL_LATENCY_S = 0.35
@@ -333,6 +334,10 @@ class AudioEngine:
                 sink = None
             if sink is not None:
                 idle = runtime.settings.get("speaker_idle_close_s")
+                if idle is None and isinstance(sink, Go2rtcTalkbackSink):
+                    # Camera speakers: open per conversation (warm-up at the wakeword), close when
+                    # idle, so every conversation gets a fresh talk session on the camera.
+                    idle = TALKBACK_IDLE_CLOSE_S
                 speaker = SpeakerChannel(device_id, sink, float(str(idle)) if idle is not None else None)
                 self.speakers[device_id] = speaker
                 if sink.continuous and idle is None:
@@ -489,7 +494,7 @@ class AudioEngine:
         done = speaker.begin(uid)
         await speaker.enqueue(uid, tone)
         speaker.end(uid)
-        await asyncio.wait_for(done.wait(), timeout=seconds + 10)
+        await asyncio.wait_for(done.wait(), timeout=seconds + 30)  # camera speakers connect first
 
     async def calibrate(self, endpoint_id: str) -> dict[str, Any]:
         """Play chirps through the endpoint speaker and measure the echo delay."""

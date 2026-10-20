@@ -1,154 +1,156 @@
-# Sicherheit und Datenschutz
+# Security and privacy
 
-JuStAI5 hat Zugriff auf Kameras, Mikrofone und persönliche Informationen. Die
-Grundsätze: lokal zuerst, minimale Rechte, nichts Stilles (Cloud-Fallbacks und
-sicherheitsrelevante Aktionen werden protokolliert), deterministische Regeln statt
-Modellentscheidungen bei Ausgabe und Rechten.
+*[Deutsch](de/SECURITY.md) · English*
 
-## Netzwerk und Container
+JuStAI5 has access to cameras, microphones and personal information. The principles:
+local first, minimal permissions, nothing silent (cloud fallbacks and security-relevant
+actions are logged), deterministic rules instead of model decisions for output and
+permissions.
 
-| Maßnahme | Umsetzung |
+## Network and containers
+
+| Measure | Implementation |
 | --- | --- |
-| Zwei Ports nach außen | `core:8080` (HTTP, UI/API) und `core:8443` (HTTPS, gleiche Anwendung, für die Geräte-App). Postgres, go2rtc und Sandbox sind von außen nicht erreichbar. |
-| Datenbanknetz intern | `db` ist `internal: true` |
-| Sandbox ohne Netz | `sandbox` ist `internal: true`: kein Internet, kein LAN, nur der Core. Geprüft: Postgres, go2rtc, LAN und Internet sind aus der Sandbox nicht erreichbar. |
-| Sandbox gehärtet | read-only Root-FS, `tmpfs /tmp`, `cap_drop: ALL`, `no-new-privileges`, pids/mem/cpu-Limits, eigener UID (10002), rlimits pro Plugin-Prozess |
-| Core ohne Root | UID 10001 |
-| go2rtc ohne Zugangsdaten auf Platte | Streams werden zur Laufzeit im Speicher angelegt (`PATCH /api/streams`), `go2rtc.yaml` ist read-only gemountet und enthält keine Kameras |
-| Talkback-Endpunkt | `/internal/talkback/<zufälliges Token>.wav`, Token pro Lautsprecher, nur für go2rtc gedacht |
+| Two ports to the outside | `core:8080` (HTTP, UI/API) and `core:8443` (HTTPS, same application, for the device app). Postgres, go2rtc and sandbox are not reachable from outside. |
+| Internal database network | `db` is `internal: true` |
+| Sandbox without network | `sandbox` is `internal: true`: no internet, no LAN, only the core. Checked: Postgres, go2rtc, LAN and internet are not reachable from the sandbox. |
+| Hardened sandbox | read-only root FS, `tmpfs /tmp`, `cap_drop: ALL`, `no-new-privileges`, pids/mem/cpu limits, own UID (10002), rlimits per plugin process |
+| Core without root | UID 10001 |
+| go2rtc without credentials on disk | streams are created in memory at runtime (`PATCH /api/streams`), `go2rtc.yaml` is mounted read-only and contains no cameras |
+| Talkback endpoint | `/internal/talkback/<random token>.wav`, token per speaker, only meant for go2rtc |
 
-Für den Zugriff aus dem Internet: JuStAI5 nicht direkt freigeben, sondern über VPN
-(z. B. WireGuard) oder einen Reverse-Proxy mit TLS. Dann `JUSTAI_PUBLIC_URL` auf
-`https://…` setzen, damit Cookies als `Secure` markiert werden.
+For access from the internet: do not expose JuStAI5 directly, but use a VPN (e.g.
+WireGuard) or a reverse proxy with TLS. Then set `JUSTAI_PUBLIC_URL` to `https://…` so
+cookies are marked `Secure`.
 
-## HTTPS mit lokaler Zertifizierungsstelle
+## HTTPS with a local certificate authority
 
-Für die Geräte-App (Mikrofon und Kamera im Browser) spricht der Core auf Port
-8443 HTTPS (`backend/src/justai/tls.py`):
+For the device app (microphone and camera in the browser) the core speaks HTTPS on port
+8443 (`backend/src/justai/tls.py`):
 
-* Beim ersten Start entsteht in `/data/tls` eine eigene Zertifizierungsstelle
-  (ECDSA P-256, 10 Jahre, `pathLen 0`). Ihr privater Schlüssel verlässt den
-  Container nicht (Datei `0600`) und gehört zur Datensicherung.
-* Das Serverzertifikat enthält `localhost`, `127.0.0.1`, `justai.local`,
-  `JUSTAI_TLS_NAMES` und die in der UI hinzugefügten Adressen; Laufzeit 825 Tage
-  (Apple-Grenze), automatische Neuausstellung 30 Tage vor Ablauf bzw. wenn sich
-  die Namen ändern. Neue Adressen werden ohne Neustart geladen.
-* `GET /api/tls/ca.crt` (öffentlich, nur das CA-Zertifikat), `GET /api/tls/status`
-  und `POST /api/tls/names` (nur Admins). Der SHA-256-Fingerabdruck steht in der
-  Admin-UI zum Vergleich auf dem Gerät.
-* Wer das CA-Zertifikat installiert, vertraut damit allen Zertifikaten, die
-  diese CA ausstellt. Deshalb: CA-Schlüssel nicht weitergeben, Zertifikat nur auf
-  eigenen Geräten installieren. `JUSTAI_TLS_ENABLED=false` schaltet HTTPS ab.
+* At the first start an own certificate authority is created in `/data/tls` (ECDSA P-256,
+  10 years, `pathLen 0`). Its private key never leaves the container (file `0600`) and
+  belongs in the backup.
+* The server certificate contains `localhost`, `127.0.0.1`, `justai.local`,
+  `JUSTAI_TLS_NAMES` and the addresses added in the UI; validity 825 days (Apple limit),
+  automatic reissue 30 days before expiry or when the names change. New addresses are
+  loaded without a restart.
+* `GET /api/tls/ca.crt` (public, only the CA certificate), `GET /api/tls/status` and
+  `POST /api/tls/names` (admins only). The SHA-256 fingerprint is shown in the admin UI
+  for comparison on the device.
+* Whoever installs the CA certificate trusts all certificates this CA issues. Therefore:
+  do not pass on the CA key, install the certificate only on your own devices.
+  `JUSTAI_TLS_ENABLED=false` switches HTTPS off.
 
-Gekoppelte Geräte-Apps authentisieren sich mit ihrem zufälligen Token (im Core nur
-der Hash). Ein Browser-Gerät kann nur Display-, Audio- und Kamera-Fähigkeiten
-anmelden. Medien laufen nur über die Verbindung des gekoppelten Geräts.
+Paired device apps authenticate with their random token (the core only keeps the hash). A
+browser device can only register display, audio and camera capabilities. Media only flow
+over the connection of the paired device.
 
-## Authentifizierung (Admin-UI/API)
+## Authentication (admin UI/API)
 
-* Passwörter: Argon2id (argon2-cffi), Rehash bei geänderten Parametern;
-  Mindestlänge 8.
-* Initiales Admin-Passwort: zufällig erzeugt, nur in
-  `/data/initial_admin_password.txt` und einmal im Log (oder per
-  `JUSTAI_ADMIN_PASSWORD` gesetzt).
-* Sitzungen: JWT (HS256, Schlüssel aus dem Master-Key abgeleitet), als
-  `HttpOnly`-, `SameSite=Strict`-Cookie oder als Bearer-Token. *Überall abmelden*
-  erhöht die Token-Version des Benutzers und macht alle alten Tokens ungültig.
-* CSRF: Schreibende Anfragen brauchen den Header `x-justai: 1`. Ein fremdes
-  Formular kann ihn nicht ohne CORS-Preflight setzen; CORS ist standardmäßig aus.
-* **Brute-Force-Schutz**: Nach 5 Fehlversuchen in 15 Minuten wird pro Benutzername
-  **und** pro Client-Adresse gesperrt: zuerst 30 s, dann verdoppelt bis 15 min.
-  Fehlversuche stehen im Audit-Log (`auth.login_failed`).
-* Security-Header für alle Antworten: Content-Security-Policy (Skripte nur vom
-  eigenen Server, keine Fremd-Frames), `X-Frame-Options: DENY`,
-  `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`.
+* Passwords: Argon2id (argon2-cffi), rehash on changed parameters; minimum length 8.
+* Initial admin password: randomly generated, only in `/data/initial_admin_password.txt`
+  and once in the log (or set with `JUSTAI_ADMIN_PASSWORD`).
+* Sessions: JWT (HS256, key derived from the master key), as an `HttpOnly`,
+  `SameSite=Strict` cookie or as a bearer token. *Sign out everywhere* increments the
+  user's token version and invalidates all old tokens.
+* CSRF: writing requests need the header `x-justai: 1`. A foreign form cannot set it
+  without a CORS preflight; CORS is off by default.
+* **Brute force protection**: after 5 failed attempts within 15 minutes, login is blocked
+  per user name **and** per client address: first 30 s, then doubled up to 15 min. Failed
+  attempts are in the audit log (`auth.login_failed`).
+* Security headers for all responses: Content-Security-Policy (scripts only from the own
+  server, no foreign frames), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
+  `Referrer-Policy: no-referrer`.
 
-## Rollen und Rechte
+## Roles and permissions
 
-Rollen `admin`, `resident`, `guest` (`auth/rbac.py`), Rechtevokabular aus dem SDK.
+Roles `admin`, `resident`, `guest` (`auth/rbac.py`), permission vocabulary from the SDK.
 
-**Gesprochene Gespräche** sind nicht authentifiziert. Eine Session bekommt die
-`default_role` ihres Endpoints (Standard `resident`; an öffentlich zugänglichen
-Orten auf `guest` setzen). Eine erkannte Person kann die Rechte höchstens auf
-`resident` anheben. **Biometrie gewährt nie administrative Rechte**:
-`system.manage`, `devices.manage`, `identity.manage`, `devices.provide` und
-`ai.provide` sind in Gesprächen grundsätzlich ausgeschlossen.
+**Spoken conversations** are not authenticated. A session gets the `default_role` of its
+endpoint (default `resident`; set it to `guest` in publicly accessible places). A
+recognised person can raise the permissions at most to `resident`. **Biometrics never
+grant administrative rights**: `system.manage`, `devices.manage`, `identity.manage`,
+`devices.provide` and `ai.provide` are always excluded in conversations.
 
-**Tools** deklarieren benötigte Rechte und Nebenwirkungen. Folgenreiche Aktionen
-(`requires_confirmation`) führt der Assistent erst nach einer ausdrücklichen
-Bestätigung aus: Gedächtnis löschen, Automation löschen, Gesicht registrieren u. a.
-Die Bestätigung ist an Session und Argumente gebunden, muss in einem *späteren*
-Benutzerbeitrag kommen (das Modell kann sich nicht selbst bestätigen) und läuft ab. Jede
-Tool-Ausführung wird protokolliert (Parameter redigiert).
+Residents may operate devices by voice (`devices.control`: privacy mode, listening pause,
+reconnect, test tone) but not add or configure them. Guests can do neither.
 
-## Geheimnisse
+**Tools** declare required permissions and side effects. Consequential actions
+(`requires_confirmation`) are only carried out by the assistant after an explicit
+confirmation: deleting memories, deleting automations, registering a face and others. The
+confirmation is bound to session and arguments, must come in a *later* user turn (the
+model cannot confirm itself) and expires. Every tool execution is logged (parameters
+redacted).
 
-* `secrets-init` erzeugt beim ersten Start DB-Passwort, Master-Key und
-  Sandbox-Token im Volume `secrets` (Master-Key nur für den Core lesbar, 0400).
-* Plugin-Secrets (`secret_fields`) und Gerätezugangsdaten werden mit Fernet
-  verschlüsselt in der Datenbank gespeichert (Schlüssel aus dem Master-Key). Die
-  API liefert sie nie zurück, die UI zeigt nur „gesetzt“.
-* Logs: structlog-Prozessor und `common/redact.py` entfernen bekannte
-  Schlüsselnamen (password, token, api_key, …) und Zugangsdaten in URLs
-  (`rtsp://user:pass@` → `rtsp://***@`).
-* Backups enthalten Secrets und werden mit `chmod 600` geschrieben
-  ([DEPLOYMENT.md](DEPLOYMENT.md#backup-und-wiederherstellung)).
+## Secrets
 
-## Plugins und generierter Code
+* `secrets-init` creates DB password, master key and sandbox token in the volume `secrets`
+  at the first start (master key only readable by the core, 0400).
+* Plugin secrets (`secret_fields`) and device credentials are stored encrypted with Fernet
+  in the database (key from the master key). The API never returns them, the UI only shows
+  "set".
+* Logs: a structlog processor and `common/redact.py` remove known key names (password,
+  token, api_key, …) and credentials in URLs (`rtsp://user:pass@` → `rtsp://***@`).
+* Backups contain secrets and are written with `chmod 600`
+  ([DEPLOYMENT.md](DEPLOYMENT.md#backup-and-restore)).
 
-* Hochgeladene Plugins sind immer `untrusted`, laufen in der Sandbox und starten
-  ohne Rechte, bis ein Admin sie gewährt ([PLUGINS.md](PLUGINS.md#berechtigungen)).
-* Netzwerkzugriff nur über das Core-Gateway auf die Hosts der Allowlist; private,
-  Loopback-, Link-Local- und Multicast-Adressen sind gesperrt (auch nach
-  DNS-Auflösung).
-* **Selbst entwickelte Tools** (`tools.develop`): Code wird statisch geprüft
-  (verbotene Module wie `os`, `subprocess`, `socket`, `importlib`; verbotene
-  Aufrufe wie `eval`, `exec`, `open`, `getattr`), in der Sandbox getestet,
-  dann von einem Modell auf Sicherheit geprüft und **erst nach Freigabe durch einen
-  Admin** aktiviert. Er wird immer ein `untrusted`-Plugin mit eingeschränkter
-  Rechteliste. Der Core selbst wird nie verändert. Versionen, Rollback und
-  Deaktivierung in der Admin-UI unter *Tools → Entwicklung*.
+## Plugins and generated code
 
-## Datenschutz
+* Uploaded plugins are always `untrusted`, run in the sandbox and start without
+  permissions until an admin grants them ([PLUGINS.md](PLUGINS.md#permissions)).
+* Network access only through the core gateway to the hosts of the allowlist; private,
+  loopback, link-local and multicast addresses are blocked (also after DNS resolution).
+* **Self-developed plugins** (`tools.develop`): the code is checked statically (forbidden
+  modules like `os`, `subprocess`, `socket`, `importlib`; forbidden calls like `eval`,
+  `exec`, `open`, `getattr`), tested in the sandbox, then reviewed for security by a model
+  and only activated **after approval by an admin**. It always becomes an `untrusted`
+  plugin with a restricted permission list (never device control, LAN or system
+  settings). Background jobs run at most every 60 s, at most 5 per plugin. API keys a
+  plugin needs are entered by the admin and stored encrypted. The core itself is never
+  changed. Versions, rollback and disabling in the admin UI under *Tools → Development*
+  ([PLUGINS.md](PLUGINS.md#self-developed-plugins)).
 
-| Thema | Umsetzung |
+## Privacy
+
+| Topic | Implementation |
 | --- | --- |
-| Cloud-KI | global abschaltbar; pro Rolle `local_only`/`prefer_local`/`any`; getrennte Schalter für Kamerabilder, Gesprächsaudio und persönliche Erinnerungen; pro Raum `cloud_media_allowed`. Ein Wechsel von lokal zu Cloud wird nie still gemacht: Event `ai.provider.fallback` und Audit-Eintrag. |
-| Sichtbarkeit | Displays zeigen, ob im Raum gerade zugehört oder gesprochen wird und ob ein Cloud-Realtime-Modell aktiv ist. Die Admin-UI zeigt das für alle Räume. |
-| Kameras | Privatsphärenzonen werden vor jeder Analyse geschwärzt; Vision pro Raum abschaltbar; keine Speicherung von Kamerabildern zu Sichtungen |
-| Biometrie | Gesicht und Stimme nur mit dokumentierter Einwilligung (getrennt je Merkmal); Widerruf löscht alle Merkmale dieser Art; Export möglich; Ähnlichkeitswerte werden nie als Wahrscheinlichkeit dargestellt ([VISION.md](VISION.md#stimmprofile)) |
-| Gedächtnis | Herkunft sichtbar, private Erinnerungen nur für ihre Person, Vergessen dauerhaft ([MEMORY.md](MEMORY.md)) |
-| Audio | Es wird kein Audio gespeichert. Ausnahme: ausdrücklich angeforderte Diagnoseaufnahmen (max. 30 s, Download) |
-| Stimmvergleich | Für „Gespräch fortsetzen?“ wird aus Wakeword und Sprache eines Gesprächs ein Stimm-Fingerabdruck berechnet: nur im Arbeitsspeicher, keiner Person zugeordnet, nach dem Fortsetzungsfenster verworfen; die Sprachdaten selbst werden direkt nach der Berechnung gelöscht. Abschaltbar pro Endpoint (`speaker_check`). |
-| Personenbezogene Ausgaben | nicht auf Displays in gemeinsam genutzten Räumen |
+| Cloud AI | can be switched off globally; per role `local_only`/`prefer_local`/`any`; separate switches for camera images, conversation audio and personal memories; per room `cloud_media_allowed`. A switch from local to cloud is never silent: event `ai.provider.fallback` and audit entry. |
+| Visibility | displays show whether the room is being listened to or spoken to and whether a cloud realtime model is active. The admin UI shows this for all rooms. |
+| Cameras | privacy zones are blacked out before every analysis; vision can be switched off per room; no camera images stored with sightings; privacy mode by voice ("switch off the camera") |
+| Microphones | listening can be paused per room by voice ("stop listening for an hour") or switched off per endpoint |
+| Biometrics | face and voice only with documented consent (separately per trait); revoking deletes all traits of that kind; export possible; similarity values are never shown as a probability ([VISION.md](VISION.md#voice-profiles)) |
+| Memory | provenance visible, private memories only for their person, forgetting is permanent ([MEMORY.md](MEMORY.md)) |
+| Audio | no audio is stored. Exception: explicitly requested diagnostic recordings (max. 30 s, download) |
+| Voice comparison | for "continue the conversation?" a voice fingerprint is calculated from the wakeword and speech of a conversation: only in memory, not assigned to any person, discarded after the continuation window; the speech data itself is deleted right after the calculation. Can be switched off per endpoint (`speaker_check`). |
+| Personal output | not on displays in shared rooms |
 
-### Aufbewahrung
+### Retention
 
-Einstellbar unter *Einstellungen → Aufbewahrung*; ein täglicher Job löscht ältere
-Daten:
+Adjustable under *Settings → Retention*; a daily job deletes older data:
 
-| Daten | Standard |
+| Data | Default |
 | --- | --- |
-| dauerhafte Events | 90 Tage |
-| Gesprächstranskripte | 365 Tage |
-| Sichtungen | 60 Tage |
-| Tool-Protokoll | 90 Tage |
-| Display-Darstellungen | 30 Tage |
-| erledigte Jobs | 14 Tage |
+| durable events | 90 days |
+| conversation transcripts | 365 days |
+| sightings | 60 days |
+| tool log | 90 days |
+| display presentations | 30 days |
+| finished jobs | 14 days |
 
-## Audit-Log
+## Audit log
 
-`GET /api/audit` und Admin-UI → *Diagnose → Audit-Log*: Anmeldungen und
-Fehlversuche, Änderungen an Benutzern, Plugins (Installation, Rechte), Einstellungen,
-Geräten, Automationen, Gedächtnis, Biometrie, Cloud-Fallbacks, Netzwerksuche,
-PTZ-Tracking, Display-Darstellungen.
+`GET /api/audit` and admin UI → *Diagnosis → Audit log*: logins and failed attempts,
+changes to users, plugins (installation, permissions), settings, devices, automations,
+memory, biometrics, cloud fallbacks, network search, PTZ tracking, display presentations,
+device operations by voice (privacy mode, listening pause, image analysis).
 
-## Bekannte Grenzen
+## Known limits
 
-* Gesprochene Befehle sind nicht authentifiziert. Wer im Raum spricht, hat die
-  Rechte des Endpoints. Für sensible Räume `default_role: guest` wählen.
-* Gesichtserkennung lässt sich mit Fotos täuschen (keine Lebenderkennung), Stimmerkennung
-  mit Aufnahmen. Deshalb dienen beide nur der Personalisierung, nie der Autorisierung.
-* Die Sandbox ist eine Container-Isolation mit rlimits, keine VM. Für Code
-  unbekannter Herkunft ist das eine Schutzschicht, kein Freibrief.
-* Der Brute-Force-Schutz hält seinen Zustand im Speicher; ein Neustart setzt ihn zurück.
+* Spoken commands are not authenticated. Whoever speaks in the room has the permissions of
+  the endpoint. For sensitive rooms choose `default_role: guest`.
+* Face recognition can be fooled with photos (no liveness detection), voice recognition
+  with recordings. That is why both only serve personalisation, never authorisation.
+* The sandbox is container isolation with rlimits, not a VM. For code of unknown origin
+  this is one protective layer, not a free pass.
+* The brute force protection keeps its state in memory; a restart resets it.

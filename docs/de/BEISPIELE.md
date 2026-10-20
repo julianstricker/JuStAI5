@@ -1,5 +1,7 @@
 # Was JuStAI5 kann – Beispiele zum Ausprobieren
 
+*Deutsch · [English](../EXAMPLES.md)*
+
 Jedes Gespräch beginnt mit **„Hey Jarvis“**. Danach einfach normal sprechen;
 Rückfragen gehen ohne neues Wakeword. Wer innerhalb von 5 Minuten wieder
 „Hey Jarvis“ sagt, setzt das Gespräch fort („Und wie viele Einwohner hat sie?“).
@@ -30,6 +32,8 @@ Sonst würde die Begrüßung losgehen, während man ohnehin vor der Kamera sitzt
 ## Zeitgesteuert
 
 * „Erinnere mich morgen um 7:30 an den Zahnarzttermin.“
+* „Erinnere mich in einer Viertelstunde daran, den Trockner einzuschalten.“ ✔
+  *(wird genau einmal gesagt)*
 * „Sag mir jeden Werktag um 7 Uhr hier im Bad das Wetter.“
 * „Erinnere mich jeden Sonntagabend um 20 Uhr daran, die Mülltonne rauszustellen.“
 * „Welche Erinnerungen hast du für mich?“ · „Lösch die Erinnerung mit dem
@@ -70,6 +74,21 @@ Was an Google geht und was lokal bleibt, lässt sich pro Raum einstellen
   (Tor schließen) … „Und so, wenn es zu ist.“ Danach: „Ist das Garagentor zu?“
   oder „Sag mir jeden Abend um 22 Uhr Bescheid, wenn das Garagentor noch offen
   ist.“
+
+## Geräte bedienen
+
+Alltägliches geht per Sprache für alle mit der Rolle Bewohner oder Admin; Geräte
+hinzufügen und Zugangsdaten ändern bleibt in der Oberfläche.
+
+* „Schalte die Kamera im Schlafzimmer aus.“ ✔ · „Alle Kameras aus.“ · „Kamera wieder
+  an.“ ✔ *(Privatsphäre-Modus: kein Bild, kein Ton; Tapo-Kameras)*
+* „Hör im Schlafzimmer eine Stunde nicht zu.“ ✔ Der Raum reagiert nicht mehr auf
+  „Hey Jarvis“ und hört nach der Pause von selbst wieder zu. „Hör im Schlafzimmer
+  wieder zu“ beendet die Pause vorher (aus einem anderen Raum oder in der Oberfläche).
+* „Die Kamera im Büro hat keinen Ton, verbinde sie neu.“ *(dauert ein paar Sekunden)*
+* „Teste den Lautsprecher in der Küche.“ *(kurzer Ton)*
+* „Hör auf, die Bilder der Wohnzimmerkamera auszuwerten.“ · „… werte sie wieder aus.“
+  *(die Kamera läuft weiter, nur die lokale Bildanalyse pausiert)*
 
 ## Durchsagen in andere Räume
 
@@ -118,12 +137,25 @@ Mit einem gekoppelten Display, Tablet oder Fernseher im selben Raum:
 
 ## Neue Fähigkeiten
 
+Gibt es für etwas noch kein Werkzeug, schreibt der Assistent ein Plugin: mit Tests
+und Sicherheitsprüfung, in einer abgeschotteten Umgebung (Sandbox). Freigeben muss es
+ein Admin unter *Tools*; danach benutzt der Assistent es sofort.
+
 * „Ich hätte gern eine Funktion, die mir sagt, in welcher Kalenderwoche ein Datum
   liegt.“ ✔
-  Gibt es dafür noch kein Werkzeug, schreibt der Assistent eines: mit Tests und
-  Sicherheitsprüfung, in einer abgeschotteten Umgebung. Freigeben muss es ein
-  Admin unter *Tools*; danach kann er es sofort benutzen.
-* „Was kannst du alles?“
+* „Bau ein Plugin, das alle 5 Minuten prüft, ob es in Bozen zu regnen anfängt, und
+  mir dann Bescheid sagt.“
+  Plugins können im Hintergrund laufen (höchstens jede Minute), *Ereignisse* melden
+  und damit Automationen auslösen: „Wenn es anfängt zu regnen, sag es mir im
+  Wohnzimmer.“
+* „Bau ein Plugin, das mir sagt, wenn der Strom unter 20 Cent kostet.“ Braucht das
+  Plugin einen API-Key oder andere Einstellungen, fragt es danach; der Admin trägt sie
+  unter *Plugins* ein, bevor es startet (Status „Einstellungen fehlen“).
+* „Ändere das Regen-Plugin so, dass es auch meldet, wenn der Regen aufhört.“
+  Überarbeitet ein selbst gebautes Plugin; die neue Version wird wieder getestet und
+  freigegeben.
+* „Welche Plugins hast du gebaut?“ · „Was kannst du alles?“
+* „Welche Ereignisse kann ich für Automationen nutzen?“
 
 ## Rund ums System
 
@@ -144,3 +176,6 @@ Mit einem gekoppelten Display, Tablet oder Fernseher im selben Raum:
   Tiere und etwa 80 Alltagsgegenstände (Auto, Fahrrad, Flasche, Laptop, Handy …).
 * Kameras, die beim Abspielen ihr Mikrofon stummschalten (z. B. Tapo C200), lassen
   sich nicht unterbrechen, während der Assistent spricht.
+* Selbst gebaute Plugins laufen in der Sandbox: Sie erreichen nur die im Manifest
+  genannten Internet-Adressen und bekommen nie Zugriff auf Geräte, das Heimnetz oder
+  die Systemkonfiguration.

@@ -1,20 +1,22 @@
-# Tests und Teststatus
+# Tests and test status
 
-Stand: 2026-10-15. Dieses Dokument trennt klar zwischen **automatisiert getestet**,
-**live gegen die laufende Docker-Instanz geprüft**, **mit echter Hardware geprüft**
-und **nicht getestet**.
+*[Deutsch](de/TESTING.md) · English*
 
-## Testsuiten
+As of: 2026-10-20. This document clearly separates **tested automatically**, **checked
+live against the running Docker instance**, **checked with real hardware** and **not
+tested**.
 
-| Suite | Ort | Braucht | Ergebnis |
+## Test suites
+
+| Suite | Location | Needs | Result |
 | --- | --- | --- | --- |
-| Unit | `backend/tests/unit` | nichts | 129 bestanden |
-| Audio mit echten Modellen | `backend/tests/audio` | Modelle (`JUSTAI_TEST_MODELS_DIR`) | 9 bestanden; `test_speaker.py` schlägt in etwa 1 von 4 Läufen fehl (Piper-Synthese ist zufällig, fremde Stimme dann 0,49 statt < 0,45) |
-| Datenbank | `backend/tests/db` | PostgreSQL + pgvector (`JUSTAI_TEST_DATABASE_URL`) | 3 bestanden |
-| End-to-End | `backend/tests/e2e` | laufende Instanz (`JUSTAI_E2E_URL`, `JUSTAI_E2E_PASSWORD`), Gemini | 13 bestanden (siehe Hinweis) |
-| Beispiel-Plugin | `plugins/example-weather/tests` | nichts | 5 bestanden |
-| Frontend | `frontend` | Node | `tsc` und ESLint fehlerfrei |
-| Statische Analyse | ganzes Repo | – | ruff fehlerfrei, mypy `--strict` fehlerfrei (Backend, SDK, Sandbox) |
+| Unit | `backend/tests/unit` | nothing | 138 passed |
+| Audio with real models | `backend/tests/audio` | models (`JUSTAI_TEST_MODELS_DIR`) | 9 passed; `test_speaker.py` fails in about 1 of 4 runs (Piper synthesis is random, the other voice then scores 0.49 instead of < 0.45) |
+| Database | `backend/tests/db` | PostgreSQL + pgvector (`JUSTAI_TEST_DATABASE_URL`) | 3 passed |
+| End-to-end | `backend/tests/e2e` | running instance (`JUSTAI_E2E_URL`, `JUSTAI_E2E_PASSWORD`), Gemini | 13 passed (see note) |
+| Example plugin | `plugins/example-weather/tests` | nothing | 6 passed |
+| Frontend | `frontend` | Node | `tsc` and ESLint without errors; a missing translation fails `tsc` |
+| Static analysis | whole repo | – | ruff without errors, mypy `--strict` without errors (backend, SDK, sandbox) |
 
 ```bash
 uv run pytest backend/tests/unit
@@ -22,143 +24,151 @@ uv run python scripts/fetch_models.py .models
 JUSTAI_TEST_MODELS_DIR=$PWD/.models uv run pytest backend/tests/audio
 JUSTAI_TEST_DATABASE_URL=postgresql+asyncpg://justai:pw@127.0.0.1:55432/justai_test uv run pytest backend/tests/db
 JUSTAI_E2E_URL=http://localhost:8080 JUSTAI_E2E_PASSWORD=… uv run pytest backend/tests/e2e
-uv run pytest plugins/example-weather/tests     # getrennt aufrufen (eigene pytest-Konfiguration)
+uv run pytest plugins/example-weather/tests     # run separately (own pytest configuration)
 cd frontend && npm run typecheck && npm run lint
 ```
 
-Eine Test-Datenbank startet man z. B. mit
+A test database can be started e.g. with
 `docker run -d --name j5-testdb -e POSTGRES_USER=justai -e POSTGRES_PASSWORD=pw -e POSTGRES_DB=justai_test -p 127.0.0.1:55432:5432 pgvector/pgvector:0.8.1-pg17`.
 
-### Was die Suiten abdecken
+### What the suites cover
 
-* **Unit**: Event-Bus (Isolation, Duplikate, Hop-Limit), Output Router (alle
-  Regeln), Tool-Executor (Rechte, Bestätigung, Timeout, Fehler), Display-Komponenten,
-  Echo-Bausteine (Referenzpuffer, GCC-PHAT, Tracker), Wakeword-Arbitrierung (inkl.
-  später Duplikate), Kalibrierung (Onset), KI-Router (Fallback, hängender Provider,
-  Cooldown, Rollen-Autokonfiguration), Gesprächs-Zustandsautomat, Vision-Logik,
-  Automationsmodell (inkl. Ergänzung fehlender Typen), PTZ-Regelung, statische
-  Prüfung generierten Codes, Login-Drosselung, Discovery-Zusammenführung.
-* **Audio**: Selbstgespräch mit echten Modellen in einem simulierten Raum
-  ([AUDIO.md](AUDIO.md#getestet)).
-* **DB**: dauerhaftes Vergessen im Gedächtnis ([MEMORY.md](MEMORY.md)).
-* **E2E**: zwei simulierte Räume mit akustischem Echo, echte lokale STT/TTS/Wakeword,
-  Gemini als LLM: Gespräch, Raum-Routing, kein Echo, Timeout, doppelte Wakewords,
-  parallele Gespräche, Display-Kopplung mit Bestätigung, proaktive Automation,
-  Gespräch fortsetzen (gleiche Stimme 0,82 → fortgesetzt, Rückfrage „wie viele Einwohner
-  hat sie?“ richtig auf Rom bezogen; andere Stimme 0,26 → neues Gespräch),
-  Sprech-Automation startet einen Dialog, Stimmprofil: aus echter Gesprächssprache
-  angelegt (3 Proben), beim nächsten „Hey Jarvis“ mit gleicher Stimme erkannt
-  (Ähnlichkeit 0,75), andere Stimme nicht. Der Ablauf „im Gespräch anlegen lassen“
-  hat beim ersten Lauf funktioniert; Wiederholungen scheiterten am erschöpften
-  Gemini-Kontingent (429), nicht an der Funktion.
-  Geräte-App: ein skriptgesteuertes Browser-Gerät koppelt sich mit Mikrofon,
-  Lautsprecher und Kamera, bekommt automatisch einen Endpoint mit 4 Rollen,
-  liefert Snapshots; „Hey Jarvis“ und eine Frage über das WebSocket-Mikrofon
-  starten ein Gespräch, die Antwort kommt als Audio beim Gerät an.
+* **Unit**: event bus (isolation, duplicates, hop limit), output router (all rules), tool
+  executor (permissions, confirmation, timeout, errors), display components, echo
+  building blocks (reference buffer, GCC-PHAT, tracker), wakeword arbitration (incl. late
+  duplicates), calibration (onset), AI router (fallback, hanging provider, cooldown, role
+  auto-configuration), conversation state machine, vision logic, automation model (incl.
+  filling in missing types, `at` fires once), PTZ control, static check of generated code,
+  plugin generation prompts, `FakePluginContext` (jobs, events, HTTP routes), required
+  plugin settings, voice control tools (privacy mode, listening pause with resume),
+  login throttling, discovery merging.
+* **Audio**: talking to itself with real models in a simulated room
+  ([AUDIO.md](AUDIO.md#tested)).
+* **DB**: permanent forgetting in memory ([MEMORY.md](MEMORY.md)).
+* **E2E**: two simulated rooms with acoustic echo, real local STT/TTS/wakeword, Gemini as
+  LLM: conversation, room routing, no echo, timeout, duplicate wakewords, parallel
+  conversations, display pairing with confirmation, proactive automation, continuing a
+  conversation (same voice 0.82 → continued, follow-up "how many people live there?"
+  correctly related to Rome; other voice 0.26 → new conversation), a speaking automation
+  starts a dialogue, voice profile: created from real conversation speech (3 samples),
+  recognised at the next "Hey Jarvis" with the same voice (similarity 0.75), another
+  voice not. The flow "have it created in conversation" worked on the first run;
+  repetitions failed because of the exhausted Gemini quota (429), not because of the
+  function. Device app: a scripted browser device pairs with microphone, speaker and
+  camera, automatically gets an endpoint with 4 roles, delivers snapshots; "Hey Jarvis"
+  and a question over the WebSocket microphone start a conversation, the answer arrives
+  as audio at the device. Questions are in German and Italian; since 2026-10-20 the suite
+  runs with the English system prompt and tool texts (13/13).
 
-**Hinweis zu E2E:** Die Suite nutzt das konfigurierte Cloud-LLM (Gemini). Am
-2026-10-15 lieferte Gemini zeitweise gleichzeitig 429 (Kontingent erschöpft) für
-`gemini-3.8-flash` und 503 (Überlastung) für den Fallback. In diesem Fall
-antwortet der Assistent korrekt mit einer Fehlermeldung, und drei Tests schlugen
-fehl. Die direkte Wiederholung bestand 5/5, obwohl im selben Zeitraum 8 weitere
-429/503-Fehler über die Fallback-Kette abgefangen wurden. Für stabile Läufe ein
-lokales LLM als zusätzlichen Fallback eintragen.
+**Note on E2E:** the suite uses the configured cloud LLM (Gemini). On 2026-10-15 Gemini at
+times returned 429 (quota exhausted) for `gemini-3.8-flash` and 503 (overload) for the
+fallback at the same time. In this case the assistant answers correctly with an error
+message, and three tests failed. The direct repetition passed 5/5, although 8 more
+429/503 errors were caught by the fallback chain in the same period. For stable runs add
+a local LLM as an additional fallback.
 
-## Abnahmekriterien
+## Acceptance criteria
 
-Legende: ✅ nachgewiesen · 🟡 teilweise (was fehlt, steht dabei) · ⏳ offen.
+Legend: ✅ shown · 🟡 partially (what is missing is stated) · ⏳ open.
 
-| # | Kriterium | Status | Nachweis |
+| # | Criterion | Status | Evidence |
 | --- | --- | --- | --- |
-| 1 | Geräteerkennung | ✅ | Netzwerksuche findet die **Tapo C200** in 6 s, schlägt den Tapo-Treiber mit Modell „C200“ vor und erkennt sie als bereits angelegt. Eingerichtet zeigt sie die gemessenen Fähigkeiten (Video, Audio rein/raus, Snapshot). PTZ fehlt in der Liste, weil dafür das Cloud-Passwort fehlt. Das ist korrekt ermittelt, nicht geraten. Die C410 (Akku) war meist im Schlaf. |
-| 2 | Raumzuordnung | ✅ | Echte Hardware: C200 (Kamera, Mikrofon, Lautsprecher) als Endpoint „Poolhaus Kamera“ im Raum Poolhaus. E2E: kombinierte Geräte pro Raum. |
-| 3 | Sprachgespräch | ✅ | Echte Hardware: „Hey Jarvis“ an der C200 → Session → Antwort (Gemini Live) über den Lautsprecher der C200. E2E: Pipeline-Modus mit Antwort im selben Raum. |
-| 4 | Keine Echo-Schleife | ✅ | Echte Hardware (C200): keine Selbstauslösung. Audio-Tests: Antwort enthält absichtlich das Wakeword → kein Wake, kein durchgelassenes Echo. E2E: keine Echo-Turns im Transkript. |
-| 5 | Timeout | ✅ | Echte Hardware und E2E: Ende durch Inaktivität (`end_reason = inactivity`), danach ist wieder ein Wakeword nötig. |
-| 6 | Keine falsche Raumausgabe | ✅ | E2E: Küchenlautsprecher bekommt kein einziges Frame, wenn im Wohnzimmer gefragt wird. Unit: Output-Router-Regeln. |
-| 7 | Doppelte Wakewords | ✅ | E2E: dasselbe Wakeword in zwei Räumen (leiser in der Küche) → genau eine Session, im lauteren Raum. Unit: Arbitrierung inkl. verspäteter Duplikate. Mit zwei echten Mikrofonen nicht getestet (C410 nicht dauerhaft erreichbar). |
-| 8 | Parallele Gespräche | ✅ | E2E: zwei Räume in getrennten Arbitrierungsgruppen fragen gleichzeitig, jeder bekommt seine Antwort. |
-| 9 | Personenregistrierung | 🟡 | Vorstellen per Sprache (`identity.introduce`), Einwilligung mit Nachweis und Registrierung mit Qualitätsprüfung sind implementiert; `identity.register_face` verlangt eine ausdrückliche Bestätigung (Mechanismus unit-getestet). **Offen:** der Ablauf mit einer echten Person vor der Kamera. |
-| 10 | Wiedererkennung | 🟡 | YuNet/SFace sind im Container geladen (Plugin `vision-opencv` läuft, Gesichtsprüfung in der Vision-Pipeline aktiv); Abstimmung über starke und schwache Treffer ist implementiert. **Offen:** Test mit echter Person. |
-| 11 | PTZ-Tracking | 🟡 | Regelung unit-getestet (Totzone, Schrittweite, Rate, Zielbindung, Heimkehr, manuelle Übersteuerung). Echte C200: manuelles Schwenken funktioniert (rechts und zurück, per Bildvergleich bestätigt). **Offen:** Verfolgen einer Person. |
-| 12 | Erinnerung | ✅ | Live: „Merk dir …“ in Session A, richtige Antwort in neuer Session B. Vergessen mit Rückfrage; dauerhaft (DB-Test und live). |
-| 13 | Automation | 🟡 | Live: der Satz aus dem Kriterium (mit Personenname) legt eine korrekte Automation an. E2E: das Erkennungs-Event startet im richtigen Raum eine proaktive Begrüßung, `once` greift. **Offen:** Auslösung durch eine echte Gesichtserkennung (hängt an 9/10). |
-| 14 | Display-Ausgabe | ✅ | E2E: Display im Wohnzimmer gekoppelt und gewählt. Echter Browser: Dashboard mit Kurs, Chart und Tabelle gerendert. |
-| 15 | Display-Bestätigung | ✅ | E2E: das Tool wartet nachweislich auf das `ack`. Echter Browser: `ack` nach dem Zeichnen; Hintergrundseite meldet sofort „nicht sichtbar“, statt Erfolg vorzutäuschen. |
-| 16 | Provider-Wechsel | ✅ | Live: Rolle `conversation` nur per Konfiguration auf einen neuen OpenAI-kompatiblen Endpoint umgestellt (Gemini über dessen OpenAI-Schnittstelle); die Antwort kam laut Nutzungsprotokoll von `oai:gemini-oai`. Keine Codeänderung. Fallback bei Überlastung (503/429) im Betrieb beobachtet. |
-| 17 | Plugin-Installation | ✅ | Live: Zip hochgeladen → als `untrusted` in der Sandbox → Start ohne Rechte abgelehnt → Recht gewährt → aktiv, Tool erscheint, der Assistent nutzt es → deaktiviert → Tool verschwindet. |
-| 18 | Tool-Entwicklung | ✅ | Live: „Kalenderwoche und Wochentag zu einem Datum“ → Spezifikation, Code, Tests → statische Prüfung → Tests in der Sandbox (2 bestanden) → Sicherheitsreview → Freigabe → der Assistent beantwortet „KW von 24.12.2026?“ korrekt mit dem neuen Tool → Deaktivierung. |
-| 19 | Neustart | ✅ | `docker compose down` + `up`: Räume, Geräte, Endpoints, Plugins (aktiv), Personen, Erinnerungen, Automationen, KI- und Systemeinstellungen identisch. Zusätzlich Backup in ein getrenntes Projekt wiederhergestellt. |
-| 20 | Fehlerbehandlung | ✅ | Live: die C410 ist meist offline, die C200 arbeitet unbeeinflusst. Neustarts einzelner Dienste: Medienserver → Kameras nach 2 s wieder da; Datenbank → API nach 3 s; Sandbox → Sandbox-Plugins nach 44 s automatisch neu gestartet. Ein fehlschlagendes Plugin (fehlende Rechte) wird `failed` markiert, alles andere läuft weiter. Gemini-Überlastung: Fallback statt Ausfall. Unit: Bus-Fehlerisolation, hängende Provider. |
+| 1 | Device discovery | ✅ | The network search finds the **Tapo C200** in 6 s, suggests the Tapo driver with model "C200" and recognises it as already added. Once set up it shows the measured capabilities (video, audio in/out, snapshot, PTZ and privacy mode with the cloud password). The C410 (battery) was mostly asleep. |
+| 2 | Room assignment | ✅ | Real hardware: C200 (camera, microphone, speaker) as endpoint "Pool house camera" in the room pool house. E2E: combined devices per room. |
+| 3 | Voice conversation | ✅ | Real hardware: "Hey Jarvis" at the C200 → session → answer (Gemini Live) through the C200 speaker. E2E: pipeline mode with the answer in the same room. |
+| 4 | No echo loop | ✅ | Real hardware (C200): no self-triggering. Audio tests: the answer deliberately contains the wakeword → no wake, no echo passed through. E2E: no echo turns in the transcript. |
+| 5 | Timeout | ✅ | Real hardware and E2E: end through inactivity (`end_reason = inactivity`), afterwards a wakeword is needed again. |
+| 6 | No output in the wrong room | ✅ | E2E: the kitchen speaker does not get a single frame when the question is asked in the living room. Unit: output router rules. |
+| 7 | Duplicate wakewords | ✅ | E2E: the same wakeword in two rooms (quieter in the kitchen) → exactly one session, in the louder room. Unit: arbitration incl. late duplicates. Not tested with two real microphones (C410 not permanently reachable). |
+| 8 | Parallel conversations | ✅ | E2E: two rooms in separate arbitration groups ask at the same time, each gets its answer. |
+| 9 | Person registration | 🟡 | Introducing by voice (`identity.introduce`), consent with evidence and registration with quality check are implemented; `identity.register_face` requires an explicit confirmation (mechanism unit-tested). **Open:** the flow with a real person in front of the camera. |
+| 10 | Recognition | 🟡 | YuNet/SFace are loaded in the container (plugin `vision-opencv` runs, face check active in the vision pipeline); voting over strong and weak hits is implemented. **Open:** test with a real person. |
+| 11 | PTZ tracking | 🟡 | Control loop unit-tested (dead zone, step size, rate, target binding, return home, manual override). Real C200: manual panning works (right and back, confirmed by image comparison), home position, room search. **Open:** following a person. |
+| 12 | Memory | ✅ | Live: "Remember …" in session A, correct answer in a new session B. Forgetting with follow-up question; permanent (DB test and live). |
+| 13 | Automation | 🟡 | Live: the sentence from the criterion (with a person name) creates a correct automation. E2E: the recognition event starts a proactive greeting in the right room, `once` applies. **Open:** triggering by a real face recognition (depends on 9/10). |
+| 14 | Display output | ✅ | E2E: display in the living room paired and chosen. Real browser: dashboard with price, chart and table rendered. |
+| 15 | Display confirmation | ✅ | E2E: the tool provably waits for the `ack`. Real browser: `ack` after painting; a background page immediately reports "not visible" instead of faking success. |
+| 16 | Provider switch | ✅ | Live: role `conversation` switched by configuration only to a new OpenAI-compatible endpoint (Gemini through its OpenAI interface); according to the usage log the answer came from `oai:gemini-oai`. No code change. Fallback on overload (503/429) observed in operation. |
+| 17 | Plugin installation | ✅ | Live: zip uploaded → as `untrusted` in the sandbox → start without permissions refused → permission granted → active, tool appears, the assistant uses it → disabled → tool disappears. |
+| 18 | Tool development | ✅ | Live: "calendar week and weekday of a date" → specification, code, tests → static check → tests in the sandbox (2 passed) → security review → approval → the assistant answers "calendar week of 24.12.2026?" correctly with the new tool → disabled. Live (2026-10-20): "a plugin that checks every 5 minutes whether it starts raining in Bolzano and reports it" → plugin with tool, background job and event type; revised once; approved → runs in the sandbox, the event type `plugin.gen-rain-monitor.rain_started` is in the catalog and offered for automations. **Open:** a real rain start triggering an automation. |
+| 19 | Restart | ✅ | `docker compose down` + `up`: rooms, devices, endpoints, plugins (active), people, memories, automations, AI and system settings identical. Additionally a backup was restored into a separate project. |
+| 20 | Error handling | ✅ | Live: the C410 is mostly offline, the C200 works unaffected. Restarts of single services: media server → cameras back after 2 s; database → API after 3 s; sandbox → sandbox plugins restarted automatically after 44 s. A failing plugin (missing permissions) is marked `failed`, everything else keeps running. Gemini overload: fallback instead of failure. Unit: bus error isolation, hanging providers. |
 
-### Was nur der Benutzer machen kann (offene Punkte)
+### Further live checks (2026-10-20)
 
-* **9/10/13 mit echter Person**: vor die C200 stellen, „Ich bin …“ sagen, der
-  Gesichtsregistrierung zustimmen. Später erneut vor die Kamera gehen; die
-  Begrüßungs-Automation sollte dann auslösen.
-* **11**: Im Gerät *Tapo C200* das Tapo-Cloud-Passwort oder ein Kamerakonto
-  (Tapo-App → Kamera → Erweitert → Kamerakonto) eintragen, dann `ptz.follow`.
-* **Barge-in mit echter Hardware**: Die C200 schaltet ihr Mikrofon während der
-  Wiedergabe stumm, damit ist Unterbrechen physikalisch unmöglich. Für einen Test
-  braucht es ein Gerät mit echtem Full-Duplex (z. B. USB-Freisprecheinrichtung).
-* **Display auf einem Fernseher**: bisher nur im Desktop-Browser geprüft.
-* **Installationsskript** (`scripts/install.sh`, 2026-10-16, als eigenes
-  Compose-Projekt neben der laufenden Instanz): per `curl … | bash` in leerem
-  Ordner (klont von GitHub, Ports 8080/8443 belegt → 8081/8444, LAN-IP erkannt,
-  zufälliges Passwort angezeigt und Anmeldung damit erfolgreich); interaktiv in
-  einem Pseudo-Terminal (eigenes Passwort, Anmeldung erfolgreich, `.env` mit Rechten
-  600); erneuter Aufruf (behält `.env`, baut neu). HTTPS über die LAN-IP mit dem
-  CA-Zertifikat geprüft. Nicht getestet: Docker-Neuinstallation auf einem Rechner
-  ohne Docker.
-* **Geräte-App auf echten Handys/Tablets**: Setup-Seite, Kopplung und
-  Einstellungskarte im Desktop-Browser geprüft, der Medienweg per E2E-Test.
-  Headless-Chrome mit simulierter Kamera/Mikrofon und strenger Autoplay-Regel:
-  nach dem Koppeln und nach einem Neuladen ohne Berührung kommen Kamerabilder und
-  Mikrofon an; das Livebild (MJPEG) läuft in der Admin-UI. Echo-
-  Unterdrückung des Browsers, Hintergrundverhalten mobiler Browser und die
-  Zertifikatsinstallation auf Android/iOS sind noch nicht auf echten Geräten
-  getestet.
+* **Privacy mode by voice** (text chat to the C200): "switch off the camera" → privacy
+  mode on, checked directly on the camera with pytapo; "switch it on again" → off.
+* **Listening pause**: "stop listening here for one minute" → wakeword off at the
+  endpoint, a one-time automation switched it on again after 60 s and ran exactly once.
 
-## Durch Live-Tests gefundene und behobene Fehler
+### What only the user can do (open points)
 
-Live-Prüfungen gegen die laufende Instanz haben Fehler gefunden, die keine
-Unit-Tests abgedeckt hatten:
+* **9/10/13 with a real person**: stand in front of the C200, say "I am …", agree to the
+  face registration. Later step in front of the camera again; the greeting automation
+  should then fire.
+* **11**: walk in front of the C200 and say "follow me" (`ptz.follow`).
+* **Barge-in with real hardware**: the C200 mutes its microphone during playback, so
+  interrupting is physically impossible. A test needs a device with real full duplex
+  (e.g. a USB speakerphone).
+* **Display on a TV**: so far only checked in a desktop browser.
+* **Installation script** (`scripts/install.sh`, 2026-10-16, as its own Compose project
+  next to the running instance): via `curl … | bash` in an empty folder (clones from
+  GitHub, ports 8080/8443 taken → 8081/8444, LAN IP detected, random password shown and
+  login with it successful); interactively in a pseudo terminal (own password, login
+  successful, `.env` with permissions 600); running it again (keeps `.env`, rebuilds).
+  HTTPS via the LAN IP with the CA certificate checked. Not tested: Docker installation on
+  a machine without Docker.
+* **Device app on real phones/tablets**: setup page, pairing and settings card checked in
+  the desktop browser, the media path by E2E test. Headless Chrome with simulated
+  camera/microphone and a strict autoplay rule: after pairing and after a reload without a
+  touch, camera images and microphone arrive; the live image (MJPEG) runs in the admin UI.
+  The browser's echo cancellation, background behaviour of mobile browsers and certificate
+  installation on Android/iOS have not been tested on real devices yet.
+* **Voice conversations in English and Italian with the real camera**: so far German by
+  voice; Italian only through the E2E suite.
 
-| Fehler | Behebung |
+## Bugs found and fixed by live tests
+
+Live checks against the running instance found bugs that no unit test had covered:
+
+| Bug | Fix |
 | --- | --- |
-| Vergessenes kam durch die Gedächtnis-Extraktion der alten Session zurück | Grabsteine, DB-Test |
-| Dashboard stürzte nach dem Login ab (`_cooldowns` als Rolle in `/api/ai/status`) | eigenes Feld, defensive UI |
-| „Begrüße X das nächste Mal“: Modell ließ `type` weg und nutzte den Namen statt der ID; Antwort blieb leer | Typen ergänzen, Namen auflösen, Validierungsdetails an das Modell, Ersatzantwort |
-| Sandbox-Testlauf je nach Zufalls-Verzeichnisname nicht importierbar | fester Pfad, `pythonpath` |
-| Generierter Klassenname umbenannt, Tests fanden ihn nicht | Alias statt Umbenennen |
-| Zweites Tool-Projekt mit gleichem Namen brach ab (Unique-Constraint) | eindeutige Plugin-IDs |
-| Deaktivieren der C200 hing über 2 Minuten (Gerät als deaktiviert markiert, Verbindungen blieben) | `Supervisor.stop` wartete unbegrenzt auf Tasks, die auf Abbruch nicht reagieren, und verschluckte dabei den eigenen Abbruch. Jetzt: höchstens 5 s, dann Warnung mit der Stelle, an der der Task hängt; jeder Schritt beim Stoppen eines Geräts (Audio, Vision, Treiber, go2rtc) höchstens 10 s, langsame Schritte werden mit Namen geloggt. Live: Deaktivieren 0,2–0,3 s |
-| Kameralautsprecher (C200) stumm, obwohl alle Bytes an der Kamera ankamen; auch nach go2rtc- und Kamera-Neustart. Eine frische zweite Verbindung und die Tapo-App waren hörbar | eigene, pro Gespräch neu geöffnete Lautsprecher-Verbindung (`<stream>_talk`), Schließen nach 90 s Stille; Zustellprüfung erkennt jetzt auch Kameraverbindungen, die go2rtc als Consumer führt ([AUDIO.md](AUDIO.md)). Testton danach technisch zugestellt (Login 4,1 s) |
-| Erinnerung „in einer Viertelstunde“ wiederholte sich alle 5 s (18× in 1,5 min, dann erst durch das Limit von 20 Läufen pro Stunde gestoppt) | Der Zeitplaner prüfte bei `at`-Triggern `run_count` an seiner zwischengespeicherten Kopie, die nur die Datenbank hochzählte. Jetzt: einmalig über den Auslösezeitpunkt, `at`-Automationen werden nach dem Lauf deaktiviert, Cache nach jedem Lauf neu geladen. Unit-Test und live geprüft (1 Lauf, danach deaktiviert) |
-| „Hey Jarvis, wie spät ist es?“ ohne Pause blieb unbeantwortet: Audio zwischen Wakeword und bereiter Session (1,4–1,7 s) wurde verworfen | behoben: Puffer pro Endpoint, Wiedergabe ab dem Wakeword mit VAD-Entscheidung Pause/keine Pause, Pipeline ignoriert Kurz-Äußerungen; E2E in beiden Modi ([AUDIO.md](AUDIO.md#sprechen-ohne-pause-nach-dem-wakeword)) |
-| Installation: mit geändertem `JUSTAI_HTTPS_PORT` (z. B. 8444, weil 8443 belegt) lauschte der Core im Container auf 8444, Docker leitete aber auf 8443 weiter – HTTPS nicht erreichbar | behoben: Container-Port fest 8443, `JUSTAI_HTTPS_PORT` nur noch Host-Port und Anzeige |
-| Geräte-App: Livebild in der Admin-UI „nicht verfügbar“ (fragte MP4 von go2rtc an, App-Kameras haben keinen Stream); nach dem automatischen Neuladen bei Updates keine Kamera/kein Mikrofon mehr, bis jemand tippt | behoben: MJPEG-Livebild, Selbststart, Ton per Berührung nachholbar; im Browser geprüft |
-| Display: doppelte Achsenbeschriftung, „Gespräch“-Anzeige durch Text-Chats, unklare Fehler bei unsichtbarer Seite, kein Neuladen nach Updates | behoben, im Browser geprüft |
-| Zeitzone der Einstellungen wurde von Automationen ignoriert; Schalter ohne Funktion in den Einstellungen | verdrahtet bzw. entfernt |
-| Kein Schutz gegen Passwort-Raten, keine Security-Header | Drosselung, CSP u. a. |
-| Discovery schlug für Tapo den ONVIF-Treiber vor (ohne Lautsprecher) | herstellerspezifischer Treiber hat Vorrang |
-| Nach einem Neustart von go2rtc blieben alle Kameras unerreichbar (Streams nur im Speicher) | Watchdog stellt Streams wieder her; live: 2 s |
-| Erste Ausgabe nach einer Pause unhörbar (Kanal nach 2 min geschlossen, Neuaufbau zu langsam) | Kanal bleibt offen, Sprache wartet auf Bereitschaft |
-| Ton blieb nach Kamera-Reconnect dauerhaft stumm (go2rtc holte ab, lieferte aber nicht an die Kamera) | Zustellungsprüfung an go2rtc, automatischer Neuaufbau |
+| Forgotten content came back through the memory extraction of the old session | tombstones, DB test |
+| Dashboard crashed after login (`_cooldowns` as a role in `/api/ai/status`) | own field, defensive UI |
+| "Greet X the next time": the model left out `type` and used the name instead of the ID; the answer stayed empty | fill in types, resolve names, validation details to the model, fallback answer |
+| Sandbox test run not importable depending on the random directory name | fixed path, `pythonpath` |
+| Generated class name renamed, tests could not find it | alias instead of renaming |
+| Second tool project with the same name aborted (unique constraint) | unique plugin IDs |
+| Disabling the C200 hung for over 2 minutes (device marked disabled, connections stayed) | `Supervisor.stop` waited without limit for tasks that do not react to cancellation and swallowed its own cancellation. Now: at most 5 s, then a warning with the place where the task hangs; every step when stopping a device (audio, vision, driver, go2rtc) at most 10 s, slow steps are logged by name. Live: disabling 0.2–0.3 s |
+| Camera speaker (C200) silent although all bytes arrived at the camera; also after restarting go2rtc and the camera. A fresh second connection and the Tapo app were audible | own speaker connection opened anew per conversation (`<stream>_talk`), closed after 90 s of silence; the delivery check now also recognises camera connections that go2rtc lists as a consumer ([AUDIO.md](AUDIO.md)). Test tone then delivered (login 4.1 s) and heard |
+| Reminder "in a quarter of an hour" repeated every 5 s (18× in 1.5 min, only then stopped by the limit of 20 runs per hour) | the scheduler checked `run_count` of `at` triggers on its cached copy, which only the database incremented. Now: once via the trigger time, `at` automations are disabled after the run, cache reloaded after every run. Unit test and checked live (1 run, then disabled) |
+| Plugin generation crashed ("Replacement index 0 out of range") after the prompt translation | literal braces in the prompt escaped, unit test |
+| Generated plugin tests failed ("'dict' object is not callable"): the model passed JSON directly as an HTTP route | `FakePluginContext` accepts `dict`/`list`/`str`/functions as routes, unit test |
+| "Hey Jarvis, what time is it?" without a pause stayed unanswered: audio between wakeword and ready session (1.4–1.7 s) was dropped | fixed: buffer per endpoint, replay from the wakeword with VAD decision pause/no pause, pipeline ignores short utterances; E2E in both modes ([AUDIO.md](AUDIO.md#speaking-without-a-pause-after-the-wakeword)) |
+| Installation: with a changed `JUSTAI_HTTPS_PORT` (e.g. 8444 because 8443 was taken) the core listened on 8444 inside the container, but Docker forwarded to 8443 – HTTPS unreachable | fixed: container port fixed at 8443, `JUSTAI_HTTPS_PORT` only host port and display |
+| Device app: live image in the admin UI "not available" (requested MP4 from go2rtc, app cameras have no stream); after the automatic reload on updates no camera/microphone until someone tapped | fixed: MJPEG live image, self-start, sound can be enabled later by a touch; checked in the browser |
+| Display: duplicate axis labels, "conversation" indicator caused by text chats, unclear errors for an invisible page, no reload after updates | fixed, checked in the browser |
+| The time zone from the settings was ignored by automations; switches without function in the settings | wired up or removed |
+| No protection against password guessing, no security headers | throttling, CSP and others |
+| Discovery suggested the ONVIF driver for Tapo (without speaker) | the manufacturer-specific driver has priority |
+| After a go2rtc restart all cameras stayed unreachable (streams only in memory) | a watchdog restores the streams; live: 2 s |
+| First output after a pause inaudible (channel closed after 2 min, rebuilding too slow) | channel stays open, speech waits for readiness |
+| Sound stayed silent permanently after a camera reconnect (go2rtc fetched but did not deliver to the camera) | delivery check at go2rtc, automatic rebuild |
 
-## Bekannte Instabilität
+## Known instability
 
-Die beiden Full-Duplex-Tests in `backend/tests/audio` sind nicht deterministisch,
-weil Piper die Testsprache bei jedem Lauf leicht anders erzeugt. Im Mittel schlägt
-etwa einer von drei bis sechs Läufen fehl: mal wird eine echte Unterbrechung zu spät
-erkannt, mal (seltener seit der Toleranz um die geschätzte Echoverzögerung) Echo als
-Unterbrechung gewertet. Half Duplex, der Modus der C200, ist davon nicht betroffen.
-Offen: reproduzierbare Testsprache und eine Abstimmung über viele Varianten.
+The two full duplex tests in `backend/tests/audio` are not deterministic because Piper
+generates the test speech slightly differently on every run. On average about one in three
+to six runs fails: sometimes a real interruption is detected too late, sometimes (more
+rarely since the tolerance around the estimated echo delay) echo is taken as an
+interruption. Half duplex, the mode of the C200, is not affected. Open: reproducible test
+speech and tuning over many variants.
 
-## Nicht automatisiert getestet
+## Not tested automatically
 
-* Konsolidierung des Gedächtnisses (Zusammenführen, Widersprüche)
-* Realtime-Modus (Gemini Live) nur manuell mit der C200, nicht in der E2E-Suite
-* Plugin-Abhängigkeiten und Updates hochgeladener Plugins
-* Retention-Job
-* Lastverhalten mit vielen Kameras
+* Consolidation of memory (merging, contradictions)
+* Realtime mode (Gemini Live) only manually with the C200, not in the E2E suite
+* Plugin dependencies and updates of uploaded plugins
+* Retention job
+* Load behaviour with many cameras
+* A self-developed plugin's event triggering a real automation end to end

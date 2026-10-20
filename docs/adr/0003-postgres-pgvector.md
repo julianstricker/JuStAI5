@@ -1,29 +1,29 @@
-# 0003 – PostgreSQL + pgvector als einzige Datenbank
+# 0003 – PostgreSQL + pgvector as the only database
 
-**Status:** angenommen
+*[Deutsch](../de/adr/0003-postgres-pgvector.md) · English*
 
-## Kontext
+**Status:** accepted
 
-Benötigt werden relationale Daten (Räume, Geräte, Benutzer, Automationen),
-flexible Dokumente (Konfiguration, Event-Payloads), eine dauerhafte Job-Queue und
-Vektorsuche (Gedächtnis, Gesichter).
+## Context
 
-## Entscheidung
+Needed are relational data (rooms, devices, users, automations), flexible documents
+(configuration, event payloads), a durable job queue and vector search (memory, faces).
 
-PostgreSQL 17 mit pgvector: Tabellen für Relationen, JSONB für flexible Strukturen,
-`vector(384)` für Embeddings, `FOR UPDATE SKIP LOCKED` für die Job-Queue.
-SQLAlchemy 2 (async) + Alembic-Migrationen beim Start.
+## Decision
 
-## Alternativen
+PostgreSQL 17 with pgvector: tables for relations, JSONB for flexible structures,
+`vector(384)` for embeddings, `FOR UPDATE SKIP LOCKED` for the job queue. SQLAlchemy 2
+(async) + Alembic migrations at start.
 
-* **SQLite**: einfacher, aber schwächer bei nebenläufigem Schreiben; Vektorsuche nur
-  über Erweiterungen.
-* **FerretDB/MongoDB + separate Vektor-DB (Qdrant)**: zusätzliche Dienste, keine
-  Transaktionen über Daten und Vektoren hinweg.
-* **Redis für die Queue**: ein weiterer Dienst ohne echten Mehrwert bei dieser Last.
+## Alternatives
 
-## Konsequenzen
+* **SQLite**: simpler, but weaker with concurrent writes; vector search only through
+  extensions.
+* **FerretDB/MongoDB + separate vector DB (Qdrant)**: additional services, no transactions
+  across data and vectors.
+* **Redis for the queue**: another service without real benefit at this load.
 
-* Ein Dienst für alles: Backup ist ein `pg_dump` ([DEPLOYMENT.md](../DEPLOYMENT.md)).
-* Ein Embedding-Modellwechsel mit anderer Dimension braucht eine Migration und
-  Neuberechnung.
+## Consequences
+
+* One service for everything: a backup is one `pg_dump` ([DEPLOYMENT.md](../DEPLOYMENT.md)).
+* Changing the embedding model to another dimension needs a migration and recalculation.

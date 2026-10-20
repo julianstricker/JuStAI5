@@ -1,105 +1,110 @@
-# Langzeitgedächtnis
+# Long-term memory
 
-Code: `backend/src/justai/memory/`. Speicherung in PostgreSQL, semantische Suche
-über pgvector (Embeddings 384 Dim., lokal mit fastembed
-`paraphrase-multilingual-MiniLM-L12-v2`).
+*[Deutsch](de/MEMORY.md) · English*
 
-## Gedächtnisarten
+Code: `backend/src/justai/memory/`. Stored in PostgreSQL, semantic search with pgvector
+(embeddings 384 dim., local with fastembed `paraphrase-multilingual-MiniLM-L12-v2`).
 
-| Art | Inhalt | Wo |
+## Kinds of memory
+
+| Kind | Content | Where |
 | --- | --- | --- |
-| Arbeitsgedächtnis | laufender Gesprächskontext (max. 30 Nachrichten) | nur in der Session |
-| `episode` | Zusammenfassungen vergangener Gespräche/Ereignisse | Tabelle `memories` |
-| `fact` | Fakten („Der Kellerschlüssel liegt in der blauen Dose“) | |
-| `preference` | Vorlieben („Julian mag Antworten kurz“) | |
-| `procedure` | gelerntes Verhalten (Automationen verweisen darauf) | |
-| `note` | freie Notizen aus der Admin-UI | |
+| working memory | running conversation context (max. 30 messages) | only in the session |
+| `episode` | summaries of past conversations/events | table `memories` |
+| `fact` | facts ("The cellar key is in the blue tin") | |
+| `preference` | preferences ("Julian likes short answers") | |
+| `procedure` | learnt behaviour (automations refer to it) | |
+| `note` | free notes from the admin UI | |
 
-Zusätzlich sind Transkripte (`transcript_turns`), Sichtungen und Events eigene,
-zeitlich begrenzte Speicher ([SECURITY.md](SECURITY.md#aufbewahrung)).
+In addition transcripts (`transcript_turns`), sightings and events are separate,
+time-limited stores ([SECURITY.md](SECURITY.md#retention)).
 
-## Herkunft (Provenance)
+## Languages
 
-Jede Erinnerung trägt ihre Herkunft, und der Assistent bekommt sie mitgeteilt:
+Memories are stored in the language of the conversation they come from ("Der
+Kellerschlüssel liegt in der blauen Dose" stays German). The embeddings are multilingual:
+an Italian question finds a German memory, and the assistant answers in the language of
+the current conversation.
 
-| Provenance | Bedeutung | im Prompt |
+## Provenance
+
+Every memory carries its origin, and the assistant is told about it:
+
+| Provenance | Meaning | in the prompt |
 | --- | --- | --- |
-| `confirmed` | ausdrücklich gesagt oder bestätigt | „bestätigt“ |
-| `observed` | von Kameras/Sensoren beobachtet | „beobachtet“ |
-| `extracted` | aus einem Gespräch extrahiert | „aus Gespräch“ |
-| `inferred` | Vermutung eines Modells | „VERMUTUNG“ |
+| `confirmed` | said or confirmed explicitly | "confirmed" |
+| `observed` | observed by cameras/sensors | "observed" |
+| `extracted` | extracted from a conversation | "from conversation" |
+| `inferred` | a model's guess | "GUESS" |
 
-Dazu kommen `confidence`, `importance`, `access_count`, `last_accessed_at` und eine
-Quelle (Session, Tool, Event).
+Plus `confidence`, `importance`, `access_count`, `last_accessed_at` and a source
+(session, tool, event).
 
-## Sichtbarkeit (`scope`)
+## Visibility (`scope`)
 
-* `private`: gehört einer Person (`owner_person_id`) und ist nur sichtbar, wenn
-  diese Person als Sprecher erkannt ist.
-* `room`: nur in einem Raum relevant.
-* `shared`: Wissen des Haushalts.
-* `system`: vom System gepflegt.
+* `private`: belongs to a person (`owner_person_id`) and is only visible when this person
+  is recognised as the speaker.
+* `room`: only relevant in one room.
+* `shared`: knowledge of the household.
+* `system`: maintained by the system.
 
-Ein unbekannter Sprecher sieht nur `shared`, `system` und `room` für seinen Raum.
-Extraktion aus Gesprächen mit unbekanntem Sprecher speichert als `shared`.
+An unknown speaker only sees `shared`, `system` and `room` for their room. Extraction from
+conversations with an unknown speaker stores as `shared`.
 
-## Ablauf
+## Flow
 
-1. **Abruf (Recall)**: Vor jeder Antwort sucht die Session passende Erinnerungen
-   (Vektorsuche, Mindestähnlichkeit 0,25, Ergänzung per Stichwortsuche) und gibt
-   sie mit Herkunft und Datum in den Prompt. Ist die Person bekannt, kommen
-   Erinnerungen über sie dazu.
-2. **Explizit merken**: Tool `memory.remember` („Merk dir …“) → `confirmed`.
-3. **Extraktion**: Nach Gesprächsende extrahiert ein Job (`memory.extract`,
-   Rolle `memory` im KI-Router) Fakten und Vorlieben aus dem Transkript
-   (`extracted`). Gespräche mit weniger als 15 Zeichen Benutzertext werden übersprungen.
-4. **Duplikate**: Beim Speichern wird eine Erinnerung mit ≥ 0,92 Ähnlichkeit
-   (gleicher Besitzer) zusammengeführt statt dupliziert.
-5. **Konsolidierung** (täglich, Job `memory.consolidate`, auch manuell in der
-   Admin-UI):
-   * fast gleiche Erinnerungen zusammenführen (die mit höherer Herkunft bzw.
-     neuere bleibt),
-   * widersprüchliche Fakten (gleiches Subjekt/Prädikat/Besitzer): die neueste
-     bleibt aktiv, ältere werden `superseded` (mit Verweis), nicht gelöscht,
-   * nie abgerufene Vermutungen (`inferred`) nach 90 Tagen löschen.
-6. **Vergessen**: Tools `memory.find_to_forget` + `memory.forget`. Das Löschen
-   verlangt eine Bestätigung im Gespräch. In der Admin-UI (*Gedächtnis*) lässt
-   sich alles ansehen, suchen, bearbeiten und löschen.
+1. **Recall**: before every answer the session searches matching memories (vector search,
+   minimum similarity 0.25, supplemented by keyword search) and puts them into the prompt
+   with provenance and date. If the person is known, memories about them are added.
+2. **Remembering explicitly**: tool `memory.remember` ("Remember …") → `confirmed`.
+3. **Extraction**: after the conversation ends a job (`memory.extract`, role `memory` in
+   the AI router) extracts facts and preferences from the transcript (`extracted`).
+   Conversations with less than 15 characters of user text are skipped.
+4. **Duplicates**: when storing, a memory with ≥ 0.92 similarity (same owner) is merged
+   instead of duplicated.
+5. **Consolidation** (daily, job `memory.consolidate`, also manually in the admin UI):
+   * merge nearly identical memories (the one with higher provenance or the newer one
+     stays),
+   * contradicting facts (same subject/predicate/owner): the newest stays active, older
+     ones become `superseded` (with a reference), not deleted,
+   * delete guesses (`inferred`) never recalled after 90 days.
+6. **Forgetting**: tools `memory.find_to_forget` + `memory.forget`. Deleting requires a
+   confirmation in the conversation. In the admin UI (*Memory*) everything can be viewed,
+   searched, edited and deleted.
 
-   Vergessen ist **dauerhaft**. Der Inhalt wird gelöscht; zurück bleibt nur ein
-   Grabstein mit dem Embedding (ohne Text). So kann die spätere automatische
-   Extraktion aus dem Transkript eines älteren Gesprächs die Information nicht
-   wiederherstellen: Ähnliche Fakten (≥ 0,85) werden verworfen, und die
-   Zusammenfassung dieses Gesprächs entfällt. Nur eine ausdrückliche Bitte („Merk
-   dir …“) hebt die Sperre wieder auf. Gefunden wurde das in einem Live-Test: Ohne
-   diese Sperre tauchte ein vergessener Fakt nach dem Ende der ursprünglichen
-   Session wieder auf.
+   Forgetting is **permanent**. The content is deleted; only a tombstone with the
+   embedding (without text) remains. This way the later automatic extraction from the
+   transcript of an older conversation cannot restore the information: similar facts
+   (≥ 0.85) are dropped, and the summary of that conversation is left out. Only an
+   explicit request ("Remember …") lifts the block again. This was found in a live test:
+   without the block a forgotten fact reappeared after the original session ended.
 
-   Hinweis: Die **Transkripte** selbst sind ein eigener Speicher mit eigener
-   Aufbewahrungsfrist (Standard 365 Tage, *Einstellungen → Aufbewahrung*).
-   Vergessen löscht nur das Gedächtnis, nicht das Transkript.
+   Note: the **transcripts** themselves are a separate store with their own retention
+   period (default 365 days, *Settings → Retention*). Forgetting only deletes the memory,
+   not the transcript.
 
-## Datenschutz
+## Privacy
 
-* Erinnerungen gehen nur an Cloud-Modelle, wenn `personal_memories_to_cloud`
-  erlaubt ist. Sonst muss die Rolle `memory` bzw. `conversation` lokal laufen.
-* Löschen einer Person löscht ihre privaten Erinnerungen mit.
+* Memories only go to cloud models if `personal_memories_to_cloud` is allowed. Otherwise
+  the role `memory` or `conversation` has to run locally.
+* Deleting a person deletes their private memories too.
 
-## Getestet
+## Tested
 
-Gegen die laufende Docker-Instanz (Gemini als LLM, fastembed lokal):
+Against the running Docker instance (Gemini as LLM, fastembed locally):
 
-* „Merk dir bitte: Der Ersatzschlüssel für den Keller liegt in der blauen Dose im
-  Flur.“ → gespeichert als `fact`, `shared`, `confirmed`.
-* In einer **neuen** Session: „Wo liegt der Ersatzschlüssel für den Keller?“ →
-  richtige Antwort aus dem Gedächtnis.
-* „Vergiss bitte, wo der Ersatzschlüssel liegt.“ → Rückfrage, nach „Ja“ gelöscht.
-* Live nach der Korrektur: „Merk dir: Der Code für das Gartentor ist 4711“ →
-  „Vergiss den Code“ → beide Sessions beendet → die Extraktion verwirft den
-  Fakt (`skipped_forgotten: 1`), das Gedächtnis bleibt leer.
+* "Please remember: the spare key for the cellar is in the blue tin in the hall." →
+  stored as `fact`, `shared`, `confirmed`.
+* In a **new** session: "Where is the spare key for the cellar?" → correct answer from
+  memory.
+* "Please forget where the spare key is." → follow-up question, deleted after "yes".
+* Live after the fix: "Remember: the code for the garden gate is 4711" → "Forget the
+  code" → both sessions ended → extraction drops the fact (`skipped_forgotten: 1`), the
+  memory stays empty.
 
-Automatisiert (`backend/tests/db/test_memory_forget.py`, echte PostgreSQL mit
-pgvector, deterministische Test-Embeddings): Vergessenes wird nicht re-extrahiert,
-ist unsichtbar und textfrei; ausdrückliches Merken hebt die Sperre auf; anderes
-wird weiterhin extrahiert. Für Konsolidierung gibt es noch keinen
-automatisierten Test.
+These live tests were done in German.
+
+Automated (`backend/tests/db/test_memory_forget.py`, real PostgreSQL with pgvector,
+deterministic test embeddings): forgotten content is not re-extracted, invisible and
+without text; remembering explicitly lifts the block; other content is still extracted.
+There is no automated test for consolidation yet.

@@ -1,112 +1,132 @@
-# KI-Provider, Rollen und Datenschutz
+# AI providers, roles and privacy
 
-Code: `backend/src/justai/ai/`. Begründung: [ADR 0006](adr/0006-ai-router.md).
+*[Deutsch](de/AI.md) · English*
 
-## Rollen
+Code: `backend/src/justai/ai/`. Rationale: [ADR 0006](adr/0006-ai-router.md).
 
-Jede Aufgabe ist eine **Rolle** mit einer Provider-Kette (erster Eintrag = primär,
-danach Fallbacks), einer Lokalitätsregel und einem Timeout:
+## Roles
 
-| Rolle | Wofür | Standard ohne Google-Key | Standard mit Google-Key |
+Every task is a **role** with a provider chain (first entry = primary, then fallbacks), a
+locality rule and a timeout:
+
+| Role | Purpose | Default without Google key | Default with Google key |
 | --- | --- | --- | --- |
-| `conversation` | Antworten im Pipeline-Modus | – (zuordnen!) | gemini-3.8-flash → gemini-flash-lite-latest |
-| `reasoning` | komplexe Fragen, Sicherheitsreview generierter Tools | – | wie oben |
-| `vision` | „Was siehst du?“ | – | wie oben |
-| `memory` | Extraktion/Konsolidierung von Erinnerungen | – | wie oben |
-| `tool_generation` | neue Tools schreiben | – | wie oben |
-| `background` | Zusammenfassungen u. a. | – | wie oben |
-| `realtime` | Sprache-zu-Sprache (Gemini Live) | – | gemini-3.8-live |
-| `stt` | Spracherkennung | faster-whisper `small` (lokal) | gleich |
-| `tts` | Sprachausgabe | Piper (lokal) | gleich |
-| `embedding` | Gedächtnis-Vektoren | fastembed multilingual (nur lokal) | gleich |
+| `conversation` | answers in pipeline mode | – (assign one!) | gemini-3.8-flash → gemini-flash-lite-latest |
+| `reasoning` | complex questions, security review of generated plugins | – | as above |
+| `vision` | "What do you see?" | – | as above |
+| `memory` | extraction/consolidation of memories | – | as above |
+| `tool_generation` | writing new plugins | – | as above |
+| `background` | summaries and others | – | as above |
+| `realtime` | speech to speech (Gemini Live) | – | gemini-3.8-live |
+| `stt` | speech recognition | faster-whisper `small` (local) | same |
+| `tts` | speech output | Piper (local) | same |
+| `embedding` | memory vectors | fastembed multilingual (local only) | same |
 
-Wakeword und VAD laufen immer lokal und sind keine KI-Rollen.
+Wakeword and VAD always run locally and are not AI roles.
 
-**Ohne Google-Key und ohne lokales LLM kann der Assistent hören und sprechen,
-aber nicht antworten.** Ein lokales LLM (z. B. Ollama, [DEPLOYMENT.md](DEPLOYMENT.md#lokale-ki-mit-ollama))
-muss unter *KI-Provider → Modelle & Fallbacks* den Rollen zugeordnet werden. Das
-geschieht nicht automatisch, weil Größe und Qualität lokaler Modelle stark variieren.
+**Without a Google key and without a local LLM the assistant can hear and speak, but not
+answer.** A local LLM (e.g. Ollama, [DEPLOYMENT.md](DEPLOYMENT.md#local-ai-with-ollama))
+has to be assigned to the roles under *AI providers → Models & fallbacks*. This does not
+happen automatically because size and quality of local models vary a lot.
 
-Sobald ein Google-Key eingetragen wird, füllt JuStAI5 **leere** Rollen mit den
-Gemini-Standards. Vom Admin konfigurierte Rollen bleiben unverändert.
+As soon as a Google key is entered, JuStAI5 fills **empty** roles with the Gemini
+defaults. Roles configured by the admin stay unchanged.
 
-## Gesprächsmodus
+## Languages
 
-* **Realtime** (Standard mit Google-Key): Audio geht direkt an Gemini Live,
-  Antworten kommen als Audio zurück. Niedrigste Latenz, Unterbrechen im Modell.
-  JuStAI5 schickt nur Audio, das das Echo-Gate passiert hat.
-* **Pipeline**: lokale STT → LLM der Rolle `conversation` → lokale TTS. Jeder Schritt
-  ist einzeln austauschbar und kann komplett lokal laufen. Sätze werden gestreamt
-  (TTS beginnt mit dem ersten Satz).
+The assistant understands and speaks **English, German and Italian** (setting
+`languages`, main language `default_language` under *AI providers*).
 
-Pro Endpoint kann der Modus überschrieben werden (`conversation.mode`).
+* It answers in the language it was spoken to. If somebody switches language in the
+  middle of a conversation, it switches too.
+* Everything the language model reads is English: system prompt, tool descriptions and
+  results, error messages, the event catalogue. The instruction "always answer in the
+  user's language" makes the answer follow the conversation language. This keeps one set
+  of texts for all languages and works best with the models.
+* Texts spoken or stored without the model are translated in `justai/i18n.py`: the
+  apology after an error, the note that an answer comes from the cloud, announcements of
+  watches ("A car is in the driveway"), the episode memory of a conversation.
+* Memories are written in the language of the conversation they come from; search works
+  across languages (multilingual embeddings).
+* Speech output uses a Piper voice per language (setting `voices`; included are
+  `en_US-lessac`, `de_DE-thorsten` and `it_IT-paola`); Gemini Live speaks every language by
+  itself.
 
-### Spracherkennung
+## Conversation mode
 
-* **Sprachen**: Die konfigurierten Sprachen (Hauptsprache zuerst) gehen als erwartete
-  Sprachen an die Erkennung, an Gemini Live als `language_codes`. Vorher erkannte die
-  automatische Spracherkennung kurze Schnipsel oft als Spanisch oder Hindi. In der
-  Pipeline wird ein Ergebnis in einer nicht erlaubten Sprache in der Gesprächssprache
-  neu erkannt.
-* **Vokabular**: Name des Assistenten, „Jarvis“, Räume und Namen von Personen und
-  Tieren gehen als bevorzugte Begriffe an die Erkennung (Gemini `custom_vocabulary`,
-  faster-whisper `initial_prompt`).
-* **Pausen**: Gemini beendet den Benutzerbeitrag erst nach 1,0 s Stille mit
-  unempfindlicher Ende-Erkennung (Plugin-Einstellung `vad_silence_ms`). Vorher wurde
-  eine Denkpause von 0,7 s als Satzende gewertet. Der Assistent begann zu antworten,
-  und bei Halbduplex-Kameras fiel der Rest des Satzes in die Echosperre.
-* **Messung**: Jedes Gespräch speichert, wie viel sprachähnlicher Ton in die
-  Echosperre fiel (`gated_speech_ms` im Gesprächsverlauf, Log „speech during echo
-  gate“). Viel davon heißt: Die Sperre ist für dieses Gerät zu lang.
+* **Realtime** (default with Google key): audio goes directly to Gemini Live, answers come
+  back as audio. Lowest latency, interruption in the model. JuStAI5 only sends audio that
+  passed the echo gate.
+* **Pipeline**: local STT → LLM of the role `conversation` → local TTS. Every step can be
+  replaced individually and can run completely locally. Sentences are streamed (TTS starts
+  with the first sentence).
 
-Prüfstand (`scripts`-unabhängig, im Container): deutsche Testsätze in
-Kameraqualität (8 kHz, Raumrauschen) erkennt Gemini Live mit und ohne diese
-Einstellungen zu ~99 % richtig. Die Fehler im echten Betrieb entstehen also vor allem
-durch abgeschnittene oder zerteilte Sätze, nicht durch die Erkennung selbst.
+The mode can be overridden per endpoint (`conversation.mode`).
 
-## Fallback und Ausfälle
+### Speech recognition
 
-* Fällt der primäre Provider aus (Fehler, Timeout, kein erstes Token nach 25 s), wird
-  der nächste der Kette genommen. Der fehlerhafte Provider pausiert danach kurz
-  (Cooldown), damit nicht jede Anfrage erst auf den Fehler wartet. Pausierte Modelle
-  zeigt das Dashboard orange.
-* Jeder Fallback erzeugt `ai.provider.fallback`. Ein Wechsel von lokal zu Cloud steht
-  **immer** im Audit-Log. Mit `announce_cloud_fallback` (Standard: an) sagt der
-  Assistent im laufenden Gespräch (Pipeline-Modus) vor der Antwort, dass sie aus der
-  Cloud kommt.
-* Beobachtet im Betrieb: `gemini-3.8-flash` lieferte zeitweise 503 (Überlastung) und
-  429 (Kontingent). Die Kette wechselte automatisch auf `gemini-flash-lite-latest`.
+* **Languages**: the configured languages (main language first) go to the recogniser as
+  expected languages, to Gemini Live as `language_codes`. Before, automatic language
+  detection often recognised short snippets as Spanish or Hindi. In the pipeline a result
+  in a language that is not allowed is recognised again in the conversation language.
+* **Vocabulary**: name of the assistant, "Jarvis", rooms and names of people and pets go
+  to the recogniser as preferred terms (Gemini `custom_vocabulary`, faster-whisper
+  `initial_prompt`).
+* **Pauses**: Gemini ends the user's turn only after 1.0 s of silence with insensitive
+  end detection (plugin setting `vad_silence_ms`). Before, a thinking pause of 0.7 s was
+  taken as the end of the sentence. The assistant started to answer, and with half duplex
+  cameras the rest of the sentence fell into the echo gate.
+* **Measurement**: every conversation stores how much speech-like sound fell into the
+  echo gate (`gated_speech_ms` in the conversation history, log "speech during echo
+  gate"). A lot of it means: the gate is too long for this device.
 
-## Datenschutzregeln
+Test bench (in the container): German test sentences in camera quality (8 kHz, room
+noise) are recognised ~99 % correctly by Gemini Live with and without these settings.
+The errors in real operation therefore mostly come from cut or split sentences, not from
+the recognition itself.
 
-*KI-Provider → Datenschutz & Kosten*:
+## Fallback and outages
 
-| Schalter | Wirkung |
+* If the primary provider fails (error, timeout, no first token after 25 s), the next one
+  of the chain is taken. The failing provider then pauses briefly (cooldown) so that not
+  every request first waits for the error. Paused models are shown orange on the
+  dashboard.
+* Every fallback creates `ai.provider.fallback`. A switch from local to cloud is
+  **always** in the audit log. With `announce_cloud_fallback` (default: on) the assistant
+  says in a running conversation (pipeline mode) before the answer that it comes from the
+  cloud.
+* Observed in operation: `gemini-3.8-flash` occasionally returned 503 (overload) and 429
+  (quota). The chain switched automatically to `gemini-flash-lite-latest`.
+
+## Privacy rules
+
+*AI providers → Privacy & costs*:
+
+| Switch | Effect |
 | --- | --- |
-| `cloud_allowed` | global: Cloud-Provider überhaupt zulassen |
-| `camera_images_to_cloud` | Kamerabilder an Cloud-Modelle |
-| `conversation_audio_to_cloud` | Gesprächsaudio an Cloud (betrifft Realtime und Cloud-STT) |
-| `personal_memories_to_cloud` | Erinnerungen und persönliche Kontexte an Cloud-Modelle |
-| `announce_cloud_fallback` | Wechsel zur Cloud im Gespräch ansagen (protokolliert wird er immer) |
-| pro Rolle `locality` | `local_only` / `prefer_local` / `any` |
-| pro Raum `cloud_media_allowed` | Bilder/Audio aus diesem Raum nie in die Cloud |
+| `cloud_allowed` | global: allow cloud providers at all |
+| `camera_images_to_cloud` | camera images to cloud models |
+| `conversation_audio_to_cloud` | conversation audio to the cloud (affects realtime and cloud STT) |
+| `personal_memories_to_cloud` | memories and personal context to cloud models |
+| `announce_cloud_fallback` | announce a switch to the cloud in the conversation (it is always logged) |
+| per role `locality` | `local_only` / `prefer_local` / `any` |
+| per room `cloud_media_allowed` | images/audio from this room never go to the cloud |
 
-Verbietet eine Regel alle Provider einer Kette, schlägt die Anfrage mit einem klaren
-Grund fehl, statt die Regel zu umgehen.
+If a rule forbids all providers of a chain, the request fails with a clear reason instead
+of bypassing the rule.
 
-## Kosten
+## Costs
 
-Jeder Aufruf wird mit Tokens, Audiosekunden, Latenz und geschätzten Kosten
-protokolliert (*KI-Provider → Nutzung*, Dashboard „KI-Kosten heute“). Tages- und
-Monatslimits (`cost_limits.daily_usd`, `monthly_usd`) sperren Cloud-Provider beim
-Erreichen; lokale laufen weiter. Die Kosten sind Schätzungen aus Token-Zahlen und
-Listenpreisen, keine Abrechnung.
+Every call is recorded with tokens, audio seconds, latency and estimated costs (*AI
+providers → Usage*, dashboard "AI costs today"). Daily and monthly limits
+(`cost_limits.daily_usd`, `monthly_usd`) block cloud providers when reached; local ones
+keep running. The costs are estimates from token counts and list prices, not a bill.
 
-## Provider hinzufügen
+## Adding providers
 
-Provider sind Plugins mit dem Recht `ai.provide` (Ports in `justai_sdk.ports.ai`:
-Chat mit Tools und Streaming, Realtime, STT, TTS, Embeddings). Jeder
-OpenAI-kompatible Server lässt sich ohne Code über das Plugin *OpenAI-kompatibel*
-als weiterer Endpoint eintragen. Getestet wurde das mit der OpenAI-kompatiblen
-Schnittstelle von Gemini: Die Rolle `conversation` wurde nur per Konfiguration
-umgestellt ([TESTING.md](TESTING.md), Kriterium 16).
+Providers are plugins with the permission `ai.provide` (ports in `justai_sdk.ports.ai`:
+chat with tools and streaming, realtime, STT, TTS, embeddings). Any OpenAI-compatible
+server can be added without code as another endpoint through the plugin
+*OpenAI-compatible*. This was tested with Gemini's OpenAI-compatible interface: the role
+`conversation` was switched by configuration only ([TESTING.md](TESTING.md),
+criterion 16).

@@ -1,39 +1,42 @@
-# 0004 – go2rtc als Medienserver, Streams nur im Speicher
+# 0004 – go2rtc as media server, streams only in memory
 
-**Status:** angenommen
+*[Deutsch](../de/adr/0004-go2rtc-media.md) · English*
 
-## Kontext
+**Status:** accepted
 
-Kameras sprechen unterschiedliche Protokolle (Tapo-Protokoll, RTSP, ONVIF), haben
-begrenzte Verbindungszahlen und oft einen Audio-Rückkanal (Backchannel) nur über
-herstellerspezifische Wege. Mehrere Verbraucher (Audio, Vision, Live-Ansicht,
-Snapshots) brauchen dieselben Streams.
+## Context
 
-## Entscheidung
+Cameras speak different protocols (Tapo protocol, RTSP, ONVIF), have a limited number of
+connections and often an audio return channel (backchannel) only through
+manufacturer-specific ways. Several consumers (audio, vision, live view, snapshots) need
+the same streams.
 
-go2rtc (1.9.14) als eigener Container. Der Core registriert Streams zur Laufzeit per
-API und verbraucht sie per RTSP (ffmpeg) bzw. HTTP. Audio-Ausgabe: Der Core stellt
-einen in Echtzeit getakteten Live-WAV-Stream bereit, den go2rtc in den Backchannel
-der Kamera zieht. Streams mit Zugangsdaten werden **nur im Speicher** angelegt
-(`PATCH /api/streams`). Die Konfigurationsdatei ist read-only und enthält keine
-Kameras.
+## Decision
 
-## Alternativen
+go2rtc (1.9.14) as its own container. The core registers streams at runtime through the
+API and consumes them by RTSP (ffmpeg) or HTTP. Audio output: the core provides a live WAV
+stream paced in real time, which go2rtc pulls into the camera's backchannel. Streams with
+credentials are created **only in memory** (`PATCH /api/streams`). The configuration file
+is read-only and contains no cameras.
 
-* **Direkt aus dem Core per ffmpeg/PyAV**: jede Kamera mehrfach verbunden, kein
-  Tapo-Backchannel.
-* **Frigate/MediaMTX**: Frigate bringt eine eigene Vision-Pipeline mit; MediaMTX
-  kann den Tapo-Backchannel nicht.
+## Alternatives
 
-## Konsequenzen
+* **Directly from the core with ffmpeg/PyAV**: every camera connected several times, no
+  Tapo backchannel.
+* **Frigate/MediaMTX**: Frigate brings its own vision pipeline; MediaMTX cannot do the
+  Tapo backchannel.
 
-* Eine Kameraverbindung, viele Verbraucher.
-* go2rtc vergisst die Streams bei einem Neustart. Ein Watchdog im Core vergleicht alle
-  5 s die registrierten Streams mit denen in go2rtc und stellt fehlende wieder her.
-  Getestet: Nach `docker compose restart go2rtc` gingen Snapshots der C200 nach 2 s
-  wieder, die Mikrofone liefen weiter. Vorher (ohne Watchdog) blieb die Kamera
-  dauerhaft unerreichbar. Das wurde erst bei der Prüfung dieser ADR entdeckt.
-* Der Core taktet die Ausgabe selbst und kennt deshalb für jedes Frame den
-  Ausgabezeitpunkt. Das ist die Grundlage der Echo-Behandlung ([0005](0005-echo-handling.md)).
-* Gefunden beim Test: Ein `PUT` auf `/api/streams` schreibt die Quelle mit
-  Zugangsdaten in `go2rtc.yaml`. Deshalb wird ausschließlich `PATCH` verwendet.
+## Consequences
+
+* One camera connection, many consumers. Exception: the speaker gets its own short-lived
+  stream `<stream>_talk` per conversation, because a Tapo camera only plays the talk
+  session opened last ([AUDIO.md](../AUDIO.md#signal-path)).
+* go2rtc forgets the streams on a restart. A watchdog in the core compares the registered
+  streams with those in go2rtc every 5 s and restores missing ones. Tested: after
+  `docker compose restart go2rtc` snapshots of the C200 worked again after 2 s, the
+  microphones kept running. Before (without the watchdog) the camera stayed unreachable
+  permanently. This was only discovered while checking this ADR.
+* The core paces the output itself and therefore knows the output time of every frame.
+  This is the basis of the echo handling ([0005](0005-echo-handling.md)).
+* Found during testing: a `PUT` on `/api/streams` writes the source with credentials into
+  `go2rtc.yaml`. Therefore only `PATCH` is used.

@@ -1,28 +1,30 @@
-# 0008 – Ausgaberaum wird deterministisch bestimmt, nie vom Modell
+# 0008 – The output room is determined deterministically, never by the model
 
-**Status:** angenommen
+*[Deutsch](../de/adr/0008-deterministic-output-routing.md) · English*
 
-## Kontext
+**Status:** accepted
 
-Eine Frage aus dem Wohnzimmer darf keine Ausgabe in der Küche erzeugen. Sprachmodelle
-können Räume verwechseln, Tool-Parameter halluzinieren oder durch Inhalte
-(Prompt-Injection) beeinflusst werden.
+## Context
 
-## Entscheidung
+A question from the living room must not produce output in the kitchen. Language models
+can mix up rooms, hallucinate tool parameters or be influenced by content (prompt
+injection).
 
-Ein einziger `OutputRouter` entscheidet über jedes Ausgabegerät nach festen Regeln
-([ROOMS.md](../ROOMS.md#output-router)): Raum des auslösenden Endpoints; andere
-Räume nur mit expliziter Cross-Room-Anfrage, Recht und Freigabe des Zielraums;
-Ersatzgeräte nur im selben Raum; offline heißt Fehler statt Ausweichen. Sessions
-sind fest an ihren Endpoint gebunden, auch über Tool-Aufrufe und Provider-Wechsel
-hinweg. Modelle und Plugins übergeben höchstens Wünsche, die der Router prüft.
+## Decision
 
-## Alternativen
+A single `OutputRouter` decides on every output device by fixed rules
+([ROOMS.md](../ROOMS.md#output-router)): room of the triggering endpoint; other rooms only
+with an explicit cross-room request, permission and approval of the target room;
+fallback devices only in the same room; offline means an error instead of moving
+elsewhere. Sessions are bound to their endpoint, also across tool calls and provider
+switches. Models and plugins at most hand over wishes that the router checks.
 
-* **Raum als Tool-Parameter vom Modell**: fehleranfällig und manipulierbar.
+## Alternatives
 
-## Konsequenzen
+* **Room as a tool parameter from the model**: error-prone and manipulable.
 
-* Durchsagen in andere Räume brauchen ein eigenes, dafür gebautes Tool
-  (`conversation.announce`) und das Recht `output.cross_room`.
-* Ablehnungen werden mit Grund geloggt.
+## Consequences
+
+* Announcements in other rooms need a dedicated tool built for it
+  (`conversation.announce`) and the permission `output.cross_room`.
+* Refusals are logged with a reason.

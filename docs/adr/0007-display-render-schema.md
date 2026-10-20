@@ -1,32 +1,31 @@
-# 0007 – Displays rendern nur typisierte Komponenten, Erfolg erst nach Bestätigung
+# 0007 – Displays only render typed components, success only after confirmation
 
-**Status:** angenommen
+*[Deutsch](../de/adr/0007-display-render-schema.md) · English*
 
-## Kontext
+**Status:** accepted
 
-Der Assistent soll auf Fernsehern und Tablets Inhalte zeigen (Kurse, Wetter,
-Kamerabilder). Inhalte entstehen aus Modellausgaben und Plugins, beides darf keinen
-Code im Browser ausführen. Der Assistent soll nicht behaupten, etwas werde angezeigt,
-wenn das Display aus ist.
+## Context
 
-## Entscheidung
+The assistant should show content on TVs and tablets (prices, weather, camera images).
+Content comes from model output and plugins; neither may execute code in the browser.
+The assistant should not claim something is shown when the display is off.
 
-* Ein JSON-Dokument aus **typisierten, eingebauten Komponenten**, serverseitig
-  validiert (Schema, Tiefe, Anzahl, erlaubte URL-Schemata). Plugin-Komponenten
-  sind Vorlagen, die der Core in eingebaute Komponenten übersetzt. Kein HTML, kein
-  Skript.
-* Der Browser-Client bestätigt jede Darstellung erst nach dem Rendern (`ack`). Bei
-  unsichtbarer Seite oder Renderfehler meldet er den Grund. Das Tool berichtet
-  Erfolg nur bei `displayed`.
+## Decision
 
-## Alternativen
+* A JSON document of **typed, built-in components**, validated on the server (schema,
+  depth, count, allowed URL schemes). Plugin components are templates that the core
+  translates into built-in components. No HTML, no script.
+* The browser client confirms every presentation only after rendering (`ack`). With an
+  invisible page or a render error it reports the reason. The tool only reports success
+  on `displayed`.
 
-* **HTML aus dem Modell in einer Sandbox (iframe/CSP)**: XSS-Risiko, schwer
-  vorhersagbares Layout auf großen Bildschirmen.
-* **Bilder serverseitig rendern**: keine Interaktion, schlechte Lesbarkeit.
+## Alternatives
 
-## Konsequenzen
+* **HTML from the model in a sandbox (iframe/CSP)**: XSS risk, hard to predict layout on
+  large screens.
+* **Rendering images on the server**: no interaction, poor readability.
 
-* Neue Darstellungsarten brauchen eine neue eingebaute Komponente oder eine
-  Plugin-Vorlage.
-* Das Verhalten ist prüfbar (E2E und Browser-Test).
+## Consequences
+
+* New kinds of presentation need a new built-in component or a plugin template.
+* The behaviour can be tested (E2E and browser test).

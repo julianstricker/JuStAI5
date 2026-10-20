@@ -1,57 +1,62 @@
-# Installation Schritt für Schritt
+# Installation step by step
 
-Diese Anleitung führt von einem leeren Rechner bis zum ersten Gespräch mit dem
-Assistenten. Sie braucht keine Programmierkenntnisse, nur ein paar Befehle im
-Terminal, die man kopieren kann. Wer schon Docker hat, beginnt bei
-[Schritt 2](#schritt-2-justai5-herunterladen).
+*[Deutsch](de/INSTALLATION.md) · English*
 
-## Der schnellste Weg: ein Befehl
+This guide takes you from an empty computer to the first conversation with the assistant.
+No programming knowledge is needed, only a few terminal commands you can copy. If you
+already have Docker, start at [step 2](#step-2-download-justai5).
 
-Auf einem Linux-Rechner (x86_64) im Terminal:
+## The quickest way: one command
+
+In a terminal on a Linux computer (x86_64):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/julianstricker/JuStAI5/main/scripts/install.sh | bash
 ```
 
-Das Installationsskript
-* prüft den Rechner und installiert Docker, falls es fehlt (fragt vorher),
-* lädt JuStAI5 in den Ordner `JuStAI5`,
-* fragt nach dem Google-API-Key ([Schritt 3](#schritt-3-den-assistenten-zum-sprechen-bringen-google-api-key)
-  erklärt, wo es ihn gibt; leer lassen geht auch) und einem Admin-Passwort,
-* erkennt die Adresse des Rechners im Heimnetz (für das HTTPS-Zertifikat und die
-  Kamerasuche) und weicht auf freie Ports aus, wenn 8080/8443 belegt sind,
-* baut und startet alles und zeigt am Ende Adresse, Benutzer und Passwort.
+The installer
+* checks the computer and installs Docker if it is missing (asks first),
+* downloads JuStAI5 into the folder `JuStAI5`,
+* asks for the Google API key ([step 3](#step-3-make-the-assistant-talk-google-api-key)
+  explains where to get it; leaving it empty is fine) and an admin password,
+* detects the computer's address in the home network (for the HTTPS certificate and the
+  camera search) and uses free ports if 8080/8443 are taken,
+* builds and starts everything and finally shows address, user and password.
 
-Danach weiter mit [Schritt 6](#schritt-6-ein-handy-oder-tablet-als-mikrofon-und-lautsprecher)
-(erstes Gespräch). Wurde Docker eben erst installiert, einmal ab- und wieder
-anmelden. Wer lieber jeden Schritt selbst macht, folgt der Anleitung unten.
+It speaks English, German or Italian, following the system language
+(`JUSTAI_INSTALL_LANG=de` or `it` to choose). Running it again on an installed system
+keeps settings, ports and password and only rebuilds.
 
-Was am Ende läuft: ein Assistent, der auf „Hey Jarvis“ hört, über Kameras sieht,
-sich Dinge merkt und im selben Raum antwortet, in dem er angesprochen wurde.
-Beispiele, was man ihn fragen kann: [BEISPIELE.md](BEISPIELE.md).
+Then continue with [step 6](#step-6-a-phone-or-tablet-as-microphone-and-speaker) (first
+conversation). If Docker was just installed, log out and in again once. If you prefer to
+do every step yourself, follow the guide below.
 
-## Was du brauchst
+What runs in the end: an assistant that listens for "Hey Jarvis", sees through cameras,
+remembers things and answers in the room where it was addressed, in English, German or
+Italian. Ideas what to ask: [EXAMPLES.md](EXAMPLES.md).
 
-| | Mindestens | Empfohlen |
+## What you need
+
+| | Minimum | Recommended |
 | --- | --- | --- |
-| Rechner | PC, Mini-PC (z. B. Intel NUC) oder Server mit **x86_64**-Prozessor, der dauerhaft läuft | 4 Kerne |
-| Betriebssystem | Linux (getestet: Ubuntu/Debian) | Ubuntu 24.04 LTS |
-| Arbeitsspeicher | 4 GB (JuStAI5 belegt gemessen ca. 1,7 GB) | 8 GB |
-| Festplatte | 15 GB frei (Programm ca. 3 GB plus Datenbank) | 30 GB |
-| Netzwerk | im selben Heimnetz wie Kameras, Handys und Tablets | Netzwerkkabel |
-| Sprachmodell | ein kostenloser Google-API-Key ([Schritt 3](#schritt-3-den-assistenten-zum-sprechen-bringen-google-api-key)) **oder** ein lokales Modell (Ollama) | |
+| Computer | PC, mini PC (e.g. Intel NUC) or server with an **x86_64** processor that runs permanently | 4 cores |
+| Operating system | Linux (tested: Ubuntu/Debian) | Ubuntu 24.04 LTS |
+| Memory | 4 GB (JuStAI5 uses about 1.7 GB, measured) | 8 GB |
+| Disk | 15 GB free (program about 3 GB plus database) | 30 GB |
+| Network | in the same home network as cameras, phones and tablets | network cable |
+| Language model | a free Google API key ([step 3](#step-3-make-the-assistant-talk-google-api-key)) **or** a local model (Ollama) | |
 
-Eine Grafikkarte ist nicht nötig. Raspberry Pi und andere ARM-Rechner werden
-nicht unterstützt. Windows und macOS (Docker Desktop) sind nicht getestet.
+No graphics card is needed. Raspberry Pi and other ARM computers are not supported.
+Windows and macOS (Docker Desktop) are not tested.
 
-**Zum Sprechen und Hören** reicht für den Anfang ein Handy, Tablet oder Laptop mit
-der [Geräte-App](#schritt-6-ein-handy-oder-tablet-als-mikrofon-und-lautsprecher).
-Kameras mit Mikrofon und Lautsprecher (getestet: **TP-Link Tapo C200**, auch
-schwenkbar) machen ganze Räume zu Gesprächsorten.
+**For talking and listening** a phone, tablet or laptop with the
+[device app](#step-6-a-phone-or-tablet-as-microphone-and-speaker) is enough to begin
+with. Cameras with microphone and speaker (tested: **TP-Link Tapo C200**, also pan/tilt)
+turn whole rooms into places to talk.
 
-## Schritt 1: Docker installieren
+## Step 1: Install Docker
 
-Docker ist das Programm, in dem JuStAI5 läuft. Im Terminal (Ubuntu/Debian):
+Docker is the program JuStAI5 runs in. In a terminal (Ubuntu/Debian):
 
 ```bash
 curl -fsSL https://get.docker.com | sudo sh
@@ -61,16 +66,16 @@ curl -fsSL https://get.docker.com | sudo sh
 sudo usermod -aG docker $USER
 ```
 
-Danach **einmal abmelden und wieder anmelden** (oder den Rechner neu starten),
-damit der eigene Benutzer Docker verwenden darf. Prüfen:
+Then **log out and in again once** (or restart the computer) so your user may use Docker.
+Check:
 
 ```bash
 docker compose version
 ```
 
-Die Ausgabe muss `Docker Compose version v2.24` oder neuer zeigen.
+The output must show `Docker Compose version v2.24` or newer.
 
-## Schritt 2: JuStAI5 herunterladen
+## Step 2: Download JuStAI5
 
 ```bash
 sudo apt-get install -y git
@@ -84,18 +89,16 @@ git clone https://github.com/julianstricker/JuStAI5.git
 cd JuStAI5
 ```
 
-Alle weiteren Befehle laufen in diesem Ordner.
+All further commands run in this folder.
 
-## Schritt 3: Den Assistenten zum Sprechen bringen (Google-API-Key)
+## Step 3: Make the assistant talk (Google API key)
 
-Wakeword, Spracherkennung, Sprachausgabe und Bildanalyse laufen lokal. Für das
-Verstehen und Antworten braucht der Assistent ein Sprachmodell. Am einfachsten ist
-Google Gemini:
+Wakeword, speech recognition, speech output and image analysis run locally. To understand
+and answer, the assistant needs a language model. The easiest is Google Gemini:
 
-1. <https://aistudio.google.com> öffnen und mit einem Google-Konto anmelden.
-2. **Get API key** → **Create API key**. Den Schlüssel (beginnt mit `AIza…`)
-   kopieren.
-3. Im JuStAI5-Ordner die Einstellungsdatei anlegen und den Schlüssel eintragen:
+1. Open <https://aistudio.google.com> and sign in with a Google account.
+2. **Get API key** → **Create API key**. Copy the key (starts with `AIza…`).
+3. In the JuStAI5 folder create the settings file and enter the key:
 
 ```bash
 cp .env.example .env
@@ -105,151 +108,142 @@ cp .env.example .env
 nano .env
 ```
 
-   Die Zeile `# GOOGLE_API_KEY=` ändern in `GOOGLE_API_KEY=AIza…` (ohne `#`,
-   eigenen Schlüssel einsetzen). Speichern mit `Strg+O`, `Enter`, beenden mit
-   `Strg+X`.
+   Change the line `# GOOGLE_API_KEY=` into `GOOGLE_API_KEY=AIza…` (without `#`, with your
+   own key). Save with `Ctrl+O`, `Enter`, quit with `Ctrl+X`.
 
-Der Schlüssel lässt sich auch später in der Oberfläche eintragen (*Plugins →
-Gemini*). Die kostenlose Stufe hat Tageslimits; ist ein Limit erreicht, sagt der
-Assistent das und weicht, wo möglich, auf ein anderes Modell aus. Eine
-Kostengrenze lässt sich unter *KI-Provider* setzen. Ganz ohne Cloud geht es mit
-einem lokalen Modell über Ollama ([AI.md](AI.md),
-[DEPLOYMENT.md](DEPLOYMENT.md#lokale-ki-mit-ollama)). Was dabei an Google geht
-und was nicht, steht in [AI.md](AI.md) und [SECURITY.md](SECURITY.md).
+The key can also be entered later in the interface (*Plugins → Gemini*). The free tier has
+daily limits; when a limit is reached the assistant says so and switches to another model
+where possible. A cost limit can be set under *AI providers*. Entirely without cloud it
+works with a local model through Ollama ([AI.md](AI.md),
+[DEPLOYMENT.md](DEPLOYMENT.md#local-ai-with-ollama)). What goes to Google and what does not
+is described in [AI.md](AI.md) and [SECURITY.md](SECURITY.md).
 
-Optional in derselben Datei:
+Optional in the same file:
 
-| Zeile | Wozu |
+| Line | Purpose |
 | --- | --- |
-| `JUSTAI_ADMIN_PASSWORD=…` | eigenes Admin-Passwort statt eines zufälligen (mindestens 8 Zeichen) |
-| `JUSTAI_DISCOVERY_DEFAULT_CIDRS=["192.168.0.0/24"]` | Heimnetz, in dem nach Kameras gesucht werden darf |
-| `JUSTAI_TLS_NAMES=["192.168.0.10"]` | IP-Adresse des Rechners fürs HTTPS-Zertifikat (geht auch später in der Oberfläche) |
+| `JUSTAI_ADMIN_PASSWORD=…` | your own admin password instead of a random one (at least 8 characters) |
+| `JUSTAI_DISCOVERY_DEFAULT_CIDRS=["192.168.0.0/24"]` | home network that may be searched for cameras |
+| `JUSTAI_TLS_NAMES=["192.168.0.10"]` | IP address of the computer for the HTTPS certificate (can also be done later in the interface) |
 
-## Schritt 4: Starten
+## Step 4: Start
 
 ```bash
 docker compose up -d --build
 ```
 
-Beim ersten Mal baut Docker JuStAI5 und lädt dabei etwa 3 GB (Programm und
-Sprachmodelle). Das dauert je nach Internetverbindung einige Minuten bis eine
-halbe Stunde. Danach startet JuStAI5 in Sekunden, auch automatisch nach einem
-Neustart des Rechners.
+The first time Docker builds JuStAI5 and downloads about 3 GB (program and speech models).
+Depending on the internet connection this takes a few minutes to half an hour. Afterwards
+JuStAI5 starts in seconds, also automatically after a restart of the computer.
 
-Fertig ist es, wenn dieser Befehl `{"ok":true,…` ausgibt:
+It is ready when this command prints `{"ok":true,…`:
 
 ```bash
 curl -s http://localhost:8080/api/health
 ```
 
-## Schritt 5: Anmelden
+## Step 5: Log in
 
-1. Die IP-Adresse des Rechners herausfinden (die erste Zahl der Ausgabe, z. B.
-   `192.168.0.10`):
+1. Find the computer's IP address (the first number of the output, e.g. `192.168.0.10`):
 
 ```bash
 hostname -I
 ```
 
-2. Im Browser (auf demselben oder einem anderen Gerät im Heimnetz)
-   `http://IP-ADRESSE:8080` öffnen, also z. B. `http://192.168.0.10:8080`.
-3. Benutzer `admin`. Das Passwort ist das aus `.env` oder, wenn dort keins steht,
-   ein zufälliges:
+2. In a browser (on the same or another device in the home network) open
+   `http://IP-ADDRESS:8080`, e.g. `http://192.168.0.10:8080`.
+3. User `admin`. The password is the one from `.env` or, if there is none, a random one:
 
 ```bash
 docker compose exec core cat /data/initial_admin_password.txt
 ```
 
-4. Eigenes Passwort setzen: *Einstellungen → Benutzer → admin → Neues Passwort*.
+4. Set your own password: *Settings → Users → admin → New password*.
 
-Weitere Personen im Haushalt bekommen unter *Einstellungen → Benutzer* eigene
-Zugänge (Rolle „resident“). Sprechen kann jeder, auch ohne Zugang.
+The interface language (English, German, Italian) can be switched at the top right; it
+follows the browser language by default. Other people in the household get their own
+logins under *Settings → Users* (role "resident"). Everybody can talk to the assistant,
+also without a login.
 
-## Schritt 6: Ein Handy oder Tablet als Mikrofon und Lautsprecher
+## Step 6: A phone or tablet as microphone and speaker
 
-Der schnellste Weg zum ersten Gespräch, ganz ohne Kamera:
+The quickest way to the first conversation, without any camera:
 
-1. In der Oberfläche *Räume* → **+ Raum**, z. B. „Wohnzimmer“.
-2. *Einstellungen → Geräte-App*: Wenn dort „Diese Adresse fehlt im Zertifikat“
-   steht, **Hinzufügen** klicken. Dann **JuStAI5-Zertifikat herunterladen** und
-   auf dem Handy/Tablet installieren; die Schritte für Android, iPhone/iPad,
-   Windows und macOS stehen direkt darunter. (Das Zertifikat ist nötig, weil
-   Browser Mikrofon und Kamera nur über eine sichere Verbindung freigeben.)
-3. Auf dem Handy/Tablet `https://IP-ADRESSE:8443/app` öffnen, Mikrofon und
-   Lautsprecher anlassen, Kamera nach Wunsch, **Starten**.
-4. Das Gerät zeigt einen 6-stelligen Code. In der Oberfläche unter *Displays &
-   Geräte-App* den Code eingeben, einen Namen und den Raum wählen.
-5. „**Hey Jarvis**“ sagen, kurz warten, dann die Frage stellen, z. B. „Wie wird
-   das Wetter morgen?“.
+1. In the interface *Rooms* → **+ Room**, e.g. "Living room".
+2. *Settings → Device app*: if it says "This address is missing from the certificate",
+   click **Add**. Then **Download JuStAI5 certificate** and install it on the phone/tablet;
+   the steps for Android, iPhone/iPad, Windows and macOS are right below. (The certificate
+   is needed because browsers allow microphone and camera only over a secure connection.)
+3. On the phone/tablet open `https://IP-ADDRESS:8443/app`, choose the language, leave
+   microphone and speaker on, camera as you like, **Start**.
+4. The device shows a 6-digit code. In the interface under *Displays & device app* enter
+   the code, choose a name and the room.
+5. Say "**Hey Jarvis**" and ask your question, e.g. "What will the weather be like
+   tomorrow?" – with or without a pause after "Hey Jarvis".
 
-JuStAI5 legt dabei im Raum automatisch einen *Interaction Endpoint* an (die
-Kombination aus Mikrofon und Lautsprecher, über die gesprochen wird). Als App
-installieren: in Chrome/Edge Menü → „App installieren“, in Safari Teilen → „Zum
-Home-Bildschirm“. Details: [DISPLAYS.md](DISPLAYS.md#geräte-app-handy-tablet-pc-als-mikrofon-lautsprecher-kamera).
+JuStAI5 automatically creates an *interaction endpoint* in the room (the combination of
+microphone and speaker used for talking). To install it as an app: in Chrome/Edge menu →
+"Install app", in Safari Share → "Add to Home Screen". Details:
+[DISPLAYS.md](DISPLAYS.md#device-app-phone-tablet-pc-as-microphone-speaker-camera).
 
-Tippen statt sprechen geht in der Oberfläche unter *Gespräche* (Feld „Nachricht
-an den Assistenten …“).
+Typing instead of talking works in the interface under *Conversations* (field "Message to
+the assistant …").
 
-## Schritt 7: Kameras hinzufügen
+## Step 7: Add cameras
 
-**Tapo-Kameras vorbereiten** (in der Tapo-App, einmalig):
+**Prepare Tapo cameras** (once, in the Tapo app):
 
-* *Kamera → Einstellungen → Erweiterte Einstellungen → Kamerakonto*: Benutzername
-  und Passwort anlegen.
-* Für Lautsprecher und Schwenken braucht JuStAI5 zusätzlich das Passwort des
-  TP-Link-Kontos (Tapo-Cloud-Passwort). Es wird verschlüsselt gespeichert und nur
-  im Heimnetz an die Kamera geschickt.
+* *Camera → Settings → Advanced settings → Camera account*: create user name and password.
+* For speaker and panning JuStAI5 also needs the password of the TP-Link account (Tapo
+  cloud password). It is stored encrypted and only sent to the camera in the home network.
 
 **In JuStAI5:**
 
-1. *Geräte* → **Suchen**. Bei „Autorisierte Netzbereiche“ das Heimnetz eintragen,
-   meist `192.168.0.0/24` oder `192.168.1.0/24` (die ersten drei Zahlen der
-   eigenen IP-Adresse, dann `.0/24`). **Suchen**.
-2. Bei der gefundenen Kamera **Hinzufügen**, Namen, Raum und Zugangsdaten
-   eintragen, *Testen*, *Speichern*. Kameras, die nicht gefunden werden: *Geräte*
-   → **+ Gerät**, Treiber `tapo` oder `onvif` (andere ONVIF/RTSP-Kameras), IP
-   eintragen.
-3. Nach wenigen Sekunden steht die Kamera auf `online`, im Geräte-Dialog unter
-   *Bild* läuft das Livebild.
+1. *Devices* → **Search**. Enter the home network under "Authorised network ranges",
+   usually `192.168.0.0/24` or `192.168.1.0/24` (the first three numbers of your own IP
+   address, then `.0/24`). **Search**.
+2. For the camera found click **Add**, enter name, room and credentials, *Test*, *Save*.
+   Cameras that are not found: *Devices* → **+ Device**, driver `tapo` or `onvif` (other
+   ONVIF/RTSP cameras), enter the IP.
+3. After a few seconds the camera is `online`; the live image runs in the device dialog
+   under *Image*.
 
-**Damit die Kamera auch zuhört und spricht:** *Räume* → im Raum **+ Endpoint**,
-Kamera als Mikrofon und Lautsprecher (und Kamera) wählen, speichern. Dann beim
-Endpoint auf das Wellen-Symbol (**Echo-Latenz kalibrieren**) klicken: Die Kamera
-spielt kurze Töne, und JuStAI5 misst, wie lange es dauert, bis es sie selbst hört.
-So reagiert der Assistent nie auf seine eigene Stimme.
+**So the camera also listens and speaks:** *Rooms* → in the room **+ Endpoint**, choose the
+camera as microphone and speaker (and camera), save. Then click the wave symbol at the
+endpoint (**Calibrate echo latency**): the camera plays short tones and JuStAI5 measures
+how long it takes to hear them itself. This way the assistant never reacts to its own
+voice.
 
-Ein Raum kann mehrere Endpoints haben (z. B. Kamera und Tablet); geantwortet wird
-immer dort, wo das Wakeword am deutlichsten zu hören war.
+A room can have several endpoints (e.g. camera and tablet); the answer always comes where
+the wakeword was heard most clearly.
 
-## Schritt 8: Personen und Haustiere
+## Step 8: People and pets
 
-Unter *Personen* Familienmitglieder und Haustiere anlegen. Bei Tieren als
-*Tierart* `dog` (Hund) oder `cat` (Katze) eintragen, so heißen die Klassen der
-lokalen Bilderkennung. Damit der Assistent jemanden erkennt:
+Create family members and pets under *People*. For animals enter `dog` or `cat` as
+*species*, the class names of the local image recognition. So that the assistant
+recognises someone:
 
-* **Gesicht**: Vor eine Kamera stellen und sagen „Hey Jarvis, ich bin Anna. Merk
-  dir bitte mein Gesicht.“ Der Assistent fragt nach der Einwilligung.
-* **Stimme**: „Merk dir meine Stimme.“ (nach ein paar Sätzen im Gespräch). Dann
-  erkennt er schon am „Hey Jarvis“, wer spricht.
+* **Face**: stand in front of a camera and say "Hey Jarvis, I am Anna. Please remember my
+  face." The assistant asks for consent.
+* **Voice**: "Remember my voice." (after a few sentences in the conversation). Then it
+  recognises who speaks already by the "Hey Jarvis".
 
-Gesichter und Stimmen werden nur mit ausdrücklicher Einwilligung gespeichert und
-lassen sich jederzeit löschen ([VISION.md](VISION.md#personen-tiere-gesichter)).
-Ein Haustier, das als einziges seiner Art angelegt ist, wird automatisch
-zugeordnet, wenn eine Kamera einen Hund bzw. eine Katze sieht.
+Faces and voices are only stored with explicit consent and can be deleted at any time
+([VISION.md](VISION.md#people-pets-faces)). A pet that is the only one of its species is
+assigned automatically when a camera sees a dog or cat.
 
-## Fertig, und jetzt?
+## Done – what now?
 
-* Ideen zum Ausprobieren: [BEISPIELE.md](BEISPIELE.md).
-* Wakeword ändern, Lautstärke, Echo: *Audio* und [AUDIO.md](AUDIO.md).
-* Was in die Cloud geht, pro Raum einstellbar: *Räume → Raum → Richtlinien* und
-  *KI-Provider → Datenschutz*.
-* Fernseher oder alter Monitor als Bildschirm für Antworten:
-  `http://IP-ADRESSE:8080/display` öffnen und unter *Displays* koppeln.
+* Ideas to try: [EXAMPLES.md](EXAMPLES.md).
+* Change the wakeword, volume, echo: *Audio* and [AUDIO.md](AUDIO.md).
+* What goes to the cloud, adjustable per room: *Rooms → room → Policies* and
+  *AI providers → Privacy*.
+* A TV or old monitor as screen for answers: open `http://IP-ADDRESS:8080/display` and
+  pair it under *Displays*.
 
-## Aktualisieren, sichern, entfernen
+## Update, back up, remove
 
-Neue Version installieren (Einstellungen und Daten bleiben erhalten), im
-JuStAI5-Ordner:
+Install a new version (settings and data are kept), in the JuStAI5 folder:
 
 ```bash
 git pull
@@ -259,31 +253,31 @@ git pull
 ./scripts/install.sh
 ```
 
-(oder statt des Skripts `docker compose up -d --build`)
+(or `docker compose up -d --build` instead of the script)
 
-Gekoppelte Handys, Tablets und Displays laden die neue Version selbst.
+Paired phones, tablets and displays load the new version by themselves.
 
-Sicherung (enthält Datenbank, Einstellungen und Schlüssel, deshalb sicher
-aufbewahren):
+Backup (contains database, settings and keys, so keep it safe):
 
 ```bash
 ./scripts/backup.sh
 ```
 
-Wiederherstellen und Deinstallieren: [DEPLOYMENT.md](DEPLOYMENT.md#backup-und-wiederherstellung).
+Restore and uninstall: [DEPLOYMENT.md](DEPLOYMENT.md#backup-and-restore).
 
-## Wenn etwas nicht klappt
+## If something does not work
 
-| Problem | Lösung |
+| Problem | Solution |
 | --- | --- |
-| `permission denied … docker.sock` | Nach Schritt 1 ab- und wieder anmelden. |
-| Oberfläche nicht erreichbar | `docker compose ps`: läuft `core` und ist `healthy`? Sonst `docker compose logs core`. Firewall: Ports 8080 und 8443 im Heimnetz freigeben. |
-| Port 8080 belegt | In `.env` `JUSTAI_HTTP_PORT=8090` setzen, `docker compose up -d`. |
-| Assistent sagt nur „Entschuldigung, dabei ist ein Fehler aufgetreten.“ | Meist fehlt der API-Key oder das Tageslimit ist erreicht: *Plugins → Gemini* und *Dashboard → KI-Provider* (pausierte Modelle sind orange). |
-| Handy zeigt Zertifikatswarnung | Zertifikat aus *Einstellungen → Geräte-App* installieren; die verwendete Adresse muss dort unter „Zertifikat gilt für“ stehen. |
-| Kamera wird nicht gefunden | Netzbereich bei *Suchen* prüfen; manuell mit IP hinzufügen. |
-| Kamera `offline` | IP geändert? (Im Router eine feste IP vergeben.) Akku-Kameras schlafen und eignen sich nicht als Mikrofon. |
-| „Hey Jarvis“ wird nicht erkannt | *Audio*: bewegt sich der Pegel beim Sprechen? Deutlich und nicht zu weit weg sprechen. |
-| Assistent hört sich selbst | Beim Endpoint kalibrieren (Wellen-Symbol). |
+| `permission denied … docker.sock` | Log out and in again after step 1. |
+| Interface not reachable | `docker compose ps`: is `core` running and `healthy`? Otherwise `docker compose logs core`. Firewall: allow ports 8080 and 8443 in the home network. |
+| Port 8080 taken | Set `JUSTAI_HTTP_PORT=8090` in `.env`, `docker compose up -d`. |
+| The assistant only says "Sorry, something went wrong." | Usually the API key is missing or the daily limit is reached: *Plugins → Gemini* and *Dashboard → AI providers* (paused models are orange). |
+| Phone shows a certificate warning | Install the certificate from *Settings → Device app*; the address used must be listed there under "Certificate valid for". |
+| Camera not found | Check the network range under *Search*; add it manually by IP. |
+| Camera `offline` | IP changed? (Give it a fixed IP in the router.) Battery cameras sleep and are not suitable as microphones. |
+| "Hey Jarvis" is not recognised | *Audio*: does the level move when you speak? Speak clearly and not too far away. |
+| The assistant hears itself | Calibrate at the endpoint (wave symbol). |
+| No sound from a camera | "Reconnect the camera in the office" by voice or *Devices → Reconnect*; see [AUDIO.md](AUDIO.md). |
 
-Mehr: [DEPLOYMENT.md](DEPLOYMENT.md#fehlersuche).
+More: [DEPLOYMENT.md](DEPLOYMENT.md#troubleshooting).

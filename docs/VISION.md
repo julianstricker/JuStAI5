@@ -1,141 +1,142 @@
-# Vision und Identität
+# Vision and identity
 
-Code: `backend/src/justai/vision/`, `backend/src/justai/identity/`,
-Modelle über das Plugin `vision-opencv`.
+*[Deutsch](de/VISION.md) · English*
 
-## Pipeline (ressourcenschonend)
+Code: `backend/src/justai/vision/`, `backend/src/justai/identity/`, models through the
+plugin `vision-opencv`.
+
+## Pipeline (resource-saving)
 
 ```
-go2rtc-Substream ─► ffmpeg (fps pro Kamera, Standard 2) ─► Privatsphärenmaske
-  ─► Bewegungserkennung
-  ─► Objekterkennung YOLOX – nur bei Bewegung, aktiven Tracks oder alle heartbeat_s (20 s)
-  ─► IoU-Tracker (pro Klasse, zeitbasiertes Altern)
-  ─► Gesichtsprüfung YuNet + SFace auf Full-Res-Snapshot – nur für noch unbekannte Personen-Tracks
-  ─► Events · Sichtungen (DB) · Watches · PTZ-Tracking-Listener
+go2rtc substream ─► ffmpeg (fps per camera, default 2) ─► privacy mask
+  ─► motion detection
+  ─► object detection YOLOX – only on motion, active tracks or every heartbeat_s (20 s)
+  ─► IoU tracker (per class, time-based ageing)
+  ─► face check YuNet + SFace on a full-res snapshot – only for still unknown person tracks
+  ─► events · sightings (DB) · watches · PTZ tracking listener
 ```
 
-* Ein Detektor und ein Gesichtsmodell für alle Kameras, Inferenz in einem
-  begrenzten Thread-Pool (2 Worker).
-* Während Gesprächen sinkt die Hintergrund-Bildrate (`background_slowdown`).
-  PTZ-Tracking schaltet für seine Kamera die Analyse jedes Frames ein.
-* Räume mit `vision_allowed: false` werden nicht analysiert, mit
-  `face_recognition_allowed: false` gibt es dort keine Gesichtserkennung.
+* One detector and one face model for all cameras, inference in a limited thread pool
+  (2 workers).
+* During conversations the background frame rate drops (`background_slowdown`). PTZ
+  tracking switches on the analysis of every frame for its camera.
+* Rooms with `vision_allowed: false` are not analysed; with
+  `face_recognition_allowed: false` there is no face recognition there.
 
-## Konfiguration pro Kamera
+## Configuration per camera
 
-Admin-UI → *Vision* (`PUT /api/vision/cameras/{device_id}`):
+Admin UI → *Vision* (`PUT /api/vision/cameras/{device_id}`), or by voice for on/off
+("Stop analysing the living room camera", tool `vision.analysis`):
 
-| Feld | Standard |
+| Field | Default |
 | --- | --- |
 | `enabled` | true |
-| `fps` | 2 (0,2–10) |
+| `fps` | 2 (0.2–10) |
 | `motion`, `objects`, `faces` | true |
 | `labels` | person, dog, cat, car, truck, bicycle, motorcycle, bird |
-| `min_score` | 0,5 |
-| `privacy_zones` | Polygone (normalisierte Koordinaten); werden vor jeder Analyse geschwärzt |
+| `min_score` | 0.5 |
+| `privacy_zones` | polygons (normalised coordinates); blacked out before every analysis |
 | `heartbeat_s` | 20 |
 
-## Wann gilt jemand als „gesehen“?
+A camera in privacy mode ("switch off the camera in the bedroom") delivers no image; the
+analysis pauses until it is switched on again.
 
-Der Objektdetektor läuft nur bei Bewegung oder alle 20 s. Sitzt jemand still, bricht
-sein Track zwischen zwei Durchläufen ab (nach 4 s ohne Treffer) und wird kurz darauf
-neu erkannt. Deshalb gilt:
+## When does somebody count as "seen"?
 
-* `vision.person.recognized` wird pro Person höchstens alle 2 Minuten gemeldet.
-* Das Event enthält `away_s`: Sekunden seit die Person zuletzt auf irgendeiner Kamera
-  identifiziert war (nach einem Neustart aus den gespeicherten Sichtungen; nie gesehen
-  = ein Jahr). Damit unterscheiden Automationen „ist zurückgekommen“ von „saß die
-  ganze Zeit da“.
+The object detector only runs on motion or every 20 s. If somebody sits still, their track
+breaks between two runs (after 4 s without a hit) and is recognised again shortly after.
+Therefore:
+
+* `vision.person.recognized` is reported at most every 2 minutes per person.
+* The event contains `away_s`: seconds since the person was last identified on any camera
+  (after a restart from the stored sightings; never seen = one year). This lets
+  automations distinguish "came back" from "sat there all the time".
 
 ## Events
 
-`vision.motion.started/ended`, `vision.object.appeared/left`,
-`vision.person.recognized` (biometrisch, hohe Priorität), `vision.face.unknown`,
-`vision.watch.triggered`, `vision.state.changed`.
+`vision.motion.started/ended`, `vision.object.appeared/left`, `vision.person.recognized`
+(biometric, high priority), `vision.face.unknown`, `vision.watch.triggered`,
+`vision.state.changed`.
 
-## Tools für den Assistenten
+## Tools for the assistant
 
-| Tool | Zweck |
+| Tool | Purpose |
 | --- | --- |
-| `vision.look` | Schnappschuss der Kamera im Raum (oder benannt) an das Vision-Modell: „Was siehst du?“ |
-| `vision.detect` | lokale Objekterkennung auf dem aktuellen Bild |
-| `vision.where_is` | letzte Sichtung einer Person/eines Tieres/Objekts (aus den Sichtungen) |
-| `vision.watch` / `vision.unwatch` | Überwachungsaufgabe: „Sag mir, wenn ein Auto in die Einfahrt fährt“ (optional zeitlich begrenzt). Bei Auslösung Durchsage im Raum, in dem der Auftrag gegeben wurde. |
-| `vision.state_teach` / `vision.state_get` | lernbare Zustände („Das Garagentor ist jetzt offen“), siehe unten |
-| `vision.search_area` | mit PTZ-Kamera ein Gebiet absuchen ([PTZ.md](PTZ.md)) |
+| `vision.look` | snapshot of the camera in the room (or a named one) to the vision model: "What do you see?" |
+| `vision.detect` | local object detection on the current image |
+| `vision.where_is` | last sighting of a person/pet/object (from the sightings) |
+| `vision.watch` / `vision.unwatch` | watch task: "Tell me when a car drives into the driveway" (optionally time-limited). When triggered, an announcement in the room where the task was given, in the language it was given in. |
+| `vision.state_teach` / `vision.state_get` | learnable states ("The garage door is open now"), see below |
+| `vision.search_area` | search an area with a PTZ camera ([PTZ.md](PTZ.md)) |
+| `vision.analysis` | switch the image analysis of a camera on or off |
 
-Bilder gehen nur an Cloud-Modelle, wenn die Privacy-Regeln es erlauben
-(`camera_images_to_cloud` global und `cloud_media_allowed` im Raum). Sonst wird ein
-lokales Vision-Modell aus der Rolle `vision` verwendet oder die Anfrage abgelehnt.
+Images only go to cloud models if the privacy rules allow it (`camera_images_to_cloud`
+globally and `cloud_media_allowed` in the room). Otherwise a local vision model from the
+role `vision` is used or the request is refused.
 
-## Lernbare Zustandsdetektoren
+## Learnable state detectors
 
-Für feste Kameras: Ein Detektor beobachtet eine Region (z. B. das Garagentor).
-Der Benutzer zeigt Beispiele, indem er den aktuellen Zustand benennt; mehrere
-Referenzen pro Zustand sind möglich (Tag/Nacht). Die Klassifikation ist ein
-Nächster-Nachbar-Vergleich auf normalisierten, verkleinerten Graustufen-Ausschnitten.
-Dafür braucht es kein Training und keinen neuen Code. Zustandswechsel erzeugen
-`vision.state.changed` und können Automationen auslösen.
+For fixed cameras: a detector watches a region (e.g. the garage door). The user shows
+examples by naming the current state; several references per state are possible
+(day/night). Classification is a nearest-neighbour comparison on normalised, scaled-down
+greyscale crops. It needs no training and no new code. State changes create
+`vision.state.changed` and can trigger automations.
 
-Grenzen: Starke Lichtwechsel ohne passende Referenz führen zu falschen Zuständen.
-Deshalb Referenzen bei verschiedenen Lichtverhältnissen anlegen.
+Limits: strong light changes without a matching reference lead to wrong states. So create
+references in different light conditions.
 
-## Personen, Tiere, Gesichter
+## People, pets, faces
 
-Personen und Haustiere werden in der Admin-UI unter *Personen* verwaltet oder
-im Gespräch angelegt („Ich bin Julian“, Tool `identity.introduce`).
+People and pets are managed in the admin UI under *People* or created in conversation ("I
+am Julian", tool `identity.introduce`).
 
-**Biometrie nur mit Einwilligung.**
+**Biometrics only with consent.**
 
-* Gesichts-Embeddings werden nur gespeichert, wenn für die Person eine Einwilligung
-  (Art `face`) mit Nachweis (wer, wann, wie) erfasst ist.
-* Das Tool `identity.register_face` erfordert eine ausdrückliche mündliche
-  Bestätigung (`requires_confirmation`) und das Recht `biometric.enroll`.
-* Registrierung prüft die Qualität: Gesichtsgröße ≥ 70 px, Schärfe, Frontalität.
-  Nahezu identische Aufnahmen werden nicht doppelt gespeichert.
-* Widerruf der Einwilligung oder Löschen der Person entfernt **alle** biometrischen
-  Daten (Embeddings, Thumbnails). Personen lassen sich exportieren
-  (`GET /api/people/{id}/export`) und zusammenführen.
+* Face embeddings are only stored if a consent (kind `face`) with evidence (who, when,
+  how) is recorded for the person.
+* The tool `identity.register_face` requires an explicit spoken confirmation
+  (`requires_confirmation`) and the permission `biometric.enroll`.
+* Registration checks the quality: face size ≥ 70 px, sharpness, frontality. Nearly
+  identical shots are not stored twice.
+* Revoking consent or deleting the person removes **all** biometric data (embeddings,
+  thumbnails). People can be exported (`GET /api/people/{id}/export`) and merged.
 
-**Wiedererkennung:**
+**Recognition:**
 
-* SFace-Kosinus-Ähnlichkeit: ab 0,40 „schwach“, ab 0,52 „stark“ (konfigurierbar
-  im Plugin). Das ist **keine kalibrierte Wahrscheinlichkeit** und wird nirgends
-  als Prozentwert ausgegeben.
-* Ein Track gilt als erkannt bei einem starken Treffer oder bei zwei schwachen
-  Treffern für dieselbe Person.
-* Biometrie personalisiert (Ansprache, eigene Erinnerungen), **gewährt aber nie
-  Administratorrechte** (`auth/rbac.py`).
-* Haustiere: Gibt es genau ein registriertes Tier einer Art, wird ein erkannter
-  Hund oder eine erkannte Katze diesem Tier zugeordnet (Annahme, als solche gekennzeichnet).
+* SFace cosine similarity: from 0.40 "weak", from 0.52 "strong" (configurable in the
+  plugin). This is **not a calibrated probability** and is never shown as a percentage.
+* A track counts as recognised with one strong hit or two weak hits for the same person.
+* Biometrics personalise (form of address, own memories) but **never grant administrator
+  rights** (`auth/rbac.py`).
+* Pets: if there is exactly one registered animal of a species, a recognised dog or cat is
+  assigned to this animal (an assumption, marked as such).
 
-## Stimmprofile
+## Voice profiles
 
-Neben dem Gesicht kann eine Person auch an der Stimme erkannt werden: Das
-Gesicht zeigt, wer im Raum ist, die Stimme, wer gerade spricht.
+Besides the face a person can also be recognised by voice: the face shows who is in the
+room, the voice who is speaking.
 
-* **Anlegen im Gespräch**: „Merk dir meine Stimme“ (Tool `identity.register_voice`,
-  Bestätigungspflicht, Recht `biometric.enroll`). Der Assistent nutzt das in diesem
-  Gespräch Gesprochene (mindestens 4 s; sonst bittet er um ein paar Sätze mehr) und
-  speichert daraus mehrere Stimmproben (Embeddings, keine Aufnahmen; max. 10 pro
-  Person, die neuesten bleiben). Einwilligung „voice“ wird mit Nachweis erfasst.
-* **Erkennung**: am „Hey Jarvis“ zu Beginn jedes Gesprächs; reicht das nicht, noch
-  einmal nach ~3 s Sprache. Ein Name wird nur genannt bei Ähnlichkeit ≥ 0,55 und
-  Abstand ≥ 0,08 zur nächstbesten Person. Die Stimme hat Vorrang vor der Kamera.
-* **Löschen**: „Vergiss meine Stimme“ (`identity.forget_voice`), *Personen →
-  Stimmprofil löschen*, Widerruf der Einwilligung oder Löschen der Person entfernen
-  alle Proben. Zusammenführen überträgt sie, Export enthält sie.
-* Ein erkanntes Gesicht oder eine erkannte Stimme personalisiert das Gespräch (eigene
-  Erinnerungen, Ansprache), gibt aber nie Admin-Rechte. Eine Stimme lässt sich mit
-  einer Aufnahme nachahmen; sie ist keine Authentifizierung.
+* **Creating in conversation**: "Remember my voice" (tool `identity.register_voice`,
+  confirmation required, permission `biometric.enroll`). The assistant uses what was said
+  in this conversation (at least 4 s; otherwise it asks for a few more sentences) and
+  stores several voice samples from it (embeddings, no recordings; max. 10 per person, the
+  newest are kept). Consent "voice" is recorded with evidence.
+* **Recognition**: at the "Hey Jarvis" at the start of every conversation; if that is not
+  enough, once more after ~3 s of speech. A name is only given with similarity ≥ 0.55 and
+  a margin ≥ 0.08 to the next best person. The voice has priority over the camera.
+* **Deleting**: "Forget my voice" (`identity.forget_voice`), *People → Delete voice
+  profile*, revoking consent or deleting the person remove all samples. Merging transfers
+  them, export contains them.
+* A recognised face or voice personalises the conversation (own memories, form of
+  address) but never gives admin rights. A voice can be imitated with a recording; it is
+  not authentication.
 
-## Getestet
+## Tested
 
-* Unit: Tracker, Bewegung, Privatsphärenmaske, Zustandsklassifikation,
-  Punkt-in-Polygon (`tests/unit/test_vision_logic.py`).
-* Mit echter Kamera (C200): Snapshots und `vision.look` (Gemini, mit Fallback auf
-  `gemini-flash-lite-latest` bei Überlastung). Gesichtsregistrierung und
-  -wiedererkennung mit der echten Kamera stehen **noch aus**, weil dafür eine
-  Person vor der Kamera stehen muss.
-* E2E: `vision.person.recognized` (eingespeist) löst eine Begrüßungs-Automation im
-  richtigen Raum aus.
+* Unit: tracker, motion, privacy mask, state classification, point in polygon
+  (`tests/unit/test_vision_logic.py`).
+* With a real camera (C200): snapshots and `vision.look` (Gemini, with fallback to
+  `gemini-flash-lite-latest` on overload). Face registration and recognition with the
+  real camera are **still pending** because a person has to stand in front of the camera.
+* E2E: `vision.person.recognized` (injected) triggers a greeting automation in the right
+  room.

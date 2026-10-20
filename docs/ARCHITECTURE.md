@@ -1,130 +1,146 @@
-# Architektur
+# Architecture
 
-JuStAI5 ist ein **modularer Monolith** mit klaren Ports & Adapters: ein Core-Prozess
-(FastAPI, asyncio) enthält die Domänenmodule. Hardware, KI-Provider und
-Integrationen kommen ausschließlich über Plugins. Was nicht vertrauenswürdig ist,
-läuft in einem getrennten Sandbox-Container. Begründung: [ADR 0001](adr/0001-modular-monolith.md).
+*[Deutsch](de/ARCHITECTURE.md) · English*
 
-## Container (Docker Compose)
+JuStAI5 is a **modular monolith** with clear ports & adapters: one core process (FastAPI,
+asyncio) contains the domain modules. Hardware, AI providers and integrations come
+exclusively through plugins. Whatever is not trusted runs in a separate sandbox container.
+Rationale: [ADR 0001](adr/0001-modular-monolith.md).
 
-| Dienst | Aufgabe | Netze |
+## Containers (Docker Compose)
+
+| Service | Task | Networks |
 | --- | --- | --- |
-| `secrets-init` | erzeugt einmalig DB-Passwort, Master-Key, Sandbox-Token im Volume `secrets` | keins |
-| `postgres` | PostgreSQL 17 + pgvector (Konfiguration, Events, Gedächtnis, Embeddings, Jobs) | `db` (intern) |
-| `go2rtc` | Medienserver: RTSP/Tapo/ONVIF-Streams, Snapshots, Talkback (Backchannel) | `media` |
-| `core` | API, Admin-UI, Audio, Gespräche, Vision, Automationen, vertrauenswürdige Plugins | `db`, `media`, `sandbox` |
-| `sandbox` | führt nicht vertrauenswürdige Plugins/generierte Tools aus | `sandbox` (intern) |
+| `secrets-init` | creates DB password, master key and sandbox token once in the volume `secrets` | none |
+| `postgres` | PostgreSQL 17 + pgvector (configuration, events, memory, embeddings, jobs) | `db` (internal) |
+| `go2rtc` | media server: RTSP/Tapo/ONVIF streams, snapshots, talkback (backchannel) | `media` |
+| `core` | API, admin UI, audio, conversations, vision, automations, trusted plugins | `db`, `media`, `sandbox` |
+| `sandbox` | runs untrusted plugins and generated tools | `sandbox` (internal) |
 
-Die Netze `db` und `sandbox` sind `internal`: Datenbank und Sandbox haben weder
-Internet noch LAN-Zugriff; die Sandbox erreicht nur den Core.
+The networks `db` and `sandbox` are `internal`: database and sandbox have neither internet
+nor LAN access; the sandbox only reaches the core.
 
-## Module im Core (`backend/src/justai`)
-
-```
-api/            HTTP/WebSocket-Schicht (Routen, Auth-Abhängigkeiten) – keine Logik
-container.py    Composition Root: baut alle Komponenten, explizite DI
-extensions.py   Feature-Module (Speech, Memory, Vision, PTZ, Display, Automation, Devtools, Retention)
-common/         Fehler, Secret-Redaktion, Verschlüsselung, Supervisor, spawn()
-db/             SQLAlchemy-Modelle, Alembic-Migrationen
-events/         Event-Katalog, Event-Bus, Event-Store
-system/         Settings, Job-Queue, Telemetrie, Retention
-auth/           Benutzer, Rollen (RBAC), JWT, Audit
-rooms/ devices/ endpoints/    Topologie: Räume, Geräte (+ Discovery), Interaction Endpoints
-media/          go2rtc-Client
-audio/          DSP, VAD, Echo, I/O-Kanäle, Prozessor pro Endpoint, Arbitrierung, Engine
-conversation/   Zustandsautomat, Sessions (Realtime- und Pipeline-Treiber), Echo-Filter
-ai/             KI-Konfiguration, Router (Fallback, Privacy, Kosten), Nutzungserfassung
-output/         Output Router, Topologie, Sprachausgabe
-tools/          Tool-Registry, Executor, Bestätigungen, eingebaute Tools
-plugins/        Loader, Manager, Kontext, Provider-Registry, Sandbox-Client
-memory/ identity/ vision/ ptz/ display/ automation/ devtools/   Fachmodule
-```
-
-Regeln:
-
-* Module hängen nur von Ports (Protokollen/ABCs) ab, nicht von konkreten Plugins.
-  Die Ports liegen im SDK (`justai_sdk.ports.*`), damit Plugins und Core dieselben
-  Verträge nutzen.
-* `container.py` ist der einzige Ort, der alles kennt. Komponenten bekommen ihre
-  Abhängigkeiten über den Konstruktor.
-* Langlaufende Tasks laufen unter dem `Supervisor` (Neustart mit Backoff) oder
-  werden mit `spawn()` gestartet (Fehler werden geloggt, Referenzen gehalten).
-
-## Zentrale Datenflüsse
-
-### Sprachinteraktion
+## Modules in the core (`backend/src/justai`)
 
 ```
-Mikrofon ─► go2rtc ─► FfmpegMicSource (16 kHz PCM, Zeitstempel)
-          ─► MicChannel (Fan-out an alle Endpoints, die das Gerät nutzen)
-          ─► EndpointAudioProcessor
-               HPF/AEC3 (Referenz um gemessene Latenz verschoben) · NS · Silero-VAD
-               Echo-Fenster (PlaybackTracker) · Half-Duplex-Gating · openWakeWord
-          ─► WakeArbiter (pro Arbitrierungsgruppe, 0,8 s Fenster)
-          ─► ConversationManager.start_session(endpoint)
-               Realtime-Treiber (z. B. Gemini Live)  oder  Pipeline-Treiber (STT → LLM → TTS)
-          ─► Tools (Registry, Rechteprüfung, Bestätigung, Audit)
-          ─► OutputRouter.resolve(endpoint-raum) ─► SpeakerChannel ─► go2rtc-Backchannel
-                                                    └─► ReferenceBuffer/PlaybackTracker (Echo-Referenz)
+api/            HTTP/WebSocket layer (routes, auth dependencies) – no logic
+container.py    composition root: builds all components, explicit DI
+extensions.py   feature modules (speech, memory, vision, PTZ, display, automation, devtools, retention)
+common/         errors, secret redaction, encryption, supervisor, spawn()
+db/             SQLAlchemy models, Alembic migrations
+events/         event catalog, event bus, event store
+system/         settings, job queue, telemetry, retention
+auth/           users, roles (RBAC), JWT, audit
+rooms/ devices/ endpoints/    topology: rooms, devices (+ discovery), interaction endpoints
+media/          go2rtc client
+audio/          DSP, VAD, echo, I/O channels, processor per endpoint, arbitration, engine
+conversation/   state machine, sessions (realtime and pipeline drivers), echo filter
+ai/             AI configuration, router (fallback, privacy, cost), usage tracking
+output/         output router, topology, speech output
+tools/          tool registry, executor, confirmations, built-in tools
+plugins/        loader, manager, context, provider registry, sandbox client
+memory/ identity/ vision/ ptz/ display/ automation/ devtools/   domain modules
+i18n.py         fixed spoken texts in English, German and Italian
 ```
 
-Die Session ist fest an ihren Endpoint gebunden. Auch nach Tool-Aufrufen,
-Provider-Wechseln oder Reconnects bestimmt der Output Router das Ziel neu aus dem
-Raum des Endpoints, nie aus Modellausgaben. Details: [AUDIO.md](AUDIO.md),
-[ROOMS.md](ROOMS.md).
+Rules:
 
-### Events und Automationen
+* Modules only depend on ports (protocols/ABCs), not on concrete plugins. The ports live
+  in the SDK (`justai_sdk.ports.*`) so plugins and core use the same contracts.
+* `container.py` is the only place that knows everything. Components get their
+  dependencies through the constructor.
+* Long-running tasks run under the `Supervisor` (restart with backoff) or are started with
+  `spawn()` (errors are logged, references kept).
+
+## Languages
+
+* **Interface**: English, German, Italian (`frontend/src/shared/i18n`). `en.ts` is the
+  source; `de.ts` and `it.ts` are typed against it, so a missing translation fails the
+  build. Every user picks their language at the top right; the default follows the
+  browser.
+* **Backend**: everything the language model reads (system prompt, tool descriptions and
+  results, error messages, event catalog) is English, with the instruction to always
+  answer in the language of the conversation. The few texts spoken or stored without the
+  model (error apology, cloud notice, watch announcements) are in `justai/i18n.py`.
+* **Plugins**: name and description in `plugin.yaml` are English, translations under
+  `i18n:`; settings forms translate their fields with `x-i18n` in the JSON schema.
+* **Documentation**: English in `docs/`, German in `docs/de/`.
+
+## Central data flows
+
+### Voice interaction
 
 ```
-Quelle (Vision, Audio, Display, Plugin, Cron) ─► EventBus.publish
-   ├─ dauerhafte Events ─► EventStore (Postgres)
-   ├─ Abonnenten (eigene Queue je Abonnent, Fehlerisolation)
-   └─ AutomationEngine ─► Trigger/Bedingungen ─► Job-Queue (Postgres, SKIP LOCKED)
-                                                  └─► Aktionen (assistant.invoke, speak, tool, display.show …)
+microphone ─► go2rtc ─► FfmpegMicSource (16 kHz PCM, timestamps)
+           ─► MicChannel (fan-out to all endpoints that use the device)
+           ─► EndpointAudioProcessor
+                HPF/AEC3 (reference shifted by measured latency) · NS · Silero VAD
+                echo window (PlaybackTracker) · half-duplex gating · openWakeWord
+           ─► WakeArbiter (per arbitration group, 0.8 s window)
+           ─► ConversationManager.start_session(endpoint)
+                realtime driver (e.g. Gemini Live)  or  pipeline driver (STT → LLM → TTS)
+           ─► tools (registry, permission check, confirmation, audit)
+           ─► OutputRouter.resolve(endpoint room) ─► SpeakerChannel ─► go2rtc backchannel
+                                                     └─► ReferenceBuffer/PlaybackTracker (echo reference)
 ```
 
-Events tragen `hop` und `caused_by`. Der Bus verwirft Events über dem Hop-Limit
-(`system.event_loop_detected`), und eine Automation reagiert nie auf eigene Events.
+The session is bound to its endpoint. Also after tool calls, provider switches or
+reconnects the output router determines the target again from the endpoint's room, never
+from model output. Details: [AUDIO.md](AUDIO.md), [ROOMS.md](ROOMS.md).
+
+### Events and automations
+
+```
+source (vision, audio, display, plugin, cron) ─► EventBus.publish
+   ├─ durable events ─► EventStore (Postgres)
+   ├─ subscribers (own queue per subscriber, error isolation)
+   └─ AutomationEngine ─► triggers/conditions ─► job queue (Postgres, SKIP LOCKED)
+                                                  └─► actions (assistant.invoke, speak, tool, display.show …)
+```
+
+Events carry `hop` and `caused_by`. The bus drops events above the hop limit
+(`system.event_loop_detected`), and an automation never reacts to its own events.
 
 ### Vision
 
 ```
-go2rtc Substream (niedrige fps) ─► Privatsphärenmaske ─► Bewegung ─► YOLOX (nur bei Bewegung/aktiven Tracks)
-  ─► IoU-Tracker ─► Gesichtsprüfung (YuNet + SFace, Full-Res-Snapshot, nur für unbekannte Personen-Tracks)
-  ─► Events (vision.*), Sichtungen, Watches, PTZ-Tracking
+go2rtc substream (low fps) ─► privacy mask ─► motion ─► YOLOX (only on motion/active tracks)
+  ─► IoU tracker ─► face check (YuNet + SFace, full-res snapshot, only for unknown person tracks)
+  ─► events (vision.*), sightings, watches, PTZ tracking
 ```
 
 ### Displays
 
 ```
-Tool display.show ─► Komponentenvalidierung ─► OutputRouter (Display im Raum)
-  ─► WebSocket an Display-Client ─► Rendern mit eingebauten Komponenten ─► ack
-  ─► erst dann meldet das Tool Erfolg
+tool display.show ─► component validation ─► OutputRouter (display in the room)
+  ─► WebSocket to the display client ─► render with built-in components ─► ack
+  ─► only then the tool reports success
 ```
 
-## Persistenz
+## Persistence
 
-PostgreSQL ist die einzige Datenbank ([ADR 0003](adr/0003-postgres-pgvector.md)):
-relationale Tabellen für Topologie, Benutzer, Automationen, Jobs; JSONB für
-flexible Konfiguration und Event-Payloads; pgvector (384 Dim.) für
-Gedächtnis-Embeddings und Gesichts-Embeddings. Migrationen: Alembic, laufen beim
-Start automatisch (`db/migrate.py`).
+PostgreSQL is the only database ([ADR 0003](adr/0003-postgres-pgvector.md)): relational
+tables for topology, users, automations, jobs; JSONB for flexible configuration and event
+payloads; pgvector (384 dim.) for memory and face embeddings. Migrations: Alembic, run
+automatically at start (`db/migrate.py`).
 
-Konfiguration, die Benutzer zur Laufzeit ändern (Räume, Geräte, KI-Rollen,
-Plugin-Einstellungen), liegt in der Datenbank. Umgebungsvariablen (`JUSTAI_*`,
-`config.py`) enthalten nur Bootstrap-Werte. Plugin-Secrets werden mit Fernet
-(Master-Key aus dem Volume `secrets`) verschlüsselt gespeichert.
+Configuration that users change at runtime (rooms, devices, AI roles, plugin settings)
+lives in the database. Environment variables (`JUSTAI_*`, `config.py`) only contain
+bootstrap values. Plugin secrets are stored encrypted with Fernet (master key from the
+volume `secrets`).
 
-## Erweiterbarkeit
+## Extensibility
 
-* **Plugins** (Manifest, Rechte, Lifecycle): [PLUGINS.md](PLUGINS.md)
-* **Provider-Ports**: `ai` (Chat, Realtime, STT, TTS, Embedding), `devices`
-  (Treiber, Audio-Quellen/Senken, Snapshots), `ptz`, `vision` (Detektor,
-  Gesichtsanalyse), `wakeword`, `display`, `discovery`
-* **Tools**: deklarativ mit Pydantic-Parametern, Kategorie, Rechten, Nebenwirkung
-  (`none`/`read`/`write`/`physical`) und optionaler Bestätigungspflicht
-* **Events**: Plugins können eigene Event-Typen im Namensraum `plugin.<id>.*` registrieren
+* **Plugins** (manifest, permissions, lifecycle): [PLUGINS.md](PLUGINS.md)
+* **Provider ports**: `ai` (chat, realtime, STT, TTS, embedding), `devices` (drivers,
+  audio sources/sinks, snapshots, privacy mode), `ptz`, `vision` (detector, face
+  analysis), `wakeword`, `display`, `discovery`
+* **Tools**: declarative with Pydantic parameters, category, permissions, side effect
+  (`none`/`read`/`write`/`physical`) and optional confirmation
+* **Events**: plugins can register their own event types in the namespace
+  `plugin.<id>.*`; automations can react to them
+* **Background jobs**: plugins run periodic work with `ctx.run_every()`
 
-Die Schnittstellen zwischen den Modulen (Event-Bus, Job-Queue, Provider-Ports)
-sind so geschnitten, dass sich Teile später in eigene Prozesse auslagern lassen,
-z. B. Vision-Inferenz oder der Bus über NATS. Das ist bewusst noch nicht gemacht.
+The interfaces between the modules (event bus, job queue, provider ports) are cut so that
+parts can later move into their own processes, e.g. vision inference or the bus over
+NATS. That is deliberately not done yet.

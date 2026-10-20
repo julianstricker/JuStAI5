@@ -1,42 +1,42 @@
-# 0005 – Mehrschichtige Echo-Behandlung mit eigener Bulk-Delay-Kompensation
+# 0005 – Multi-layer echo handling with own bulk delay compensation
 
-**Status:** angenommen
+*[Deutsch](../de/adr/0005-echo-handling.md) · English*
 
-## Kontext
+**Status:** accepted
 
-Der Assistent darf nie auf seine eigene Stimme reagieren. Bei Netzwerkkameras als
-Mikrofon und Lautsprecher kommt die eigene Ausgabe mit 1–2 s Verzögerung zurück
-(C200: ~1,8 s), schwankend mit der Netzlast. Manche Geräte schalten ihr Mikrofon
-während der Wiedergabe stumm.
+## Context
 
-Messung (`scripts/measure_aec.py`): WebRTC AEC3 dämpft bis ~0,4 s Verzögerung
-32–40 dB, ab 0,6 s nur noch ~10 dB. Mit vorgeschalteter Bulk-Delay-Kompensation
-bleiben es ~40 dB auch bei 1,8 s.
+The assistant must never react to its own voice. With network cameras as microphone and
+speaker, its own output comes back with 1–2 s delay (C200: ~1.8 s), fluctuating with the
+network load. Some devices mute their microphone during playback.
 
-## Entscheidung
+Measurement (`scripts/measure_aec.py`): WebRTC AEC3 attenuates 32–40 dB up to ~0.4 s
+delay, from 0.6 s only ~10 dB. With bulk delay compensation in front it stays at ~40 dB
+even at 1.8 s.
 
-Mehrere unabhängige Schichten statt eines einzelnen Echo-Cancellers
-([AUDIO.md](../AUDIO.md#schutzschichten-gegen-selbstgespräche)):
+## Decision
 
-1. AEC3 (über livekit) mit Referenz, die um die per GCC-PHAT gemessene Verzögerung
-   verschoben ist,
-2. deterministisches Echo-Fenster mit Half-Duplex-Gate (Standard), Full Duplex
-   nur nach gemessener Echodämpfung ≥ 18 dB,
-3. Wakeword-Unterdrückung während der eigenen Wiedergabe,
-4. Transkript-Echo-Filter gegen kürzlich Gesagtes,
-5. Ignorieren des Wakeword-Nachlaufs, Inaktivitäts-Timer erst nach dem Echo-Fenster.
+Several independent layers instead of a single echo canceller
+([AUDIO.md](../AUDIO.md#protection-layers-against-talking-to-itself)):
 
-Die Kalibrierung misst die Verzögerung mit Sweeps und erkennt Geräte, die ihr
-Mikrofon stummschalten.
+1. AEC3 (via livekit) with a reference shifted by the delay measured with GCC-PHAT,
+2. deterministic echo window with a half duplex gate (default), full duplex only after a
+   measured echo attenuation ≥ 18 dB,
+3. wakeword suppression during its own playback,
+4. transcript echo filter against recently said text,
+5. ignoring the wakeword tail, inactivity timer only after the echo window.
 
-## Alternativen
+Calibration measures the delay with sweeps and detects devices that mute their
+microphone.
 
-* **Nur AEC3 / Speex**: versagt bei Netzwerklatenz (Messung oben).
-* **Immer Half Duplex ohne AEC**: sicher, aber kein Barge-in auf geeigneten Geräten.
-* **Nur Transkript-Vergleich**: reagiert erst nach STT, also zu spät für das Wakeword.
+## Alternatives
 
-## Konsequenzen
+* **Only AEC3 / Speex**: fails with network latency (measurement above).
+* **Always half duplex without AEC**: safe, but no barge-in on suitable devices.
+* **Only transcript comparison**: reacts only after STT, i.e. too late for the wakeword.
 
-* Sicher auch auf Geräten mit unbekannter, schwankender Latenz.
-* Barge-in nur auf Geräten mit echtem Full Duplex und gemessener Echodämpfung;
-  mit der C200 nicht möglich.
+## Consequences
+
+* Safe also on devices with unknown, fluctuating latency.
+* Barge-in only on devices with real full duplex and measured echo attenuation; not
+  possible with the C200.

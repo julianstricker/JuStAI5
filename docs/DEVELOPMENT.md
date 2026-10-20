@@ -1,42 +1,44 @@
-# Entwicklung
+# Development
 
-## Voraussetzungen
+*[Deutsch](de/DEVELOPMENT.md) · English*
 
-* Linux x86_64 (die Workspace-Auflösung ist auf `sys_platform == 'linux'` beschränkt,
-  weil `tflite-runtime` für openWakeWord nur dort existiert – siehe Override in
+## Requirements
+
+* Linux x86_64 (workspace resolution is limited to `sys_platform == 'linux'` because
+  `tflite-runtime` for openWakeWord only exists there – see the override in
   `pyproject.toml`)
-* [uv](https://docs.astral.sh/uv/) ≥ 0.5, Python 3.12 (uv installiert es bei Bedarf)
-* Node 22 für das Frontend
-* Docker mit Compose v2 für den vollständigen Stack und die E2E-Tests
-* ffmpeg (nur für lokale Läufe außerhalb von Docker)
+* [uv](https://docs.astral.sh/uv/) ≥ 0.5, Python 3.12 (uv installs it if needed)
+* Node 22 for the frontend
+* Docker with Compose v2 for the full stack and the E2E tests
+* ffmpeg (only for local runs outside Docker)
 
 ## Setup
 
 ```bash
-uv sync --all-packages          # Backend, SDK, Sandbox + Dev-Werkzeuge in .venv
-cd frontend && npm ci           # Frontend-Abhängigkeiten
+uv sync --all-packages          # backend, SDK, sandbox + dev tools in .venv
+cd frontend && npm ci           # frontend dependencies
 ```
 
-Modelle für lokale Audio-Tests und lokalen Betrieb ohne Docker:
+Models for local audio tests and local operation without Docker:
 
 ```bash
 uv run python scripts/fetch_models.py ./.models
 export JUSTAI_TEST_MODELS_DIR=$PWD/.models
 ```
 
-## Entwicklungsmodus mit Docker (empfohlen)
+## Development mode with Docker (recommended)
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
 
-* Backend, SDK und Plugins werden read-only in den Container gemountet,
-  `JUSTAI_ENV=development` aktiviert Uvicorn-Reload.
-* Vite-Dev-Server auf <http://localhost:5173> (Proxy auf den Core).
+* Backend, SDK and plugins are mounted read-only into the container,
+  `JUSTAI_ENV=development` enables Uvicorn reload.
+* Vite dev server on <http://localhost:5173> (proxy to the core).
 
-## Core lokal ohne Docker
+## Core locally without Docker
 
-Braucht eine erreichbare PostgreSQL mit pgvector und optional go2rtc:
+Needs a reachable PostgreSQL with pgvector and optionally go2rtc:
 
 ```bash
 docker run -d --name j5-db -e POSTGRES_USER=justai -e POSTGRES_PASSWORD=dev \
@@ -50,54 +52,61 @@ export JUSTAI_ENV=development JUSTAI_LOG_JSON=false \
 uv run python -m justai.main
 ```
 
-Alle Variablen: `backend/src/justai/config.py` (Präfix `JUSTAI_`).
+All variables: `backend/src/justai/config.py` (prefix `JUSTAI_`).
 
-## Codequalität
+## Code quality
 
 ```bash
-uv run ruff check .              # Lint (Regeln in pyproject.toml, Zeilenlänge 120)
+uv run ruff check .              # lint (rules in pyproject.toml, line length 120)
 uv run ruff format --check .
-uv run mypy backend/src sdk/python/src sandbox/src   # strict
+(cd backend && uv run mypy src)  # strict, with the pydantic plugin
+(cd sdk/python && uv run mypy src)
+(cd sandbox && uv run mypy src)
 cd frontend && npm run lint && npm run typecheck
 ```
 
-Konventionen:
+Conventions:
 
-* Neue Abhängigkeiten nur mit Begründung (Lockfile wird committet).
-* Domänenlogik ohne I/O schreiben, wo möglich (z. B. `ptz/tracking.py`,
-  `audio/arbitration.py`, `output/router.py`), damit sie ohne Infrastruktur
-  testbar ist.
-* Hintergrund-Tasks nie mit nacktem `asyncio.create_task` starten, sondern mit
-  `justai.common.tasks.spawn` oder dem `Supervisor`.
-* Benutzersichtbare Texte (Tool-Fehlermeldungen, UI) sind deutsch; Code,
-  Kommentare und Logs englisch.
-* Secrets nie loggen: `justai.common.redact` filtert bekannte Schlüssel. Plugin-
-  Secrets deklariert das Manifest in `secret_fields`.
+* New dependencies only with a reason (the lockfile is committed).
+* Write domain logic without I/O where possible (e.g. `ptz/tracking.py`,
+  `audio/arbitration.py`, `output/router.py`) so it can be tested without
+  infrastructure.
+* Never start background tasks with a bare `asyncio.create_task`, but with
+  `justai.common.tasks.spawn` or the `Supervisor`.
+* Code, comments, logs, tool descriptions, tool results and error messages are English.
+  The language model answers in the language of the conversation.
+* Texts spoken or stored without the model go into `justai/i18n.py` with English,
+  German and Italian versions.
+* Interface texts go into `frontend/src/shared/i18n/en.ts` and are translated in `de.ts`
+  and `it.ts`; the build fails if a key is missing. In components use `const t = useT()`,
+  outside of components `tg()`.
+* Never log secrets: `justai.common.redact` filters known keys. Plugin secrets are
+  declared by the manifest in `secret_fields`.
 
-## Datenbankmigrationen
+## Database migrations
 
 ```bash
 cd backend
-uv run alembic revision -m "beschreibung"     # Datei in src/justai/db/migrations/versions/
+uv run alembic revision -m "description"     # file in src/justai/db/migrations/versions/
 ```
 
-Migrationen laufen beim Start des Core automatisch. Jede Migration muss auf einer
-bestehenden Datenbank funktionieren (kein Neuanlegen von Daten nötig).
+Migrations run automatically at core start. Every migration must work on an existing
+database (no recreating of data needed).
 
-## Ein neues Fachmodul anlegen
+## Adding a new domain module
 
-1. Paket unter `backend/src/justai/<modul>/` mit Service (Logik) und
+1. Package under `backend/src/justai/<module>/` with a service (logic) and
    `extension.py` (`start()`, `stop()`, `register_tools(registry)`).
-2. In `extensions.py` instanziieren.
-3. API-Routen in `api/routes/ext_<modul>.py`, in `api/app.py` registrieren.
-4. Event-Typen im Katalog (`events/catalog.py`) ergänzen.
-5. Unit-Tests für die reine Logik, ggf. E2E-Test.
+2. Instantiate it in `extensions.py`.
+3. API routes in `api/routes/ext_<module>.py`, registered in `api/app.py`.
+4. Add event types to the catalog (`events/catalog.py`).
+5. Unit tests for the pure logic, an E2E test if useful.
 
-## Ein neues Plugin
+## A new plugin
 
-Siehe [PLUGINS.md](PLUGINS.md). Kurz: Ordner unter `plugins/` mit `plugin.yaml`
-und `plugin.py`, Tests mit `justai_sdk.testing.FakePluginContext`.
+See [PLUGINS.md](PLUGINS.md). In short: a folder under `plugins/` with `plugin.yaml` and
+`plugin.py`, tests with `justai_sdk.testing.FakePluginContext`.
 
 ## Tests
 
-Siehe [TESTING.md](TESTING.md).
+See [TESTING.md](TESTING.md).

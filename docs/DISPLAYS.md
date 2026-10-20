@@ -1,173 +1,171 @@
 # Displays
 
-Jeder Browser kann ein JuStAI5-Display sein: Fernseher mit Browser, Tablet, alter
-Laptop. Code: `backend/src/justai/display/`, Client: `frontend/src/display/`,
-Renderer: `frontend/src/shared/render/`.
+*[Deutsch](de/DISPLAYS.md) · English*
 
-## Koppeln
+Every browser can be a JuStAI5 display: TV with a browser, tablet, old laptop. Code:
+`backend/src/justai/display/`, client: `frontend/src/display/`, renderer:
+`frontend/src/shared/render/`.
 
-1. Auf dem Gerät `http://HOST:8080/display` öffnen. Der Client meldet sich per
-   WebSocket (`/api/display/ws`) mit seinen Fähigkeiten und zeigt einen
-   **6-stelligen Kopplungscode**.
-2. Admin-UI → *Displays* → Code eingeben, Namen und Raum wählen.
-3. Der Core legt ein Gerät mit dem Treiber `browser-display` an und schickt dem
-   Client ein zufälliges Token. Der Client speichert es lokal; im Core liegt nur
-   der Hash. Bei jedem neuen Verbinden genügt das Token.
+## Pairing
 
-Entfernen des Geräts in der Admin-UI macht das Token ungültig.
+1. Open `http://HOST:8080/display` on the device. The client connects by WebSocket
+   (`/api/display/ws`) with its capabilities and shows a **6-digit pairing code**.
+2. Admin UI → *Displays* → enter the code, choose name and room.
+3. The core creates a device with the driver `browser-display` and sends the client a
+   random token. The client stores it locally; the core only keeps the hash. On every new
+   connection the token is enough.
 
-## Geräte-App (Handy, Tablet, PC als Mikrofon, Lautsprecher, Kamera)
+Removing the device in the admin UI invalidates the token.
 
-Unter `https://HOST:8443/app` läuft derselbe Client als installierbare Web-App
-(PWA). Damit wird ein beliebiges Gerät zu einem vollwertigen JuStAI5-Gerät:
+The display client and the device app show their texts in English, German or Italian
+(language picker on the start screen; default: browser language).
 
-| Funktion | Weg |
+## Device app (phone, tablet, PC as microphone, speaker, camera)
+
+At `https://HOST:8443/app` the same client runs as an installable web app (PWA). It turns
+any device into a full JuStAI5 device:
+
+| Function | Path |
 | --- | --- |
-| Mikrofon | `getUserMedia` mit Echo-Unterdrückung, Rauschunterdrückung und AGC des Browsers → AudioWorklet → PCM16, 16 kHz, 20-ms-Rahmen → Wakeword, Gespräche, Sprecherkennung |
-| Lautsprecher | Sprachausgabe des Output Routers als PCM16, 16 kHz → AudioWorklet mit 60 ms Jitterpuffer |
-| Kamera | vordere oder hintere Kamera, alle 500 ms ein JPEG (max. 960 px breit) → Vision, Gesichtserkennung, Snapshot, Live-Ansicht in der Admin-UI und auf Displays (MJPEG statt MP4, da es keinen go2rtc-Stream gibt) |
-| Bildschirm | wie jedes Display (Darstellungen, Indikator „hört zu“) |
+| Microphone | `getUserMedia` with the browser's echo cancellation, noise suppression and AGC → AudioWorklet → PCM16, 16 kHz, 20 ms frames → wakeword, conversations, speaker recognition |
+| Speaker | speech output of the output router as PCM16, 16 kHz → AudioWorklet with 60 ms jitter buffer |
+| Camera | front or back camera, a JPEG every 500 ms (max. 960 px wide) → vision, face recognition, snapshot, live view in the admin UI and on displays (MJPEG instead of MP4, since there is no go2rtc stream) |
+| Screen | like every display (presentations, "listening" indicator) |
 
-**Einrichten**
+**Setting up**
 
-1. Admin-UI → *Einstellungen* → *Geräte-App*: Wird die Admin-UI über eine
-   Adresse geöffnet, die noch nicht im HTTPS-Zertifikat steht (z. B. die
-   LAN-IP des Servers), dort **Hinzufügen** klicken. Das Zertifikat wird neu
-   ausgestellt und ohne Neustart geladen.
-2. Das **JuStAI5-Zertifikat** (lokale Zertifizierungsstelle) auf dem Gerät
-   installieren; die Schritte für Android, iPhone/iPad, Windows und macOS stehen
-   in derselben Karte. Ohne Installation genügt meist, die Browser-Warnung zu
-   bestätigen; als App installieren lässt sich die Seite dann nicht.
-3. Auf dem Gerät `https://HOST:8443/app` öffnen, Mikrofon, Lautsprecher und
-   Kamera (aus/vorne/hinten) wählen, *Starten*. Danach über das Browser-Menü
-   „App installieren“ bzw. „Zum Home-Bildschirm“.
-4. Den angezeigten Code unter *Displays & Geräte-App* freigeben und einen Raum
-   wählen. Mit Mikrofon **und** Lautsprecher legt JuStAI5 im Raum automatisch
-   einen Endpoint an (Rollen Mikrofon, Lautsprecher, ggf. Kamera und Display,
-   Arbitrierungsgruppe des Raums). Werden Mikrofon und Lautsprecher erst später
-   eingeschaltet, entsteht der Endpoint beim nächsten Verbinden.
+1. Admin UI → *Settings* → *Device app*: if the admin UI is opened through an address that
+   is not yet in the HTTPS certificate (e.g. the server's LAN IP), click **Add** there.
+   The certificate is issued again and loaded without a restart.
+2. Install the **JuStAI5 certificate** (local certificate authority) on the device; the
+   steps for Android, iPhone/iPad, Windows and macOS are in the same card. Without
+   installing it, confirming the browser warning is usually enough; the page then cannot
+   be installed as an app.
+3. Open `https://HOST:8443/app` on the device, choose the language, microphone, speaker
+   and camera (off/front/back), *Start*. Then use the browser menu "Install app" or "Add
+   to Home Screen".
+4. Approve the code shown under *Displays & device app* and choose a room. With microphone
+   **and** speaker JuStAI5 automatically creates an endpoint in the room (roles
+   microphone, speaker, camera and display if present, arbitration group of the room). If
+   microphone and speaker are switched on only later, the endpoint is created on the next
+   connection.
 
-Die Auswahl lässt sich über das Zahnrad oben rechts ändern; das Gerät meldet sich
-dann mit den neuen Fähigkeiten an. Ist die Auswahl gespeichert, startet die App
-Mikrofon, Lautsprecher und Kamera beim Öffnen selbst, auch nach dem automatischen
-Neuladen bei einem JuStAI5-Update. Lässt der Browser den Ton ohne Berührung nicht
-zu, läuft die Kamera trotzdem, und oben rechts steht „Ton pausiert – einmal
-tippen“; eine Berührung irgendwo genügt. Nur wenn Mikrofon oder Kamera nicht
-starten (z. B. Zugriff noch nicht erlaubt), erscheint „Tippen zum Starten“. Solange die App
-offen ist, verhindert eine Wake-Lock-Sperre, dass der Bildschirm ausgeht. Läuft
-die Seite im Hintergrund, schicken Browser keine Kamerabilder mehr, und mobile
-Browser beenden oft auch das Mikrofon. Für ein dauerhaftes Raumgerät deshalb ein
-Tablet mit Netzteil und App im Vordergrund verwenden.
+The selection can be changed with the gear at the top right; the device then registers
+with the new capabilities. Once the selection is saved, the app starts microphone, speaker
+and camera by itself when opened, also after the automatic reload on a JuStAI5 update. If
+the browser does not allow sound without a touch, the camera runs anyway and the top right
+shows "Sound paused – tap once"; a touch anywhere is enough. Only if microphone or camera
+do not start (e.g. access not yet allowed) "Tap to start" appears. While the app is open,
+a wake lock keeps the screen on. When the page runs in the background, browsers no longer
+send camera images, and mobile browsers often stop the microphone too. For a permanent
+room device use a tablet with a power supply and the app in the foreground.
 
-Warum HTTPS: Browser erlauben Mikrofon, Kamera, Service Worker und die
-Installation als App nur auf sicheren Ursprüngen (HTTPS oder `localhost`). Der
-reine Display-Client unter `http://HOST:8080/display` braucht das nicht.
+Why HTTPS: browsers only allow microphone, camera, service worker and installation as an
+app on secure origins (HTTPS or `localhost`). The plain display client at
+`http://HOST:8080/display` does not need it.
 
-**Medien im WebSocket** (`display/media.py`): binäre Nachrichten mit einem
-Typ-Byte am Anfang.
+**Media in the WebSocket** (`display/media.py`): binary messages with a type byte at the
+beginning.
 
-| Byte | Richtung | Inhalt |
+| Byte | Direction | Content |
 | --- | --- | --- |
-| `0x01` | Client → Core | Mikrofon, PCM16 LE, mono, 16 kHz |
-| `0x02` | Client → Core | Kamerabild, JPEG (≤ 2 MB) |
-| `0x11` | Core → Client | Lautsprecher, PCM16 LE, mono, 16 kHz |
+| `0x01` | client → core | microphone, PCM16 LE, mono, 16 kHz |
+| `0x02` | client → core | camera image, JPEG (≤ 2 MB) |
+| `0x11` | core → client | speaker, PCM16 LE, mono, 16 kHz |
 
-Ein Browser-Gerät darf nur die Fähigkeiten `display.*`, `audio.input`,
-`audio.output`, `video.input` und `camera.snapshot` anmelden. Kamerabilder, die
-älter als 10 s sind, gelten als nicht verfügbar.
+A browser device may only register the capabilities `display.*`, `audio.input`,
+`audio.output`, `video.input` and `camera.snapshot`. Camera images older than 10 s count
+as unavailable.
 
-## Protokoll (WebSocket, JSON)
+## Protocol (WebSocket, JSON)
 
-| Richtung | Nachricht |
+| Direction | Message |
 | --- | --- |
-| Client → Core | `hello {token?, user_agent, capabilities[]}` |
-| Core → Client | `pairing {code}` · `paired {token, name}` · `ready {name, room, build}` · `error` |
-| Core → Client | `show {presentation_id, document}` · `close {presentation_id}` · `indicator {listening, cloud}` |
-| Client → Core | `ack {presentation_id, status: displayed\|failed, reason?: hidden\|render_error}` · `interaction {presentation_id, action, value}` |
+| client → core | `hello {token?, user_agent, capabilities[]}` |
+| core → client | `pairing {code}` · `paired {token, name}` · `ready {name, room, build}` · `error` |
+| core → client | `show {presentation_id, document}` · `close {presentation_id}` · `indicator {listening, cloud}` |
+| client → core | `ack {presentation_id, status: displayed\|failed, reason?: hidden\|render_error}` · `interaction {presentation_id, action, value}` |
 
-## Lebenszyklus einer Darstellung
+## Lifecycle of a presentation
 
 ```
-CREATED ─► SENT ─► DISPLAYED (ack vom Client) ─► UPDATED … ─► CLOSED
-                └► FAILED (mit Grund)
+CREATED ─► SENT ─► DISPLAYED (ack from the client) ─► UPDATED … ─► CLOSED
+                └► FAILED (with reason)
 ```
 
-Das Tool `display.show` meldet dem Assistenten erst Erfolg, wenn das Display den
-Empfang **und das erfolgreiche Rendern** bestätigt hat: Der Client bestätigt erst,
-nachdem React die Darstellung übernommen hat und der Browser gezeichnet hat.
-Fehlgründe, die der Assistent nennen kann:
+The tool `display.show` only reports success to the assistant when the display has
+confirmed receipt **and successful rendering**: the client only confirms after React has
+taken over the presentation and the browser has painted. Failure reasons the assistant can
+name:
 
-| Grund | Ursache |
+| Reason | Cause |
 | --- | --- |
-| Display nicht verbunden | kein WebSocket |
-| Display ist nicht sichtbar | Seite im Hintergrund / Bildschirm aus (`visibilityState = hidden`), sofortige Antwort |
-| Inhalt konnte nicht dargestellt werden | Renderfehler einer Komponente (Error Boundary; das Display bleibt bedienbar) |
-| keine Bestätigung vom Display | kein `ack` innerhalb von 8 s |
+| display not connected | no WebSocket |
+| display is not visible | page in the background / screen off (`visibilityState = hidden`), immediate answer |
+| content could not be shown | render error of a component (error boundary; the display stays usable) |
+| no confirmation from the display | no `ack` within 8 s |
 
-Optional schließt `duration_s` die Darstellung automatisch.
+Optionally `duration_s` closes the presentation automatically.
 
-**Updates:** Der Core schickt mit `ready` eine Build-Kennung. Hat sich JuStAI5
-seit dem Laden der Seite geändert, lädt der Client nach dem Wiederverbinden
-automatisch neu. Displays wie Fernseher müssen also nach einem Update nicht von
-Hand aktualisiert werden. Wiederverbindung mit Backoff bis 15 s.
+**Updates:** the core sends a build identifier with `ready`. If JuStAI5 has changed since
+the page was loaded, the client reloads automatically after reconnecting. Displays such as
+TVs therefore do not have to be refreshed by hand after an update. Reconnection with
+backoff up to 15 s.
 
-## Sicheres Render-Schema
+## Safe render schema
 
-Ein Dokument ist ein Baum **typisierter Komponenten**. Es wird nie HTML oder
-JavaScript aus dem Sprachmodell oder aus Plugins ausgeführt.
+A document is a tree of **typed components**. HTML or JavaScript from the language model
+or from plugins is never executed.
 
-Eingebaute Komponenten (`display/components.py`):
+Built-in components (`display/components.py`):
 
-| Komponente | Fähigkeit |
+| Component | Capability |
 | --- | --- |
-| `text`, `heading`, `markdown` (ohne HTML), `kv`, `stat`, `list`, `table`, `clock`, `notification` | `display.text` |
-| `image` (nur `https://`, `/api/media/…` oder `data:image/…`) | `display.image` |
-| `chart` (Linie/Balken, uPlot), `grid` | `display.dashboard` |
+| `text`, `heading`, `markdown` (without HTML), `kv`, `stat`, `list`, `table`, `clock`, `notification` | `display.text` |
+| `image` (only `https://`, `/api/media/…` or `data:image/…`) | `display.image` |
+| `chart` (line/bar, uPlot), `grid` | `display.dashboard` |
 | `weather`, `stock-quote` | `display.text` |
-| `camera` (Livestream, kurzlebige signierte URL, braucht `camera.read`) | `display.video` |
-| `choice`, `button` (Interaktion → Event `display.interaction`) | `display.interactive` |
-| `card`, `row`, `grid` (Container) | |
+| `camera` (live stream, short-lived signed URL, needs `camera.read`) | `display.video` |
+| `choice`, `button` (interaction → event `display.interaction`) | `display.interactive` |
+| `card`, `row`, `grid` (containers) | |
 
-Grenzen: Tiefe ≤ 6, ≤ 200 Komponenten, Textlängen begrenzt, unbekannte Felder
-werden abgelehnt. Fehler gehen mit Feldpfad an das Modell zurück.
+Limits: depth ≤ 6, ≤ 200 components, limited text lengths, unknown fields are rejected.
+Errors go back to the model with the field path. Dates and numbers are formatted in the
+display's language.
 
-**Plugin-Komponenten** (z. B. `weather-card` aus dem Beispiel-Plugin) sind
-*Vorlagen*: Das Plugin liefert ein JSON-Schema für die Eigenschaften und eine
-Vorlage aus eingebauten Komponenten. Der Core füllt die Vorlage aus; der Client
-sieht nur eingebaute Komponenten.
+**Plugin components** (e.g. `weather-card` from the example plugin) are *templates*: the
+plugin supplies a JSON schema for the properties and a template of built-in components.
+The core fills in the template; the client only sees built-in components.
 
 ## Routing
 
-Displays werden wie Lautsprecher über den Output Router gewählt
+Displays are chosen like speakers by the output router
 ([ROOMS.md](ROOMS.md#output-router)):
 
-* Display des auslösenden Endpoints, sonst ein passendes Display im selben Raum.
-* Kein passendes Display im Raum → Fehler, kein Ausweichen in andere Räume.
-* `personal: true` (Kalender, Gesundheit, Finanzen) wird in Räumen mit
-  `shared_space` nicht gezeigt.
-* Andere Räume nur mit expliziter Cross-Room-Anfrage und Recht.
+* display of the triggering endpoint, otherwise a matching display in the same room.
+* No matching display in the room → error, no moving to other rooms.
+* `personal: true` (calendar, health, finance) is not shown in rooms with `shared_space`.
+* Other rooms only with an explicit cross-room request and permission.
 
-## Statusanzeige
+## Status indicator
 
-Gekoppelte Displays zeigen dezent an, ob der Assistent im Raum gerade zuhört und
-ob ein Cloud-Realtime-Modell aktiv ist (`indicator`).
+Paired displays discreetly show whether the assistant is listening in the room and
+whether a cloud realtime model is active (`indicator`).
 
 ## Tools
 
 `display.show`, `display.update`, `display.close`, `display.list`.
 
-## Getestet
+## Tested
 
-* Unit (`tests/unit/test_display_components.py`): Validierung, unsichere URLs,
-  Tiefe/Anzahl, Plugin-Vorlagen, Fähigkeitsableitung.
+* Unit (`tests/unit/test_display_components.py`): validation, unsafe URLs, depth/count,
+  plugin templates, capability derivation.
 * E2E (`tests/e2e/test_simulated_rooms.py::test_display_pairing_presentation_ack_and_room_routing`):
-  WebSocket-Client koppelt sich mit Code, wird dem Wohnzimmer zugeordnet, bekommt
-  eine Darstellung; das Tool wartet nachweislich auf das `ack` und meldet erst
-  danach `displayed`.
-* Echter Browser (Chromium im eingebauten Browser der Entwicklungsumgebung):
-  Kopplung per Code, Dashboard mit Überschrift, Kurs, Linienchart und Key-Value
-  gerendert und bestätigt (ack nach 11 ms); im Hintergrund sofort „nicht
-  sichtbar“; nach einem Core-Update automatisch neu geladen. Dabei gefunden und
-  behoben: doppelte Achsenbeschriftung bei Kategorien, Gesprächsanzeige durch
-  Text-Chats, fehlende Fehlgründe.
-* Ein Test auf einem echten Fernseher steht aus.
+  a WebSocket client pairs with a code, is assigned to the living room, gets a
+  presentation; the tool provably waits for the `ack` and only then reports `displayed`.
+* Real browser (Chromium in the built-in browser of the development environment): pairing
+  by code, dashboard with heading, price, line chart and key-value rendered and confirmed
+  (ack after 11 ms); in the background immediately "not visible"; reloaded automatically
+  after a core update. Found and fixed on the way: duplicate axis labels for categories,
+  conversation display caused by text chats, missing failure reasons.
+* A test on a real TV is still pending.

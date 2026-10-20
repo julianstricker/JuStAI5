@@ -1,242 +1,242 @@
-# Audio: Echo, VAD, Wakeword, Arbitrierung, Duplex
+# Audio: echo, VAD, wakeword, arbitration, duplex
 
-Wichtigste Anforderung: **Der Assistent reagiert nie auf seine eigene Stimme.**
-Netzwerkkameras als Mikrofon und Lautsprecher machen das schwer: Die Ausgabe kommt
-über go2rtc und den Kamera-Backchannel mit 1–2 s Verzögerung und schwankender
-Latenz wieder im Mikrofon an. Deshalb gibt es mehrere unabhängige
-Schutzschichten, nicht nur einen Echo-Canceller ([ADR 0005](adr/0005-echo-handling.md)).
+*[Deutsch](de/AUDIO.md) · English*
+
+The most important requirement: **the assistant never reacts to its own voice.** Network
+cameras as microphone and speaker make this hard: the output comes back through go2rtc and
+the camera backchannel into the microphone with 1–2 s delay and fluctuating latency.
+That is why there are several independent protection layers, not just one echo canceller
+([ADR 0005](adr/0005-echo-handling.md)).
 
 Code: `backend/src/justai/audio/`.
 
-## Signalweg
+## Signal path
 
 ```
-go2rtc (RTSP) ─► ffmpeg ─► 16 kHz mono s16le ─► SampleClock (Zeitstempel)
-  ─► MicChannel ─► pro Endpoint: EndpointAudioProcessor (10-ms-Frames, eigener Thread)
-       1. Gain
-       2. Echo-Fenster? (PlaybackTracker: Wiedergabe-Bursts + Latenz + Nachhall)
-       3. WebRTC APM: HPF, AEC3 (Referenz um die gemessene Latenz verschoben), NS
-       4. Silero-VAD, Rauschboden, Sprachsegmentierung
-       5. Gating: Half Duplex → im Echo-Fenster alles verwerfen
-                  Full Duplex → nur durchlassen, wenn Double-Talk erkannt (Barge-in)
-       6. openWakeWord (mit Unterdrückung während der Wiedergabe)
-  ─► Wake-Kandidaten ─► WakeArbiter ─► Gesprächssession
-  ─► ProcessedFrame (gated-Flag) ─► Session (STT bzw. Realtime-Upload)
+go2rtc (RTSP) ─► ffmpeg ─► 16 kHz mono s16le ─► SampleClock (timestamps)
+  ─► MicChannel ─► per endpoint: EndpointAudioProcessor (10 ms frames, own thread)
+       1. gain
+       2. echo window? (PlaybackTracker: playback bursts + latency + reverb)
+       3. WebRTC APM: HPF, AEC3 (reference shifted by the measured latency), NS
+       4. Silero VAD, noise floor, speech segmentation
+       5. gating: half duplex → drop everything in the echo window
+                  full duplex → only pass on detected double talk (barge-in)
+       6. openWakeWord (with suppression during playback)
+  ─► wake candidates ─► WakeArbiter ─► conversation session
+  ─► ProcessedFrame (gated flag) ─► session (STT or realtime upload)
 
-Antwort ─► Output Router ─► SpeakerChannel (Echtzeit-Pacing)
-  ─► Sink: go2rtc-Talkback | Plugin-Senke
-  ─► jedes ausgegebene Frame mit Ausgabezeitpunkt ─► ReferenceBuffer + PlaybackTracker
+answer ─► output router ─► SpeakerChannel (real-time pacing)
+  ─► sink: go2rtc talkback | plugin sink
+  ─► every output frame with its output time ─► ReferenceBuffer + PlaybackTracker
 ```
 
-**Eigene Lautsprecher-Verbindung pro Gespräch:** Eine Tapo-Kamera spielt nur die
-Sprech-Sitzung ab, die zuletzt geöffnet wurde. Früher blieb der Kanal zum
-Kameralautsprecher stundenlang auf der Hauptverbindung offen. Hatte zwischendurch
-ein anderer Client gesprochen (z. B. die Tapo-App), kamen weiter Bytes an der
-Kamera an, aber nichts war zu hören. go2rtc erneuert diese Sitzung nicht, solange
-das Video die Verbindung am Leben hält. Live beobachtet an der C200 (2026-10-20):
-Zustellung vollständig, nichts hörbar, auch nach go2rtc- und Kamera-Neustart; eine
-frisch geöffnete zweite Verbindung spielte sofort. Deshalb:
+**A separate speaker connection per conversation:** a Tapo camera only plays the talk
+session that was opened last. Earlier the channel to the camera speaker stayed open on
+the main connection for hours. If another client had spoken in between (e.g. the Tapo
+app), bytes kept arriving at the camera but nothing was audible. go2rtc does not renew
+this session as long as the video keeps the connection alive. Observed live on the C200
+(2026-10-20): delivery complete, nothing audible, also after restarting go2rtc and the
+camera; a freshly opened second connection played immediately. Therefore:
 
-* Der Lautsprecher hat einen eigenen go2rtc-Stream `<stream>_talk` (gleiche Quelle
-  wie der Hauptstream, also eine eigene Kameraverbindung). Er wird bei jedem Öffnen
-  neu angelegt: beim Wakeword (Vorwärmen), für Testtöne und Automationen.
-* Nach 90 s ohne Ausgabe wird er geschlossen und gelöscht
-  (`speaker_idle_close_s` pro Gerät überschreibbar). Damit ist die Sprech-Sitzung
-  der Kamera auch wieder für die Tapo-App frei.
-* Der Tapo-Login der neuen Verbindung dauert gemessen ca. 4 s. Bis dahin hält der
-  Core Sprache zurück (plus `talkback_settle_s`, Standard 1,5 s), statt sie in die
-  noch nicht verbundene Leitung zu schicken; der Anfang geht nicht verloren.
+* The speaker has its own go2rtc stream `<stream>_talk` (same source as the main stream,
+  thus its own camera connection). It is created anew on every opening: at the wakeword
+  (pre-warming), for test tones and automations.
+* After 90 s without output it is closed and deleted (`speaker_idle_close_s` can be
+  overridden per device). The camera's talk session is then free again for the Tapo app.
+* The Tapo login of the new connection takes about 4 s (measured). Until then the core
+  holds speech back (plus `talkback_settle_s`, default 1.5 s) instead of sending it into
+  the not yet connected line; the beginning is not lost.
 
-**Zustellung prüfen statt annehmen:** go2rtc holt den Audiostrom auch dann weiter ab,
-wenn die Verbindung zum Kameralautsprecher verloren ging (z. B. nach einem
-Kamera-Reconnect). Das Audio verschwand dann lautlos. Der Core fragt deshalb jede
-Sekunde bei go2rtc ab, ob tatsächlich Bytes an die Kamera gehen. Erst dann gibt er
-Sprache frei, und nach 6 s ohne Zustellung baut er die Strecke neu auf (bei
-offline-Kamera mit wachsendem Abstand bis 60 s). Eine frisch geöffnete Verbindung hat
-20 s Zeit für den Login. Gezählt werden die Bytes an die Kamera auch dann, wenn
-go2rtc die Kameraverbindung als „Consumer“ führt (Stream nur für den Lautsprecher);
-sonst hielt der Wächter funktionierende Verbindungen für tot und baute sie ständig
-neu auf. Live geprüft: Nach „Neu verbinden“
-der C200 war die Strecke nach ~15 s wieder da (8 KB/s an die Kamera, stabil).
+**Checking delivery instead of assuming it:** go2rtc keeps fetching the audio stream even
+when the connection to the camera speaker was lost (e.g. after a camera reconnect). The
+audio then disappeared silently. The core therefore asks go2rtc every second whether
+bytes actually go to the camera. Only then does it release speech, and after 6 s without
+delivery it rebuilds the path (for an offline camera with growing intervals up to 60 s).
+A freshly opened connection has 20 s for the login. The bytes to the camera are also
+counted when go2rtc lists the camera connection as a "consumer" (stream only for the
+speaker); otherwise the watchdog considered working connections dead and kept rebuilding
+them. Checked live: after "Reconnect" of the C200 the path was back after ~15 s (8 KB/s
+to the camera, stable).
 
-**Talkback zu Kameras:** Der Core stellt pro Lautsprecher einen Live-WAV-Stream
-bereit (`/internal/talkback/<token>.wav`, Token zufällig, nur im internen Netz).
-go2rtc zieht ihn als Quelle in den Backchannel der Kamera
-(`POST /api/ffmpeg?dst=<stream>&live=<url>`). Der Core taktet die Ausgabe selbst in
-Echtzeit. Deshalb weiß er für jedes Frame, wann es ausgegeben wurde; das ist die
-Echo-Referenz. Bricht der Pfad ab, wird er neu aufgebaut.
+If a camera still stays silent: "Reconnect the camera in the office" by voice
+(`devices.reconnect`) or *Devices → Reconnect*, and "Test the speaker in the office"
+(`devices.test_speaker`).
 
-## Schutzschichten gegen Selbstgespräche
+**Talkback to cameras:** the core provides a live WAV stream per speaker
+(`/internal/talkback/<token>.wav`, random token, only in the internal network). go2rtc
+pulls it as a source into the camera's backchannel
+(`POST /api/ffmpeg?dst=<stream>&live=<url>`). The core paces the output itself in real
+time. That is why it knows for every frame when it was output; this is the echo
+reference. If the path breaks, it is rebuilt.
 
-| # | Schicht | Wo | Wirkt gegen |
+## Protection layers against talking to itself
+
+| # | Layer | Where | Protects against |
 | --- | --- | --- | --- |
-| 1 | **AEC3 mit Bulk-Delay-Kompensation** | `echo.py` `EchoCanceller` + `DelayEstimator` | Echo im Signal (Full Duplex) |
-| 2 | **Echo-Fenster + Half-Duplex-Gate**: Solange eigene Ausgabe hörbar sein kann (Ausgabe + Latenz + Nachhall), wird das Mikrofon verworfen | `PlaybackTracker`, `processor.py` | alles Echo, deterministisch |
-| 3 | **Wakeword-Unterdrückung während der Wiedergabe**: Half Duplex: keine Wakewords im Echo-Fenster; Full Duplex: nur über `threshold_during_playback` (0,85) | `processor._run_wakeword` | Assistent sagt selbst „Hey Jarvis“ |
-| 4 | **Echo-Transkriptfilter**: Ähnelt ein Benutzertranskript stark dem, was der Assistent in den letzten 25 s gesagt hat, wird es verworfen | `conversation/echo_filter.py` | Restecho, das trotzdem transkribiert wurde |
-| 5 | **Wakeword-Nachlauf weglassen**: Nach einer Pause beginnt die Session hinter der Pause; Äußerungen mit weniger als 200 ms Sprache startet die Pipeline gar nicht erst ([Sprechen ohne Pause](#sprechen-ohne-pause-nach-dem-wakeword)) | `conversation/session.py` | „Jarvis“-Rest oder Hall wird als Frage interpretiert oder blockiert die Session |
-| 6 | **Inaktivitäts-Timeout startet erst nach Ende des Echo-Fensters** | `conversation/state.py` | Session endet nicht während der Ausgabe |
+| 1 | **AEC3 with bulk delay compensation** | `echo.py` `EchoCanceller` + `DelayEstimator` | echo in the signal (full duplex) |
+| 2 | **Echo window + half duplex gate**: while own output can be audible (output + latency + reverb), the microphone is dropped | `PlaybackTracker`, `processor.py` | all echo, deterministically |
+| 3 | **Wakeword suppression during playback**: half duplex: no wakewords in the echo window; full duplex: only above `threshold_during_playback` (0.85) | `processor._run_wakeword` | the assistant saying "Hey Jarvis" itself |
+| 4 | **Echo transcript filter**: if a user transcript closely resembles what the assistant said in the last 25 s, it is dropped | `conversation/echo_filter.py` | residual echo that was transcribed anyway |
+| 5 | **Leaving out the wakeword tail**: after a pause the session starts behind the pause; utterances with less than 200 ms of speech do not start the pipeline at all ([speaking without a pause](#speaking-without-a-pause-after-the-wakeword)) | `conversation/session.py` | "Jarvis" remainder or reverb interpreted as a question or blocking the session |
+| 6 | **Inactivity timeout only starts after the echo window ends** | `conversation/state.py` | session ending during output |
 
-Zusätzlich: Der Echo-Fenster-Tracker merkt sich mehrere Ausgabe-Bursts, weil das
-Echo eines früheren Satzes noch unterwegs sein kann, während der nächste beginnt.
+In addition the echo window tracker remembers several output bursts, because the echo of
+an earlier sentence can still be on its way while the next one begins.
 
-### Messung: AEC3 und lange Verzögerungen
+### Measurement: AEC3 and long delays
 
-WebRTC AEC3 schätzt die Verzögerung zwischen Referenz und Mikrofon nur in einem
-begrenzten Bereich. Messung mit `scripts/measure_aec.py` (synthetisches
-sprachähnliches Signal, kurzer Nachhall, kein Nahsprecher; ERLE = Dämpfung des
-Echos nach Konvergenz):
+WebRTC AEC3 only estimates the delay between reference and microphone within a limited
+range. Measured with `scripts/measure_aec.py` (synthetic speech-like signal, short
+reverb, no near-end speaker; ERLE = echo attenuation after convergence):
 
-| Echo-Verzögerung | AEC3 allein | AEC3 + Bulk-Delay-Kompensation |
+| Echo delay | AEC3 alone | AEC3 + bulk delay compensation |
 | ---: | ---: | ---: |
-| 0,05 s | 32,1 dB | 32,2 dB |
-| 0,20 s | 31,4 dB | 32,3 dB |
-| 0,40 s | 39,6 dB | 39,7 dB |
-| 0,60 s | **10,5 dB** | 40,0 dB |
-| 0,80 s | **9,9 dB** | 40,0 dB |
-| 1,20 s | **9,8 dB** | 40,3 dB |
-| 1,80 s | **9,4 dB** | 40,5 dB |
+| 0.05 s | 32.1 dB | 32.2 dB |
+| 0.20 s | 31.4 dB | 32.3 dB |
+| 0.40 s | 39.6 dB | 39.7 dB |
+| 0.60 s | **10.5 dB** | 40.0 dB |
+| 0.80 s | **9.9 dB** | 40.0 dB |
+| 1.20 s | **9.8 dB** | 40.3 dB |
+| 1.80 s | **9.4 dB** | 40.5 dB |
 
-Ab etwa 0,5 s versagt AEC3 allein; übrig bleiben ca. 10 dB aus der
-Nachunterdrückung. Netzwerkkameras liegen deutlich darüber (C200: ~1,8 s).
-JuStAI5 verschiebt die Referenz deshalb selbst um die gemessene Verzögerung und
-überlässt AEC3 nur noch den Rest (10 ms). Die Verzögerung schätzt
-`DelayEstimator` laufend per GCC-PHAT aus Mikrofon und Referenz (nur Schätzungen
-mit ausreichender Konfidenz, Median der letzten 7).
+From about 0.5 s AEC3 alone fails; about 10 dB from the residual suppression remain.
+Network cameras are well above that (C200: ~1.8 s). JuStAI5 therefore shifts the
+reference itself by the measured delay and leaves only the rest (10 ms) to AEC3. The
+delay is estimated continuously by `DelayEstimator` with GCC-PHAT from microphone and
+reference (only estimates with sufficient confidence, median of the last 7).
 
-Echte Räume mit Nachhall, Nichtlinearitäten billiger Lautsprecher und schwankender
-Netzwerklatenz erreichen weniger. Deshalb bleibt Schicht 2 (Gating) die
-Grundsicherung, und Full Duplex wird nur nach Messung aktiviert.
+Real rooms with reverb, non-linearities of cheap speakers and fluctuating network latency
+achieve less. That is why layer 2 (gating) remains the base protection, and full duplex
+is only enabled after measurement.
 
-## Duplex-Modi
+## Duplex modes
 
-| Modus | Verhalten |
+| Mode | Behaviour |
 | --- | --- |
-| `half` | Im Echo-Fenster wird das Mikrofon komplett verworfen. Kein Barge-in während der Ausgabe. Sicher mit jedem Gerät. |
-| `full` | AEC aktiv, Mikrofon bleibt offen. Barge-in über Double-Talk-Erkennung. Nur für Geräte mit echtem Full-Duplex-Audio und gutem Echo-Abstand. |
-| `auto` (Standard) | Startet als `half`. Wechselt zu `full` nur, wenn das Gerät `audio.full_duplex` meldet, die Verzögerung gemessen ist und die gemessene Echodämpfung (Median über ≥ 200 Frames) mindestens 18 dB beträgt. Der Grund steht in der Audio-Diagnose (`duplex_reason`). |
+| `half` | In the echo window the microphone is dropped completely. No barge-in during output. Safe with every device. |
+| `full` | AEC active, microphone stays open. Barge-in via double talk detection. Only for devices with real full duplex audio and good echo separation. |
+| `auto` (default) | Starts as `half`. Switches to `full` only if the device reports `audio.full_duplex`, the delay is measured and the measured echo attenuation (median over ≥ 200 frames) is at least 18 dB. The reason is shown in the audio diagnosis (`duplex_reason`). |
 
-**Barge-in (Full Duplex):** Die AEC-Nachunterdrückung dämpft auch die Stimme des
-Benutzers während Double-Talk. Die Erkennung arbeitet deshalb auf dem **Roh**signal:
-Mikrofonpegel minus erwarteter Echopegel (Referenzenergie + gemessene
-Raumkopplung). Liegt der Pegel ≥ 8 dB darüber (mit VAD ≥ 0,5, sonst ≥ 14 dB) für
-rund zwei Drittel von `barge_in_min_speech_ms`, gilt das als Unterbrechung. Die
-Ausgabe stoppt sofort, der Tracker kürzt das Echo-Fenster, und die Session hört zu.
-Echo allein löst im Test nie einen Barge-in aus.
+**Barge-in (full duplex):** the AEC residual suppression also attenuates the user's voice
+during double talk. Detection therefore works on the **raw** signal: microphone level
+minus expected echo level (reference energy + measured room coupling). If the level is
+≥ 8 dB above (with VAD ≥ 0.5, otherwise ≥ 14 dB) for about two thirds of
+`barge_in_min_speech_ms`, it counts as an interruption. Output stops immediately, the
+tracker shortens the echo window and the session listens. Echo alone never triggers a
+barge-in in the tests.
 
-## Kalibrierung
+## Calibration
 
-Admin-UI → Endpoints → *Kalibrieren* (`POST /api/endpoints/{id}/calibrate`):
-drei Sweeps (400–3200 Hz) über den Lautsprecher, Aufnahme über das Mikrofon,
-Auswertung per GCC-PHAT. Ist die Korrelation zu schwach, wird der
-Einschwing-Zeitpunkt (Onset) mit Konsensprüfung über alle Sweeps verwendet.
+Admin UI → Endpoints → *Calibrate* (`POST /api/endpoints/{id}/calibrate`): three sweeps
+(400–3200 Hz) through the speaker, recording through the microphone, evaluation with
+GCC-PHAT. If the correlation is too weak, the onset time with a consensus check over all
+sweeps is used.
 
-Ergebnisse und ihre Deutung:
+Results and their meaning:
 
-* `echo delay measured`: Verzögerung wird als Startwert gesetzt.
-* *Kein Echo am Mikrofon*: Das Gerät schaltet sein Mikrofon während der Wiedergabe
-  stumm (Hardware-Half-Duplex, z. B. **Tapo C200**). Das ist sicher; die konservative
-  Standardlatenz bleibt aktiv.
-* *Echo hörbar, aber nicht messbar*: Half Duplex beibehalten.
+* `echo delay measured`: the delay is set as the starting value.
+* *No echo at the microphone*: the device mutes its microphone during playback (hardware
+  half duplex, e.g. **Tapo C200**). That is safe; the conservative default latency stays
+  active.
+* *Echo audible but not measurable*: keep half duplex.
 
-Ohne Kalibrierung nimmt das System für Netzwerkgeräte konservativ 2,2 s
-Latenz an, für lokale Geräte 0,35 s. Die tatsächlich verwendete Latenz ist nie
-kleiner als die gemessene Verzögerung + 0,15 s.
+Without calibration the system conservatively assumes 2.2 s latency for network devices
+and 0.35 s for local devices. The latency actually used is never smaller than the
+measured delay + 0.15 s.
 
-## VAD und Äußerungsende
+## VAD and end of utterance
 
-Silero-VAD (ONNX) auf dem verarbeiteten Signal. Sprache beginnt nach 3
-aufeinanderfolgenden Frames über `vad_threshold` (30 ms) und endet nach 300 ms
-darunter. Das Ende einer Äußerung im Pipeline-Modus bestimmt
-`end_of_utterance_silence_ms` (Standard 700 ms), Höchstlänge `max_utterance_s`.
-Im Realtime-Modus übernimmt der Provider die Turn-Erkennung; JuStAI5 schickt
-dabei nur nicht-gegatete Frames.
+Silero VAD (ONNX) on the processed signal. Speech begins after 3 consecutive frames above
+`vad_threshold` (30 ms) and ends after 300 ms below it. In pipeline mode the end of an
+utterance is determined by `end_of_utterance_silence_ms` (default 700 ms), maximum length
+`max_utterance_s`. In realtime mode the provider takes over turn detection; JuStAI5 only
+sends non-gated frames.
 
 ## Wakeword
 
-openWakeWord 0.6.0 (ONNX), Schwelle 0,5 pro Endpoint, Refraktärzeit 1,5 s.
-Auswahl: *Räume → Endpoint bearbeiten → Wakeword* (mehrere gleichzeitig möglich).
+openWakeWord 0.6.0 (ONNX), threshold 0.5 per endpoint, refractory time 1.5 s. Selection:
+*Rooms → edit endpoint → Wakeword* (several at the same time possible).
 
-Mitgeliefert: **Hey Jarvis** (Standard), **Alexa**, **Hey Mycroft**, **Hey Rhasspy**,
-alle auf Englisch trainiert.
+Included: **Hey Jarvis** (default), **Alexa**, **Hey Mycroft**, **Hey Rhasspy**, all
+trained on English. They work just as well when the rest of the conversation is German or
+Italian.
 
-**Eigene Wakewords** (z. B. „Hey Justi“): Ein openWakeWord-Modell trainieren (das
-Projekt openWakeWord bietet dafür ein Trainings-Notebook mit synthetischen
-Sprachdaten), dann die `.onnx`-Datei im selben Tab mit *Eigenes Wakeword
-hochladen* installieren. Der Dateiname wird zur ID (`hey_justi.onnx` → `hey_justi`).
-Der Core prüft, ob es wirklich ein openWakeWord-Klassifikator ist (Eingang
-`[1, n, 96]`, Ausgang `[1, 1]`), und legt ihn im Volume `/data/wakewords` ab, sodass
-er Updates übersteht. Eigene Modelle lassen sich löschen
-(`DELETE /api/ai/wakewords/<id>`), solange kein Endpoint sie nutzt.
+**Own wakewords** (e.g. "Hey Justi"): train an openWakeWord model (the openWakeWord project
+provides a training notebook with synthetic speech data), then install the `.onnx` file
+in the same tab with *Upload own wakeword*. The file name becomes the ID
+(`hey_justi.onnx` → `hey_justi`). The core checks that it really is an openWakeWord
+classifier (input `[1, n, 96]`, output `[1, 1]`) and stores it in the volume
+`/data/wakewords`, so it survives updates. Own models can be deleted
+(`DELETE /api/ai/wakewords/<id>`) as long as no endpoint uses them.
 
-## Raumbewusste Wakeword-Arbitrierung
+**Pausing listening:** "Stop listening in the bedroom for an hour" switches off the
+wakeword of the room's endpoints (`audio.listening`); a one-time automation switches it on
+again ([DEVICES.md](DEVICES.md#operating-devices-by-voice)).
 
-`audio/arbitration.py`. Mehrere Mikrofone hören dasselbe Wakeword. Kandidaten aus
-derselben **Arbitrierungsgruppe**, die innerhalb von 0,8 s eintreffen, werden
-gesammelt, bewertet, und genau einer gewinnt. Ein zuverlässiger Raum ist wichtiger
-als die schnellste Aktivierung.
+## Room-aware wakeword arbitration
+
+`audio/arbitration.py`. Several microphones hear the same wakeword. Candidates from the
+same **arbitration group** that arrive within 0.8 s are collected and scored, and exactly
+one wins. A reliable room matters more than the fastest activation.
 
 ```
 score = 10·wake_score + 0.25·clamp(SNR_phrase, −10, 70) + 2·VAD + priority
-        − 3 (falls während eigener Wiedergabe) + 100 (falls dort schon eine Session läuft)
+        − 3 (if during own playback) + 100 (if a session is already running there)
 ```
 
-* **SNR der Phrase**: 90. Perzentil der *Roh*pegel der letzten 1,2 s (das ist das
-  Wakeword selbst, nicht die Pause danach) minus Roh-Rauschboden. Die
-  Rauschunterdrückung würde den echten Abstand verfälschen. Lautstärke ist der beste
-  Hinweis auf Nähe und dominiert bewusst kleine Unterschiede in der
-  Wakeword-Konfidenz.
-* **Späte Duplikate**: Mikrofone hinter unterschiedlichen Netzwerkpfaden liefern
-  dieselbe Äußerung unterschiedlich spät. Kandidaten anderer Endpoints derselben
-  Gruppe, die innerhalb von 2 s nach einer Entscheidung eintreffen, werden verworfen
-  (`audio.wakeword.rejected`). Ein späteres, echtes Wakeword wird akzeptiert.
-* Endpoints in verschiedenen Gruppen werden unabhängig entschieden: Parallele
-  Gespräche sind möglich.
+* **SNR of the phrase**: 90th percentile of the *raw* levels of the last 1.2 s (that is
+  the wakeword itself, not the pause after it) minus the raw noise floor. Noise
+  suppression would distort the real distance. Loudness is the best hint for proximity and
+  deliberately dominates small differences in wakeword confidence.
+* **Late duplicates**: microphones behind different network paths deliver the same
+  utterance with different delays. Candidates of other endpoints of the same group that
+  arrive within 2 s after a decision are dropped (`audio.wakeword.rejected`). A later,
+  real wakeword is accepted.
+* Endpoints in different groups are decided independently: parallel conversations are
+  possible.
 
-Events: `audio.wakeword.detected` (jeder Kandidat), `audio.wakeword.accepted`
-(mit Scores aller Kandidaten), `audio.wakeword.rejected`.
+Events: `audio.wakeword.detected` (every candidate), `audio.wakeword.accepted` (with the
+scores of all candidates), `audio.wakeword.rejected`.
 
-## Sprechen ohne Pause nach dem Wakeword
+## Speaking without a pause after the wakeword
 
-„Hey Jarvis, wie spät ist es?“ in einem Atemzug funktioniert. Zwischen Erkennung
-und bereiter Session vergehen 1,4–1,7 s (gemessen: Arbitrierungsfenster 0,8 s,
-Sessionaufbau 0,55–0,9 s inkl. Verbindung zu Gemini Live). Damit diese Worte nicht
-verloren gehen:
+"Hey Jarvis, what time is it?" in one breath works. Between detection and a ready session
+1.4–1.7 s pass (measured: arbitration window 0.8 s, session setup 0.55–0.9 s incl.
+connection to Gemini Live). So these words are not lost:
 
-* Jeder Endpoint hält die letzten 10 s verarbeitetes Audio (`EndpointAudio.recent`).
-* Ist die Session bereit, bekommt sie zuerst das gepufferte Audio ab dem Wakeword,
-  dann live weiter (ohne `await` dazwischen: kein Frame fehlt oder kommt doppelt).
-* Wo das Gesagte beginnt, entscheidet die Sprachaktivität (`replay_start`):
-  * **Pause** (≥ 150 ms unter der Sprachschwelle innerhalb von 0,8 s nach der
-    Erkennung): ab der Pause; der Nachhall von „Jarvis“ bleibt draußen.
-  * **Keine Pause**: ab 0,15 s **vor** der Erkennung. openWakeWord meldet
-    gemessen 0,04–0,27 s nach dem Ende von „Hey Jarvis“, also oft schon während
-    des ersten Wortes der Frage; so bleibt es erhalten.
-* Die Pipeline startet keine Erkennung für „Äußerungen“ mit weniger als 200 ms
-  Sprache (Klicks, Hall). Sonst wäre die Session während der unnötigen
-  Spracherkennung taub für die eigentliche Frage.
+* Every endpoint keeps the last 10 s of processed audio (`EndpointAudio.recent`).
+* When the session is ready it first gets the buffered audio from the wakeword on, then
+  live audio (without an `await` in between: no frame is missing or doubled).
+* Where the spoken text begins is decided by the speech activity (`replay_start`):
+  * **Pause** (≥ 150 ms below the speech threshold within 0.8 s after detection): from
+    the pause; the reverb of "Jarvis" stays out.
+  * **No pause**: from 0.15 s **before** detection. openWakeWord reports 0.04–0.27 s
+    (measured) after the end of "Hey Jarvis", i.e. often already during the first word of
+    the question; this way it is kept.
+* The pipeline does not start recognition for "utterances" with less than 200 ms of
+  speech (clicks, reverb). Otherwise the session would be deaf to the actual question
+  during the unnecessary speech recognition.
 
-Getestet: `tests/unit/test_wake_replay.py`, `tests/audio/test_wake_replay.py`
-(echtes openWakeWord, Piper-Stimme: mit und ohne Pause), E2E
-`test_question_right_after_the_wakeword_without_a_pause` in Pipeline- und
-Realtime-Modus (vorher fehlgeschlagen: die Frage ging verloren).
+Tested: `tests/unit/test_wake_replay.py`, `tests/audio/test_wake_replay.py` (real
+openWakeWord, Piper voice: with and without a pause), E2E
+`test_question_right_after_the_wakeword_without_a_pause` in pipeline and realtime mode
+(failed before: the question was lost).
 
-## Getestet
+## Tested
 
 * `backend/tests/unit/test_echo_blocks.py`, `test_wake_arbitration.py`,
-  `test_calibration.py`: Bausteine (Referenzpuffer, GCC-PHAT, Tracker,
-  Arbitrierung inkl. später Duplikate, Onset-Kalibrierung).
-* `backend/tests/audio/test_self_speech.py` (echte Modelle: Piper, openWakeWord,
-  Silero): Der Assistent sagt absichtlich „Hey Jarvis“ in seiner Antwort; die
-  Ausgabe kommt über einen simulierten Raum (Netzwerkverzögerung, Hall, Rauschen,
-  optional Tapo-artiges Ducking) zurück.
-  * Half Duplex Tapo-artig, Half Duplex mit lautem Echo ohne Ducking: kein
-    Selbst-Wake, kein durchgelassenes Echo, das echte Wakeword danach wird erkannt.
-  * Unterschätzte Latenz wird durch Messung korrigiert.
-  * Full Duplex: AEC unterdrückt Selbst-Wake, echter Barge-in wird erkannt; Echo
-    allein löst nie Barge-in aus.
-* E2E (`backend/tests/e2e`): Gespräch über simulierte Geräte mit Echo, keine
-  Echo-Turns im Transkript, Arbitrierung zwischen zwei Räumen.
-* Echte Hardware (Tapo C200): Wakeword → Antwort über den Kameralautsprecher,
-  kein Echo-Loop, Ende durch Inaktivität. Barge-in mit der C200 ist wegen des
-  Hardware-Duckings nicht möglich und wurde nicht getestet.
+  `test_calibration.py`: building blocks (reference buffer, GCC-PHAT, tracker,
+  arbitration incl. late duplicates, onset calibration).
+* `backend/tests/audio/test_self_speech.py` (real models: Piper, openWakeWord, Silero):
+  the assistant deliberately says "Hey Jarvis" in its answer; the output comes back
+  through a simulated room (network delay, reverb, noise, optionally Tapo-like ducking).
+  * Half duplex Tapo-like, half duplex with loud echo without ducking: no self-wake, no
+    echo passed through, the real wakeword afterwards is detected.
+  * Underestimated latency is corrected by measurement.
+  * Full duplex: AEC suppresses self-wake, real barge-in is detected; echo alone never
+    triggers barge-in.
+* E2E (`backend/tests/e2e`): conversation through simulated devices with echo, no echo
+  turns in the transcript, arbitration between two rooms.
+* Real hardware (Tapo C200): wakeword → answer through the camera speaker, no echo loop,
+  end through inactivity. Barge-in with the C200 is impossible because of the hardware
+  ducking and was not tested.

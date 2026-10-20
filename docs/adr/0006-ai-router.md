@@ -1,36 +1,37 @@
-# 0006 – Eigener KI-Router mit Rollen, Fallback-Ketten und Privacy-Regeln
+# 0006 – Own AI router with roles, fallback chains and privacy rules
 
-**Status:** angenommen
+*[Deutsch](../de/adr/0006-ai-router.md) · English*
 
-## Kontext
+**Status:** accepted
 
-Verschiedene Aufgaben (Gespräch, Vision, Gedächtnis, Tool-Generierung, STT, TTS,
-Embeddings, Realtime) brauchen unterschiedliche Modelle. Cloud-Modelle fallen aus
-(beobachtet: 503 Überlastung, 429 Kontingent) oder dürfen bestimmte Daten nicht
-sehen. Lokale Modelle sind langsamer oder schwächer.
+## Context
 
-## Entscheidung
+Different tasks (conversation, vision, memory, tool generation, STT, TTS, embeddings,
+realtime) need different models. Cloud models fail (observed: 503 overload, 429 quota) or
+must not see certain data. Local models are slower or weaker.
 
-Ein `AIRouter` im Core löst eine **Rolle** in eine geordnete Provider-Kette auf und
-prüft vor jedem Aufruf:
+## Decision
 
-* Lokalität der Rolle (`local_only`, `prefer_local`, `any`),
-* globale und raumbezogene Privacy-Regeln (Kamerabilder, Audio, persönliche Erinnerungen),
-* Kostenlimits.
+An `AIRouter` in the core resolves a **role** into an ordered provider chain and checks
+before every call:
 
-Bei Fehlern: nächster Provider, Cooldown für den fehlerhaften (kein erneutes
-Warten bei jeder Anfrage), First-Token-Timeout gegen hängende Streams (25 s). Ein
-Wechsel von lokal zu Cloud wird nie still gemacht (Event + Audit). Provider sind
-Plugins: Neue Anbieter brauchen keine Änderung am Core.
+* the role's locality (`local_only`, `prefer_local`, `any`),
+* global and room-related privacy rules (camera images, audio, personal memories),
+* cost limits.
 
-## Alternativen
+On errors: next provider, cooldown for the failing one (no waiting again on every
+request), first-token timeout against hanging streams (25 s). A switch from local to
+cloud is never silent (event + audit). Providers are plugins: new vendors need no change
+to the core.
 
-* **LiteLLM o. ä.**: deckt Chat ab, aber nicht Realtime, lokale STT/TTS/Wakeword,
-  Privacy-Regeln pro Datenart und Raum.
-* **Fester Provider**: einfacher, aber kein Ausfallschutz und keine Lokal-Option.
+## Alternatives
 
-## Konsequenzen
+* **LiteLLM or similar**: covers chat, but not realtime, local STT/TTS/wakeword, privacy
+  rules per data kind and room.
+* **A fixed provider**: simpler, but no failover and no local option.
 
-* Provider-Wechsel ist reine Konfiguration (nachgewiesen, [TESTING.md](../TESTING.md)).
-* Tool-Aufrufe und Streaming müssen pro Provider-Plugin auf das gemeinsame
-  Port-Modell abgebildet werden.
+## Consequences
+
+* Switching providers is pure configuration (shown, [TESTING.md](../TESTING.md)).
+* Tool calls and streaming have to be mapped to the common port model per provider
+  plugin.

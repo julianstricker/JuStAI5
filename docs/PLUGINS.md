@@ -1,180 +1,252 @@
-# Plugins und SDK
+# Plugins and SDK
 
-Alles, was Hardware, KI-Provider oder externe Dienste anbindet, ist ein Plugin.
-Plugins nutzen das SDK-Paket `justai_sdk` (`sdk/python/src/justai_sdk`), das auch der
-Core für seine Ports verwendet. Vollständiges Beispiel: [`plugins/example-weather`](../plugins/example-weather).
+*[Deutsch](de/PLUGINS.md) · English*
 
-## Aufbau
+Everything that connects hardware, AI providers or external services is a plugin. Plugins
+use the SDK package `justai_sdk` (`sdk/python/src/justai_sdk`), which the core also uses
+for its ports. Complete example: [`plugins/example-weather`](../plugins/example-weather).
+The assistant can also write plugins itself: [self-developed plugins](#self-developed-plugins).
+
+## Layout
 
 ```
-plugins/mein-plugin/
-├── plugin.yaml      Manifest (wird vor jedem Import validiert)
-├── plugin.py        Einstiegspunkt, z. B. entrypoint: plugin:MeinPlugin
+plugins/my-plugin/
+├── plugin.yaml      manifest (validated before any import)
+├── plugin.py        entry point, e.g. entrypoint: plugin:MyPlugin
 ├── __init__.py
-└── tests/           Tests mit justai_sdk.testing.FakePluginContext
+└── tests/           tests with justai_sdk.testing.FakePluginContext
 ```
 
 ## Manifest (`plugin.yaml`)
 
-Modell: `justai_sdk/manifest.py`. Wichtige Felder:
+Model: `justai_sdk/manifest.py`. Important fields:
 
-| Feld | Bedeutung |
+| Field | Meaning |
 | --- | --- |
-| `id` | `^[a-z][a-z0-9_-]{1,62}$`, eindeutig |
+| `id` | `^[a-z][a-z0-9_-]{1,62}$`, unique |
+| `name`, `description` | English |
+| `i18n` | translations, e.g. `{de: {name: …, description: …}, it: {…}}`; the interface shows the user's language |
 | `version` | PEP 440 |
-| `types` | z. B. `device`, `discovery`, `ai_provider`, `realtime_ai`, `stt`, `tts`, `wakeword`, `embedding`, `vision`, `ptz`, `display`, `tool`, `integration` |
-| `api` | kompatible SDK-API-Versionen (aktuell `1.0`), z. B. `">=1.0,<2.0"` |
-| `entrypoint` | `modul:Klasse` relativ zum Plugin-Ordner |
-| `trust` | `builtin` / `trusted` (im Core-Prozess) oder `untrusted` (Sandbox) |
-| `runtime` | optional `in_process` / `sandbox`; `untrusted` + `in_process` ist verboten |
-| `permissions` | angeforderte Rechte (siehe unten) |
-| `network_allowlist` | Hosts, die mit `network.http` erreichbar sind |
-| `dependencies` | andere Plugins mit Versionsbereich, optional |
-| `config_schema` | JSON-Schema der Konfiguration; die Admin-UI erzeugt daraus das Formular |
-| `secret_fields` | Konfigurationsschlüssel, die verschlüsselt gespeichert und nie ausgegeben werden |
-| `requirements` | `memory_mb`, `gpu`, benötigte Binaries |
-| `default_enabled` | nur für mitgelieferte Plugins: beim ersten Start aktivieren |
+| `types` | e.g. `device`, `discovery`, `ai_provider`, `realtime_ai`, `stt`, `tts`, `wakeword`, `embedding`, `vision`, `ptz`, `display`, `tool`, `integration` |
+| `api` | compatible SDK API versions (currently `1.0`), e.g. `">=1.0,<2.0"` |
+| `entrypoint` | `module:Class` relative to the plugin folder |
+| `trust` | `builtin` / `trusted` (in the core process) or `untrusted` (sandbox) |
+| `runtime` | optional `in_process` / `sandbox`; `untrusted` + `in_process` is forbidden |
+| `permissions` | requested permissions (see below) |
+| `network_allowlist` | hosts reachable with `network.http` |
+| `dependencies` | other plugins with version range, optional |
+| `config_schema` | JSON schema of the configuration; the admin UI builds the form from it. Field labels in other languages: `"x-i18n": {"de": {"title": …, "description": …}}` per property |
+| `secret_fields` | configuration keys that are stored encrypted and never returned |
+| `requirements` | `memory_mb`, `gpu`, required binaries |
+| `default_enabled` | only for bundled plugins: enable at first start |
 
-## Lebenszyklus
+## Lifecycle
 
 ```python
 class Plugin:
-    async def setup(self)  # Tools, Provider, Komponenten, Event-Typen registrieren
-    async def start(self)  # Hintergrundarbeit starten
-    async def stop(self)   # alles freigeben
+    async def setup(self)  # register tools, providers, components, event types, jobs
+    async def start(self)  # start background work
+    async def stop(self)   # release everything
     async def health(self) -> PluginHealth          # ok | degraded | failed
-    async def on_config_changed(self, config) -> bool  # True = live übernommen, sonst Neustart
+    async def on_config_changed(self, config) -> bool  # True = applied live, otherwise restart
 ```
 
-Der `PluginManager` (`backend/src/justai/plugins/manager.py`):
+The `PluginManager` (`backend/src/justai/plugins/manager.py`):
 
-1. validiert das Manifest, prüft API-Kompatibilität und Abhängigkeiten,
-2. startet in Abhängigkeitsreihenfolge (`setup` und `start` mit je 120 s Timeout),
-3. markiert ein fehlschlagendes Plugin als `failed`, gibt alles frei, was es
-   registriert hat, und lässt den Rest des Systems weiterlaufen,
-4. prüft regelmäßig `health()`; Statuswechsel erscheinen als `plugin.status.changed`.
+1. validates the manifest, checks API compatibility and dependencies,
+2. starts in dependency order (`setup` and `start` with 120 s timeout each),
+3. marks a failing plugin as `failed`, releases everything it registered and keeps the
+   rest of the system running,
+4. checks `health()` regularly; status changes appear as `plugin.status.changed`.
 
-Deaktivieren ist blockiert, solange andere aktive Plugins davon abhängen.
+Disabling is blocked as long as other active plugins depend on it.
 
-## Berechtigungen
+## Permissions
 
-Vokabular: `justai_sdk/permissions.py`. Ein Plugin bekommt nur die Schnittmenge aus
-*angefordert* (Manifest) und *vom Admin gewährt* (Admin-UI → Plugins). Jeder
-Zugriff über den Kontext prüft das Recht (`ctx.require(...)`).
+Vocabulary: `justai_sdk/permissions.py`. A plugin only gets the intersection of
+*requested* (manifest) and *granted by the admin* (admin UI → Plugins). Every access
+through the context checks the permission (`ctx.require(...)`).
 
-* Mitgelieferte Plugins: alle angeforderten Rechte sind beim ersten Start gewährt.
-  Bei einem Update bekommen sie neue Rechte nur, wenn der Admin nie eines entzogen hat.
-* Hochgeladene Plugins (`POST /api/plugins/install`, Zip) werden **immer** als
-  `untrusted` installiert und starten ohne gewährte Rechte. Bei Updates bleiben
-  nur bereits gewährte Rechte erhalten, die das neue Manifest noch anfordert.
-* `untrusted`/Sandbox-Plugins können nie bekommen: `devices.provide`,
-  `ai.provide`, `network.lan`, `network.discovery`, `system.manage`,
-  `biometric.enroll`, `tools.develop`.
-* Eigene Rechte im Namensraum `plugin.<id>.*` sind erlaubt.
+* Bundled plugins: all requested permissions are granted at first start. On an update
+  they only get new permissions if the admin never revoked one.
+* Uploaded plugins (`POST /api/plugins/install`, zip) are **always** installed as
+  `untrusted` and start without granted permissions. On updates only already granted
+  permissions that the new manifest still requests are kept.
+* `untrusted`/sandbox plugins can never get: `devices.provide`, `devices.control`,
+  `ai.provide`, `network.lan`, `network.discovery`, `system.manage`, `biometric.enroll`,
+  `tools.develop`.
+* Own permissions in the namespace `plugin.<id>.*` are allowed.
 
-## Kontext-API
+## Context API
 
 `PluginContext` (`justai_sdk/plugin.py`):
 
-| Methode | Recht |
+| Method | Permission |
 | --- | --- |
+| `config` | the plugin's configuration (secrets decrypted) |
 | `register_tool(definition, handler)` | `tools.provide` |
-| `register_provider(kind, provider)` – `device_driver`, `discovery`, `llm`, `realtime`, `stt`, `tts`, `embedding`, `wakeword`, `object_detector`, `face_analyzer` | je nach Art, z. B. `ai.provide`, `devices.provide` |
+| `register_provider(kind, provider)` – `device_driver`, `discovery`, `llm`, `realtime`, `stt`, `tts`, `embedding`, `wakeword`, `object_detector`, `face_analyzer` | depending on the kind, e.g. `ai.provide`, `devices.provide` |
 | `register_display_component(spec)` | `display.write` |
-| `register_event_type(type, …)` | nur `plugin.<id>.*` |
-| `publish(event)` / `subscribe(pattern, handler)` | `events.publish` / `events.subscribe` (subscribe nicht in der Sandbox) |
-| `http.get/post/request` | `network.http`, nur Hosts aus `network_allowlist` |
-| `store.get/put/delete/keys` | `storage.plugin`, isolierter Key-Value-Speicher pro Plugin |
+| `register_event_type(type, description)` | only `plugin.<id>.*` |
+| `publish(event)` / `subscribe(pattern, handler)` | `events.publish` / `events.subscribe` (subscribe not in the sandbox) |
+| `run_every(seconds, callback, name=…)` | none; in the sandbox at least 60 s apart, at most 5 jobs |
+| `http.get/post/request` | `network.http`, only hosts from `network_allowlist` |
+| `store.get/put/delete/keys` | `storage.plugin`, isolated key-value store per plugin |
 | `services.list_devices/list_rooms` | `devices.read` |
 | `services.snapshot(device_id)` | `camera.read` |
 | `services.memory_search(...)` | `memory.read` |
-| `services.say(room_id, text)` | `speaker.write`, über den Output Router |
-| `services.show(room_id, document)` | `display.write`, über den Output Router |
-| `services.complete(prompt, role=…)` | `ai.invoke`, über den KI-Router (Privacy-Regeln gelten) |
+| `services.say(room_id, text)` | `speaker.write`, through the output router |
+| `services.show(room_id, document)` | `display.write`, through the output router |
+| `services.complete(prompt, role=…)` | `ai.invoke`, through the AI router (privacy rules apply) |
 
-Plugins sprechen nie direkt mit Lautsprechern oder Displays. Jede Ausgabe läuft
-über den Output Router.
+Plugins never talk to speakers or displays directly. Every output goes through the output
+router.
 
 ## Tools
 
 ```python
 class Params(BaseModel):
-    location: str | None = Field(None, description="Ort")
+    location: str | None = Field(None, description="Place")
 
 ctx.register_tool(ToolDefinition(
-    name="weather.current", description="Aktuelles Wetter an einem Ort.",
+    name="weather.current", description="Current weather at a place.",
     parameters=Params, category="information", timeout_s=15,
     permissions=[], side_effect=SideEffect.READ, requires_confirmation=False,
 ), handler)
 
 async def handler(args: Params, tc: ToolContext) -> ToolResult:
-    return ToolResult.success({"temperature": 21.4}, message="Es hat 21 Grad.")
+    return ToolResult.success({"temperature": 21.4}, message="It is 21 degrees.")
 ```
 
-Der Executor (`tools/registry.py`) validiert die Parameter, prüft die Rechte des
-Aufrufers (Rolle der Gesprächs-Endpoints bzw. des Benutzers), erzwingt den
-Timeout, fragt bei `requires_confirmation` mündlich nach
-(`assistant.confirm_action`/`assistant.cancel_action`) und protokolliert jede
-Ausführung (`/api/tools/executions`). Fehler werden als
-`ToolResult.failure(code, message)` gemeldet, nie als Ausnahme an das Modell.
+Tool descriptions, parameter descriptions and result messages are English; the language
+model answers in the language of the conversation. `tc.language` is the conversation
+language (`en`, `de`, `it`) for data that depends on it, e.g. weather descriptions.
+
+The executor (`tools/registry.py`) validates the parameters, checks the caller's
+permissions (role of the conversation endpoint or of the user), enforces the timeout,
+asks for spoken confirmation with `requires_confirmation`
+(`assistant.confirm_action`/`assistant.cancel_action`) and records every execution
+(`/api/tools/executions`). Errors are reported as `ToolResult.failure(code, message)`,
+never as an exception to the model.
+
+## Background jobs and events
+
+A plugin that watches something registers an event type and a job:
+
+```python
+async def setup(self) -> None:
+    self.ctx.register_event_type(f"plugin.{self.ctx.plugin_id}.rain_started",
+                                 "It started raining at the configured place")
+    self.ctx.run_every(300, self.poll, name="rain")
+
+async def poll(self) -> None:
+    raining = await self._raining()
+    before = await self.ctx.store.get("raining")
+    if raining and before is not None and not before.get("value"):
+        await self.ctx.publish(Event(type=f"plugin.{self.ctx.plugin_id}.rain_started",
+                                     payload={"place": "Bolzano"}))
+    await self.ctx.store.put("raining", {"value": raining})
+```
+
+* `run_every` runs the callback right away and then every `seconds` while the plugin runs;
+  errors are logged and do not end the job. Jobs stop with the plugin.
+* Registered event types appear in the event catalog with owner `plugin:<id>` (also from
+  the sandbox) and disappear when the plugin stops. Automations can use them as triggers;
+  the assistant lists them with the tool `events.types` ("Which events can I use for
+  automations?").
 
 ## Sandbox (untrusted)
 
-* Der Core schickt die Plugin-Dateien (nur `.py/.yaml/.json/.txt/.md`, max. 2 MB)
-  an den Sandbox-Dienst. Der startet pro Plugin einen eigenen Host-Prozess mit
-  rlimits (Adressraum, CPU, Dateien, Prozesse, Dateigröße, kein Core-Dump).
-* Kommunikation: JSON-RPC über stdin/stdout; Zugriffe auf Core-Funktionen über das
-  Plugin-Gateway (`/internal/plugin-gateway/<id>`) mit plugin-gebundenem Token.
-  Das Gateway prüft jede Operation gegen die gewährten Rechte.
-* HTTP-Anfragen führt der Core aus (Allowlist-Prüfung, keine privaten Adressen).
-  Der Sandbox-Container hat selbst kein Netz außer zum Core.
-* Tools aus der Sandbox werden im Core als Proxy-Tools registriert; die Parameter
-  werden zusätzlich im Core per JSON-Schema validiert.
+* The core sends the plugin files (only `.py/.yaml/.json/.txt/.md`, max. 2 MB) to the
+  sandbox service. It starts its own host process per plugin with rlimits (address space,
+  CPU, files, processes, file size, no core dump).
+* Communication: JSON-RPC over stdin/stdout; access to core functions through the plugin
+  gateway (`/internal/plugin-gateway/<id>`) with a plugin-bound token. The gateway checks
+  every operation against the granted permissions.
+* HTTP requests are executed by the core (allowlist check, no private addresses). The
+  sandbox container itself has no network except to the core.
+* Tools from the sandbox are registered in the core as proxy tools; the parameters are
+  additionally validated in the core by JSON schema.
+* Event types and jobs work in the sandbox too (limits above).
 
-## Tests für Plugins
+## Self-developed plugins
+
+When the assistant has no tool for a request ("Build a plugin that tells me when it starts
+raining"), it calls `tools.develop`. The devtools module (`backend/src/justai/devtools`)
+then:
+
+1. **checks** whether existing tools already cover the request (then nothing is built),
+2. **generates** manifest, `plugin.py` and tests with the role *tool generation*, with
+   `plugins/example-weather` as reference; tools, background jobs, events and settings
+   (`config_schema`, `secret_fields`) are possible,
+3. **checks statically**: only allowed permissions (`tools.provide`, `network.http`,
+   `storage.plugin`, `display.write`, `speaker.write`, `memory.read`, `camera.read`,
+   `ai.invoke`, `events.publish`, `devices.read`), no forbidden modules (`os`,
+   `subprocess`, `socket`, `requests`, `pathlib` …) or calls (`eval`, `exec`, `open`,
+   `getattr` …), valid manifest,
+4. **runs the tests** in the sandbox with `FakePluginContext`,
+5. **reviews** the code with the role *reasoning* (security, privacy, does it do what was
+   asked),
+6. revises itself up to 2 times if a step fails.
+
+A version that passes everything waits for an admin under *Tools* (status "awaiting
+approval"; code, tests and results are visible). On approval it is installed as an
+`untrusted` sandbox plugin `gen-<name>` with exactly the requested permissions. Does it
+need settings (API key, place), the status is "needs settings" until the admin fills them
+in under *Plugins*; then it starts. Earlier versions can be restored (rollback).
+
+By voice: `tools.develop` (new), `tools.projects` ("Which plugins have you built?"),
+`tools.revise` ("Change the rain plugin so it also reports when the rain stops"; creates
+a new version that is tested and approved again). Residents and admins may ask for
+plugins (permission `tools.develop`); only an admin can approve them.
+
+## Tests for plugins
 
 ```python
 from justai_sdk.testing import FakePluginContext
 
-ctx = FakePluginContext(manifest, config={"default_location": "Bozen"},
-                        http_routes={"https://api.open-meteo.com/*": lambda *a: HttpResponse(...)})
+ctx = FakePluginContext(manifest, config={"default_location": "Bolzano"},
+                        http_routes={"api.open-meteo.com/*": {"current": {"rain": 0.4}}})
 plugin = WeatherPlugin(ctx)
 await plugin.setup()
-result = await ctx.call_tool("weather.current", {"location": "Bozen"})
+result = await ctx.call_tool("weather.current", {"location": "Bolzano"})
+await ctx.run_jobs()            # runs every run_every callback once
+assert ctx.events               # published events
 ```
 
-`FakePluginContext` hält Tools, Events, Speicher und HTTP-Antworten im Speicher. Er
-gewährt alle im Manifest angeforderten Rechte und prüft Zugriffe dagegen;
-HTTP-Anfragen an Hosts außerhalb der Allowlist schlagen wie im Core fehl. Für Audio-Plugins gibt es
-`justai_sdk.simulation.AcousticRoom` (Echo, Hall, Rauschen, Ducking).
+`FakePluginContext` keeps tools, events, event types, jobs, storage and HTTP answers in
+memory. It grants all permissions requested in the manifest and checks access against
+them; HTTP requests to hosts outside the allowlist fail as in the core. HTTP routes match
+with or without scheme and answer with an `HttpResponse`, a `dict`/`list` (JSON), a `str`
+or a function. For audio plugins there is `justai_sdk.simulation.AcousticRoom` (echo,
+reverb, noise, ducking).
 
 ```bash
 uv run pytest plugins/example-weather/tests
 ```
 
-## Mitgelieferte Plugins
+## Bundled plugins
 
-| Plugin | Art | Trust |
+| Plugin | Kind | Trust |
 | --- | --- | --- |
-| `tapo` | Gerätetreiber TP-Link Tapo (go2rtc `tapo://`, Backchannel, PTZ über pytapo) | builtin |
-| `onvif` | ONVIF/RTSP-Treiber, PTZ, WS-Discovery (Unicast), mDNS | builtin |
-| `simulated` | simulierte Kamera/Mikrofon/Lautsprecher mit akustischem Echo, Tool `simulator.say` | builtin |
-| `openwakeword` | Wakeword-Provider | builtin |
-| `faster-whisper` | STT lokal | builtin |
-| `piper` | TTS lokal | builtin |
-| `fastembed` | Embeddings lokal | builtin |
-| `gemini` | LLM, Vision, Realtime (Gemini Live) | builtin |
-| `openai-compat` | LLM über OpenAI-kompatible API (Ollama u. a.) | builtin |
-| `vision-opencv` | Objekterkennung (YOLOX), Gesichter (YuNet/SFace) | builtin |
-| `finance` | Kurse und Charts (inoffizielle Yahoo-Chart-API, siehe Hinweis) | builtin |
-| `example-weather` | Wetter über Open-Meteo, **Referenzbeispiel**, läuft in der Sandbox | untrusted |
+| `tapo` | device driver TP-Link Tapo (go2rtc `tapo://`, backchannel, PTZ and privacy mode via pytapo) | builtin |
+| `onvif` | ONVIF/RTSP driver, PTZ, WS-Discovery (unicast), mDNS | builtin |
+| `simulated` | simulated camera/microphone/speaker with acoustic echo, tool `simulator.say` | builtin |
+| `openwakeword` | wakeword provider | builtin |
+| `faster-whisper` | local STT | builtin |
+| `piper` | local TTS | builtin |
+| `fastembed` | local embeddings | builtin |
+| `gemini` | LLM, vision, realtime (Gemini Live) | builtin |
+| `openai-compat` | LLM through an OpenAI-compatible API (Ollama and others) | builtin |
+| `vision-opencv` | object detection (YOLOX), faces (YuNet/SFace) | builtin |
+| `finance` | prices and charts (unofficial Yahoo chart API, see note) | builtin |
+| `example-weather` | weather from Open-Meteo, **reference example**, runs in the sandbox | untrusted |
 
-Hinweis `finance`: Die Yahoo-Chart-API ist nicht offiziell dokumentiert und kann sich
-ohne Ankündigung ändern. Stooq als Alternative war beim Test durch eine
-JavaScript-Challenge blockiert.
+Note `finance`: the Yahoo chart API is not officially documented and can change without
+notice. Stooq as an alternative was blocked by a JavaScript challenge during testing.
 
-## Plugin verteilen
+## Distributing a plugin
 
-Zip-Archiv mit dem Plugin-Ordner (Manifest im Wurzelverzeichnis oder in genau einem
-Unterordner) in der Admin-UI unter *Plugins → Installieren* hochladen. Danach
-Rechte prüfen, gewähren, konfigurieren und aktivieren.
+Upload a zip archive with the plugin folder (manifest in the root or in exactly one
+subfolder) in the admin UI under *Plugins → Install*. Then check, grant and configure the
+permissions and enable it.

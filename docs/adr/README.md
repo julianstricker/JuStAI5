@@ -1,15 +1,17 @@
 # Architecture Decision Records
 
-Kurze Begründungen für Entscheidungen, die schwer rückgängig zu machen sind.
-Format: Kontext → Entscheidung → Alternativen → Konsequenzen.
+*[Deutsch](../de/adr/README.md) · English*
 
-| Nr. | Entscheidung | Status |
+Short reasons for decisions that are hard to reverse. Format: context → decision →
+alternatives → consequences.
+
+| No. | Decision | Status |
 | --- | --- | --- |
-| [0001](0001-modular-monolith.md) | Modularer Monolith mit Ports & Adapters, Python | angenommen |
-| [0002](0002-plugin-isolation.md) | Zwei Plugin-Laufzeiten: im Prozess (vertrauenswürdig) und Sandbox-Container | angenommen |
-| [0003](0003-postgres-pgvector.md) | PostgreSQL + pgvector als einzige Datenbank | angenommen |
-| [0004](0004-go2rtc-media.md) | go2rtc als Medienserver, Streams nur im Speicher | angenommen |
-| [0005](0005-echo-handling.md) | Mehrschichtige Echo-Behandlung mit eigener Bulk-Delay-Kompensation | angenommen |
-| [0006](0006-ai-router.md) | Eigener KI-Router mit Rollen, Fallback-Ketten und Privacy-Regeln | angenommen |
-| [0007](0007-display-render-schema.md) | Displays rendern nur typisierte Komponenten, Erfolg erst nach Bestätigung | angenommen |
-| [0008](0008-deterministic-output-routing.md) | Ausgaberaum wird deterministisch bestimmt, nie vom Modell | angenommen |
+| [0001](0001-modular-monolith.md) | Modular monolith with ports & adapters, Python | accepted |
+| [0002](0002-plugin-isolation.md) | Two plugin runtimes: in process (trusted) and sandbox container | accepted |
+| [0003](0003-postgres-pgvector.md) | PostgreSQL + pgvector as the only database | accepted |
+| [0004](0004-go2rtc-media.md) | go2rtc as media server, streams only in memory | accepted |
+| [0005](0005-echo-handling.md) | Multi-layer echo handling with own bulk delay compensation | accepted |
+| [0006](0006-ai-router.md) | Own AI router with roles, fallback chains and privacy rules | accepted |
+| [0007](0007-display-render-schema.md) | Displays only render typed components, success only after confirmation | accepted |
+| [0008](0008-deterministic-output-routing.md) | The output room is determined deterministically, never by the model | accepted |

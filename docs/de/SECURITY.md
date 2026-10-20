@@ -122,7 +122,7 @@ Tool-Ausführung wird protokolliert (Parameter redigiert).
 
 | Thema | Umsetzung |
 | --- | --- |
-| Cloud-KI | global abschaltbar; pro Rolle `local_only`/`prefer_local`/`any`; getrennte Schalter für Kamerabilder, Gesprächsaudio und persönliche Erinnerungen; pro Raum `cloud_media_allowed`. Ein Wechsel von lokal zu Cloud wird nie still gemacht: Event `ai.provider.fallback` und Audit-Eintrag. |
+| Cloud-KI | global abschaltbar; pro Rolle `local_only`/`prefer_local`/`any`; getrennte Schalter für Kamerabilder, Gesprächsaudio und persönliche Erinnerungen; pro Raum `cloud_media_allowed`. Die Websuche (Gemini → Google-Suche) ist abschaltbar; ihre Anfragen gehen an Google. Ein Wechsel von lokal zu Cloud wird nie still gemacht: Event `ai.provider.fallback` und Audit-Eintrag. |
 | Sichtbarkeit | Displays zeigen, ob im Raum gerade zugehört oder gesprochen wird und ob ein Cloud-Realtime-Modell aktiv ist. Die Admin-UI zeigt das für alle Räume. |
 | Kameras | Privatsphärenzonen werden vor jeder Analyse geschwärzt; Vision pro Raum abschaltbar; keine Speicherung von Kamerabildern zu Sichtungen |
 | Biometrie | Gesicht und Stimme nur mit dokumentierter Einwilligung (getrennt je Merkmal); Widerruf löscht alle Merkmale dieser Art; Export möglich; Ähnlichkeitswerte werden nie als Wahrscheinlichkeit dargestellt ([VISION.md](VISION.md#stimmprofile)) |

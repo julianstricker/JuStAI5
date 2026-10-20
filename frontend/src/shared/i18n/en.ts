@@ -505,6 +505,8 @@ export const en = {
   "set.desc": "Users, retention, network search, device app and backup",
   "set.displayName": "Display name",
   "set.enable": "Enable",
+  "set.homeLocation": "Location of the home",
+  "set.homeLocationHint": "Town or address, e.g. “Bolzano, South Tyrol”. The assistant uses it for “nearby”, “the nearest …” and the weather.",
   "set.linkedPerson": "Linked person",
   "set.lock": "Lock",
   "set.loggedOutAll": "All sessions ended",

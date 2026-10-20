@@ -40,6 +40,7 @@ from justai.identity.voice import VoiceProfiles
 from justai.logging import get_logger
 from justai.rooms.service import RoomService
 from justai.system.jobs import JobQueue
+from justai.system.settings import SystemSettings
 from justai.tools.registry import ToolExecutor, ToolRegistry
 
 log = get_logger(__name__)
@@ -104,7 +105,8 @@ class _Recent:
 class ConversationManager:
     def __init__(self, *, db: Database, bus: EventBus, audio: AudioEngine, endpoints: EndpointService,
                  rooms: RoomService, router: AIRouter, registry: ToolRegistry,
-                 executor: ToolExecutor, jobs: JobQueue, recall: Any) -> None:
+                 executor: ToolExecutor, jobs: JobQueue, recall: Any,
+                 system_settings: Callable[[], Coroutine[Any, Any, SystemSettings]] | None = None) -> None:
         self.db = db
         self.bus = bus
         self.audio = audio
@@ -115,6 +117,7 @@ class ConversationManager:
         self.executor = executor
         self.jobs = jobs
         self.recall = recall
+        self.system_settings = system_settings
         self.repo = SessionRepository(db)
         self._by_endpoint: dict[str, ConversationSession] = {}
         self._by_id: dict[str, ConversationSession] = {}
@@ -230,12 +233,14 @@ class ConversationManager:
         vocabulary = await self._vocabulary(settings.assistant_name, [r.name for r in rooms])
         person_name, person_role = await self._person(person_id)
         mode = await self._mode(endpoint_mode, audio is not None)
+        system = await self.system_settings() if self.system_settings else SystemSettings()
         session_id = new_id("sess")
         ctx = ConversationContext(
             session_id=session_id, endpoint_name=endpoint_name, room_id=room_id,
             room_name=room.name if room else None, person_id=person_id, person_name=person_name,
             language=language or settings.default_language, rooms=[r.name for r in rooms],
-            has_camera=has_camera, has_display=has_display, trigger=trigger, vocabulary=vocabulary)
+            has_camera=has_camera, has_display=has_display, trigger=trigger, vocabulary=vocabulary,
+            timezone=system.timezone, home_location=system.home_location)
         deps = SessionDeps(router=self.router, registry=self.registry, executor=self.executor,
                            bus=self.bus, store=self.repo, recall=self.recall, settings=settings)
         session = ConversationSession(

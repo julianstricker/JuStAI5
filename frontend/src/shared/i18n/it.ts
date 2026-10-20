@@ -506,6 +506,8 @@ export const it: Record<Key, string> = {
   "set.desc": "Utenti, conservazione, ricerca di rete, app dispositivo e backup",
   "set.displayName": "Nome visualizzato",
   "set.enable": "Attiva",
+  "set.homeLocation": "Posizione della casa",
+  "set.homeLocationHint": "Località o indirizzo, ad es. «Bolzano, Alto Adige». L'assistente lo usa per «qui vicino», «il … più vicino» e il meteo.",
   "set.linkedPerson": "Persona collegata",
   "set.lock": "Blocca",
   "set.loggedOutAll": "Tutte le sessioni terminate",

@@ -10,7 +10,7 @@ und **nicht getestet**.
 
 | Suite | Ort | Braucht | Ergebnis |
 | --- | --- | --- | --- |
-| Unit | `backend/tests/unit` | nichts | 138 bestanden |
+| Unit | `backend/tests/unit` | nichts | 142 bestanden |
 | Audio mit echten Modellen | `backend/tests/audio` | Modelle (`JUSTAI_TEST_MODELS_DIR`) | 9 bestanden; `test_speaker.py` schlägt in etwa 1 von 4 Läufen fehl (Piper-Synthese ist zufällig, fremde Stimme dann 0,49 statt < 0,45) |
 | Datenbank | `backend/tests/db` | PostgreSQL + pgvector (`JUSTAI_TEST_DATABASE_URL`) | 3 bestanden |
 | End-to-End | `backend/tests/e2e` | laufende Instanz (`JUSTAI_E2E_URL`, `JUSTAI_E2E_PASSWORD`), Gemini | 13 bestanden (siehe Hinweis) |
@@ -146,6 +146,7 @@ Unit-Tests abgedeckt hatten:
 | Sandbox-Testlauf je nach Zufalls-Verzeichnisname nicht importierbar | fester Pfad, `pythonpath` |
 | Generierter Klassenname umbenannt, Tests fanden ihn nicht | Alias statt Umbenennen |
 | Zweites Tool-Projekt mit gleichem Namen brach ab (Unique-Constraint) | eindeutige Plugin-IDs |
+| „Wo ist das nächste McDonald's?“: der Assistent behauptete, kein Internet zu haben, und lehnte auch auf zweimalige Bitte ab, ein Plugin zu bauen; der System-Prompt erwähnte `tools.develop` nicht, eine Websuche gab es nicht | Google-Suche von Gemini neben den eigenen Tools (Realtime und Pipeline), Standort des Hauses in den Einstellungen und im Prompt, Prompt-Regel, `tools.develop` anzubieten und zu starten; Unit-Tests, E2E per Sprache (Realtime), live per Textchat |
 | Plugin-Erzeugung brach ab („Replacement index 0 out of range“) nach der Übersetzung des Prompts | geschweifte Klammern im Prompt maskiert, Unit-Test |
 | Tests generierter Plugins schlugen fehl („'dict' object is not callable“): das Modell übergab JSON direkt als HTTP-Route | `FakePluginContext` akzeptiert `dict`/`list`/`str`/Funktionen als Routen, Unit-Test |
 | Deaktivieren der C200 hing über 2 Minuten (Gerät als deaktiviert markiert, Verbindungen blieben) | `Supervisor.stop` wartete unbegrenzt auf Tasks, die auf Abbruch nicht reagieren, und verschluckte dabei den eigenen Abbruch. Jetzt: höchstens 5 s, dann Warnung mit der Stelle, an der der Task hängt; jeder Schritt beim Stoppen eines Geräts (Audio, Vision, Treiber, go2rtc) höchstens 10 s, langsame Schritte werden mit Namen geloggt. Live: Deaktivieren 0,2–0,3 s |

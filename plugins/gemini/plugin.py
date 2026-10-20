@@ -36,7 +36,9 @@ def _types():  # lazy import keeps plugin import cheap
     return types
 
 
-def _tools(specs: list[ToolSpec], *, blocking: bool = False) -> list[Any]:
+def _tools(specs: list[ToolSpec], *, blocking: bool = False, search: bool = False) -> list[Any]:
+    """Function declarations for our tools, plus Google Search (run by Gemini itself) when
+    enabled. Search is only offered together with tools, i.e. in conversations."""
     if not specs:
         return []
     types = _types()
@@ -47,7 +49,10 @@ def _tools(specs: list[ToolSpec], *, blocking: bool = False) -> list[Any]:
         if blocking:
             kw["behavior"] = types.Behavior.BLOCKING
         decls.append(types.FunctionDeclaration(**kw))
-    return [types.Tool(function_declarations=decls)]
+    tools = [types.Tool(function_declarations=decls)]
+    if search:
+        tools.append(types.Tool(google_search=types.GoogleSearch()))
+    return tools
 
 
 def _contents(messages: list[ChatMessage]) -> tuple[str, list[Any]]:
@@ -103,8 +108,9 @@ class GeminiLLM:
     provider_id = "gemini"
     locality = Locality.CLOUD
 
-    def __init__(self, client: Any) -> None:
+    def __init__(self, client: Any, search: bool = False) -> None:
         self.client = client
+        self.search = search
 
     async def chat(self, request: ChatRequest) -> AsyncIterator[ChatEvent]:
         types = _types()
@@ -113,8 +119,10 @@ class GeminiLLM:
         if system:
             config["system_instruction"] = system
         if request.tools:
-            config["tools"] = _tools(request.tools)
+            config["tools"] = _tools(request.tools, search=self.search)
             config["automatic_function_calling"] = types.AutomaticFunctionCallingConfig(disable=True)
+            if self.search:
+                config["tool_config"] = types.ToolConfig(include_server_side_tool_invocations=True)
         if request.json_schema is not None:
             config["response_mime_type"] = "application/json"
             config["response_json_schema"] = request.json_schema
@@ -250,17 +258,18 @@ class GeminiRealtime:
     provider_id = "gemini"
     locality = Locality.CLOUD
 
-    def __init__(self, client: Any, default_voice: str, silence_ms: int) -> None:
+    def __init__(self, client: Any, default_voice: str, silence_ms: int, search: bool = False) -> None:
         self.client = client
         self.default_voice = default_voice
         self.silence_ms = silence_ms
+        self.search = search
 
     async def connect(self, config: RealtimeConfig) -> GeminiRealtimeSession:
         types = _types()
         live_config = types.LiveConnectConfig(
             response_modalities=[types.Modality.AUDIO],
             system_instruction=config.instructions or None,
-            tools=_tools(config.tools, blocking=True) or None,
+            tools=_tools(config.tools, blocking=True, search=self.search) or None,
             speech_config=types.SpeechConfig(language_code=config.language or None, voice_config=types.VoiceConfig(
                 prebuilt_voice_config=types.PrebuiltVoiceConfig(
                     voice_name=config.voice or self.default_voice))),
@@ -303,10 +312,11 @@ class GeminiPlugin(Plugin):
         # immediately, which is much faster than retrying an overloaded model.
         self.client = genai.Client(api_key=key, http_options=types.HttpOptions(
             timeout=60_000, retry_options=types.HttpRetryOptions(attempts=1)))
-        self.ctx.register_provider("llm", GeminiLLM(self.client))
+        search = bool(self.ctx.config.get("google_search", True))
+        self.ctx.register_provider("llm", GeminiLLM(self.client, search=search))
         self.ctx.register_provider("realtime", GeminiRealtime(
             self.client, self.ctx.config.get("default_voice", "Kore"),
-            int(self.ctx.config.get("vad_silence_ms", 1000))))
+            int(self.ctx.config.get("vad_silence_ms", 1000)), search=search))
 
     async def health(self) -> PluginHealth:
         if self.client is None:

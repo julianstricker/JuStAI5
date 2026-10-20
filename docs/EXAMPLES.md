@@ -123,6 +123,9 @@ With a paired display, tablet or TV in the same room:
 
 ## Knowledge and everyday life
 
+* "Where is the nearest McDonald's?" ✔ · "Is the pharmacy in the village open now?" ·
+  "What's new in South Tyrol today?" *(web search with Gemini; "nearest" relative to the
+  location of the home under Settings)*
 * "What will the weather be like in Bolzano tomorrow?" ✔
 * "How is the Tesla share doing?"
 * "What is the capital of Australia?" … "Hey Jarvis, and how many people live there?" ✔

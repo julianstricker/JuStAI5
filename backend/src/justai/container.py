@@ -40,6 +40,7 @@ from justai.plugins.manager import PluginManager
 from justai.plugins.providers import ProviderRegistry
 from justai.rooms.service import RoomService
 from justai.system.jobs import JobQueue
+from justai.system.settings import SystemSettings
 from justai.system.store import AuditLog, SecretStore, SettingsStore
 from justai.system.telemetry import TelemetryHub
 from justai.tools.registry import ConfirmationManager, ToolExecutor, ToolRegistry
@@ -104,7 +105,7 @@ class Container:
         self.conversations = ConversationManager(
             db=self.db, bus=self.bus, audio=self.audio, endpoints=self.endpoints, rooms=self.rooms,
             router=self.ai, registry=self.tools, executor=self.executor, jobs=self.jobs,
-            recall=_LazyRecall(self))
+            recall=_LazyRecall(self), system_settings=self._system_settings)
         speaker_model = settings.models_dir / "speaker" / "wespeaker_en_voxceleb_resnet34.onnx"
         if speaker_model.exists():
             from justai.audio.speaker import SpeakerEmbedder
@@ -153,6 +154,9 @@ class Container:
             await self.settings_store.set("ai", settings)
             self.ai.invalidate()
             log.info("AI roles auto-configured for newly available providers")
+
+    async def _system_settings(self) -> SystemSettings:
+        return SystemSettings.model_validate(await self.settings_store.get("system") or {})
 
     async def _audit_system(self, action: str, detail: dict[str, Any]) -> None:
         await self.audit.record("system", action, None, **detail)

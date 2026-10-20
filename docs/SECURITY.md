@@ -115,7 +115,7 @@ redacted).
 
 | Topic | Implementation |
 | --- | --- |
-| Cloud AI | can be switched off globally; per role `local_only`/`prefer_local`/`any`; separate switches for camera images, conversation audio and personal memories; per room `cloud_media_allowed`. A switch from local to cloud is never silent: event `ai.provider.fallback` and audit entry. |
+| Cloud AI | can be switched off globally; per role `local_only`/`prefer_local`/`any`; separate switches for camera images, conversation audio and personal memories; per room `cloud_media_allowed`. Web search (Gemini → Google Search) can be switched off; its queries go to Google. A switch from local to cloud is never silent: event `ai.provider.fallback` and audit entry. |
 | Visibility | displays show whether the room is being listened to or spoken to and whether a cloud realtime model is active. The admin UI shows this for all rooms. |
 | Cameras | privacy zones are blacked out before every analysis; vision can be switched off per room; no camera images stored with sightings; privacy mode by voice ("switch off the camera") |
 | Microphones | listening can be paused per room by voice ("stop listening for an hour") or switched off per endpoint |

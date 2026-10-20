@@ -52,6 +52,20 @@ The assistant understands and speaks **English, German and Italian** (setting
   `en_US-lessac`, `de_DE-thorsten` and `it_IT-paola`); Gemini Live speaks every language by
   itself.
 
+## Web search and location
+
+With Gemini the assistant can look things up on the web (Google Search, run by Gemini
+next to JuStAI5's own tools): places, opening hours, news, prices. It works in realtime
+and pipeline mode. Switch: *Plugins → Gemini → Google Search* (default on). The search
+queries go to Google; beyond the free quota Google may charge for search grounding.
+
+*Settings → System → Location of the home* (town or address) is given to the assistant as
+the reference for "here", "nearby" and "the nearest …".
+
+If a capability is missing altogether, the assistant offers to build a plugin
+(`tools.develop`) instead of saying it cannot do it, and starts as soon as the user asks
+for it ([PLUGINS.md](PLUGINS.md#self-developed-plugins)).
+
 ## Conversation mode
 
 * **Realtime** (default with Google key): audio goes directly to Gemini Live, answers come

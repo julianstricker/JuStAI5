@@ -50,6 +50,21 @@ Der Assistent versteht und spricht **Deutsch, Englisch und Italienisch** (Einste
 * Piper-Stimmen pro Sprache (`voices`; mitgeliefert `de_DE-thorsten`, `en_US-lessac`,
   `it_IT-paola`); Gemini Live spricht jede Sprache selbst.
 
+## Websuche und Standort
+
+Mit Gemini kann der Assistent im Internet nachschlagen (Google-Suche, von Gemini neben
+den eigenen Tools von JuStAI5 ausgeführt): Orte, Öffnungszeiten, Nachrichten, Preise. Das
+geht im Realtime- und im Pipeline-Modus. Schalter: *Plugins → Gemini → Google-Suche*
+(Standard an). Die Suchanfragen gehen an Google; über das kostenlose Kontingent hinaus
+kann Google die Suche berechnen.
+
+*Einstellungen → System → Standort des Hauses* (Ort oder Adresse) bekommt der Assistent
+als Bezugspunkt für „hier“, „in der Nähe“ und „das nächste …“.
+
+Fehlt eine Fähigkeit ganz, bietet der Assistent an, ein Plugin zu bauen
+(`tools.develop`), statt zu sagen, dass es nicht geht, und legt los, sobald man ihn
+darum bittet ([PLUGINS.md](PLUGINS.md#selbst-entwickelte-plugins)).
+
 ## Gesprächsmodus
 
 * **Realtime** (Standard mit Google-Key): Audio geht direkt an Gemini Live,

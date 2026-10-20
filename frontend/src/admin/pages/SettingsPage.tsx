@@ -39,6 +39,7 @@ interface UserRow {
 
 interface SystemSettings {
   timezone: string;
+  home_location: string;
   discovery_cidrs: string[];
   retention: {
     events_days: number;
@@ -183,6 +184,15 @@ export function SettingsPage() {
           <Card withBorder>
             <Stack>
               <Title order={5}>{t("set.system")}</Title>
+              <TextInput
+                label={t("set.homeLocation")}
+                description={t("set.homeLocationHint")}
+                value={draft.home_location ?? ""}
+                maxLength={200}
+                onChange={(e) =>
+                  setDraft({ ...draft, home_location: e.currentTarget.value })
+                }
+              />
               <TextInput
                 label={t("set.timezone")}
                 description={t("set.timezoneHint")}

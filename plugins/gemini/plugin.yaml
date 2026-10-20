@@ -20,13 +20,33 @@ config_schema:
     api_key:
       type: string
       description: Gemini API key (https://aistudio.google.com). Alternatively the environment variable GOOGLE_API_KEY.
+      x-i18n:
+        de: {description: "Gemini-API-Key (https://aistudio.google.com). Alternativ die Umgebungsvariable GOOGLE_API_KEY."}
+        it: {description: "Chiave API Gemini (https://aistudio.google.com). In alternativa la variabile d'ambiente GOOGLE_API_KEY."}
+    google_search:
+      type: boolean
+      default: true
+      title: Google Search
+      description: >-
+        Lets the assistant look things up on the web (places, opening hours, news, prices).
+        Search queries go to Google; Google may charge for search grounding beyond the free quota.
+      x-i18n:
+        de: {title: "Google-Suche", description: "Der Assistent darf im Internet nachschlagen (Orte, Öffnungszeiten, Nachrichten, Preise). Suchanfragen gehen an Google; über das kostenlose Kontingent hinaus kann Google die Suche berechnen."}
+        it: {title: "Ricerca Google", description: "L'assistente può cercare sul web (luoghi, orari di apertura, notizie, prezzi). Le ricerche vanno a Google; oltre la quota gratuita Google può addebitare la ricerca."}
     default_voice:
       type: string
       default: Kore
       description: Voice for the Live API (e.g. Kore, Puck, Charon, Aoede)
+      x-i18n:
+        de: {description: "Stimme für die Live API (z. B. Kore, Puck, Charon, Aoede)"}
+        it: {description: "Voce per la Live API (ad es. Kore, Puck, Charon, Aoede)"}
     vad_silence_ms:
       type: integer
       default: 1000
       minimum: 300
       maximum: 3000
+      description: Silence in milliseconds that ends the user's turn (Live API)
+      x-i18n:
+        de: {description: "Stille in Millisekunden, die den Beitrag des Benutzers beendet (Live API)"}
+        it: {description: "Silenzio in millisecondi che termina il turno dell'utente (Live API)"}
   additionalProperties: false

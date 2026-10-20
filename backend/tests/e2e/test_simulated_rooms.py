@@ -454,6 +454,26 @@ def test_realtime_mode_conversation_with_language_and_vocabulary(world: World) -
     api.post(f"/api/conversations/{s['id']}/end")
 
 
+def test_realtime_mode_looks_things_up_on_the_web(world: World) -> None:
+    """Questions about places are answered with a web search instead of "I have no internet"
+    (Gemini Live with Google Search next to our own tools)."""
+    api = world.api
+    ok(api.patch(f"/api/endpoints/{world.endpoints['Wohnzimmer']}", json={"config": {
+        "conversation": {"mode": "realtime", "inactivity_timeout_s": 15, "resume_window_s": 0},
+        "audio": {"duplex": "half", "output_latency_ms": 900}}}))
+    time.sleep(2)
+    world.say("Wohnzimmer", "Hey Jarvis!")
+    assert wait_for(lambda: world.session("Wohnzimmer"), 15), "wakeword did not start a session"
+    time.sleep(1.5)
+    world.say("Wohnzimmer", "In welcher Straße in Meran ist das McDonald's?", voice="de_DE-thorsten-medium")
+    s = wait_for(lambda: (x := world.session("Wohnzimmer")) and any(
+        t["role"] == "assistant" and len(t["text"]) > 10 for t in x["transcript"]) and x, 60)
+    assert s, f"no realtime answer: {world.session('Wohnzimmer')}"
+    answer = " ".join(t["text"] for t in s["transcript"] if t["role"] == "assistant").lower()
+    assert "rom" in answer, f"expected the Romstraße/Via Roma in Merano: {answer!r}"
+    api.post(f"/api/conversations/{s['id']}/end")
+
+
 def test_device_app_streams_microphone_camera_and_receives_speech(world: World) -> None:
     """A phone/tablet/PC running the device app: pairing, auto endpoint, camera, mic -> answer audio."""
     import asyncio

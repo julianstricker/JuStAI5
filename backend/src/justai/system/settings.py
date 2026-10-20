@@ -26,6 +26,8 @@ class SystemSettings(BaseModel):
             raise ValueError(f"unknown timezone {v}") from exc
         return v
 
+    # Where the home is (town or address): reference point for "nearby", weather, places.
+    home_location: str = Field("", max_length=200)
     discovery_cidrs: list[str] = Field(default_factory=list)
     retention: Retention = Field(default_factory=Retention)
     store_face_thumbnails: bool = True

@@ -10,10 +10,10 @@ tested**.
 
 | Suite | Location | Needs | Result |
 | --- | --- | --- | --- |
-| Unit | `backend/tests/unit` | nothing | 138 passed |
+| Unit | `backend/tests/unit` | nothing | 142 passed |
 | Audio with real models | `backend/tests/audio` | models (`JUSTAI_TEST_MODELS_DIR`) | 9 passed; `test_speaker.py` fails in about 1 of 4 runs (Piper synthesis is random, the other voice then scores 0.49 instead of < 0.45) |
 | Database | `backend/tests/db` | PostgreSQL + pgvector (`JUSTAI_TEST_DATABASE_URL`) | 3 passed |
-| End-to-end | `backend/tests/e2e` | running instance (`JUSTAI_E2E_URL`, `JUSTAI_E2E_PASSWORD`), Gemini | 13 passed (see note) |
+| End-to-end | `backend/tests/e2e` | running instance (`JUSTAI_E2E_URL`, `JUSTAI_E2E_PASSWORD`), Gemini | 14 tests: 13 passed in the last full run, the new web search test (realtime) passed on its own (see note) |
 | Example plugin | `plugins/example-weather/tests` | nothing | 6 passed |
 | Frontend | `frontend` | Node | `tsc` and ESLint without errors; a missing translation fails `tsc` |
 | Static analysis | whole repo | – | ruff without errors, mypy `--strict` without errors (backend, SDK, sandbox) |
@@ -142,6 +142,7 @@ Live checks against the running instance found bugs that no unit test had covere
 | Disabling the C200 hung for over 2 minutes (device marked disabled, connections stayed) | `Supervisor.stop` waited without limit for tasks that do not react to cancellation and swallowed its own cancellation. Now: at most 5 s, then a warning with the place where the task hangs; every step when stopping a device (audio, vision, driver, go2rtc) at most 10 s, slow steps are logged by name. Live: disabling 0.2–0.3 s |
 | Camera speaker (C200) silent although all bytes arrived at the camera; also after restarting go2rtc and the camera. A fresh second connection and the Tapo app were audible | own speaker connection opened anew per conversation (`<stream>_talk`), closed after 90 s of silence; the delivery check now also recognises camera connections that go2rtc lists as a consumer ([AUDIO.md](AUDIO.md)). Test tone then delivered (login 4.1 s) and heard |
 | Reminder "in a quarter of an hour" repeated every 5 s (18× in 1.5 min, only then stopped by the limit of 20 runs per hour) | the scheduler checked `run_count` of `at` triggers on its cached copy, which only the database incremented. Now: once via the trigger time, `at` automations are disabled after the run, cache reloaded after every run. Unit test and checked live (1 run, then disabled) |
+| "Where is the nearest McDonald's?": the assistant claimed it had no internet and refused to build a plugin even when asked twice; the system prompt never mentioned `tools.develop` and there was no web search | Gemini Google Search next to the own tools (realtime and pipeline), location of the home in the settings and the prompt, prompt rule to offer and start `tools.develop`; unit tests, E2E by voice (realtime), live by text chat |
 | Plugin generation crashed ("Replacement index 0 out of range") after the prompt translation | literal braces in the prompt escaped, unit test |
 | Generated plugin tests failed ("'dict' object is not callable"): the model passed JSON directly as an HTTP route | `FakePluginContext` accepts `dict`/`list`/`str`/functions as routes, unit test |
 | "Hey Jarvis, what time is it?" without a pause stayed unanswered: audio between wakeword and ready session (1.4–1.7 s) was dropped | fixed: buffer per endpoint, replay from the wakeword with VAD decision pause/no pause, pipeline ignores short utterances; E2E in both modes ([AUDIO.md](AUDIO.md#speaking-without-a-pause-after-the-wakeword)) |

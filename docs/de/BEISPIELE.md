@@ -127,6 +127,9 @@ Mit einem gekoppelten Display, Tablet oder Fernseher im selben Raum:
 
 ## Wissen und Alltag
 
+* „Wo ist das nächste McDonald's?“ ✔ · „Hat die Apotheke im Dorf gerade offen?“ ·
+  „Was gibt es heute Neues in Südtirol?“ *(Websuche mit Gemini; „das nächste“ bezogen
+  auf den Standort des Hauses unter Einstellungen)*
 * „Wie wird das Wetter morgen in Bozen?“
 * „Wie steht die Tesla-Aktie?“
 * „Was ist die Hauptstadt von Australien?“ … „Hey Jarvis, und wie viele

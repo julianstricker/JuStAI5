@@ -89,6 +89,7 @@ Rollen sofort belegt; oder ein lokales LLM (z. B. Ollama über das Plugin
 | Architektur, Module, Datenflüsse | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | Technologie-Entscheidungen | [TECH_STACK.md](TECH_STACK.md), [adr/](adr/) |
 | Entwicklung | [DEVELOPMENT.md](DEVELOPMENT.md) |
+| **Selbst weiterentwickeln (Vibe Coding)** | [VIBE_CODING.md](VIBE_CODING.md) |
 | Plugins & SDK | [PLUGINS.md](PLUGINS.md) |
 | Geräte (Tapo, ONVIF, RTSP, simuliert) | [DEVICES.md](DEVICES.md) |
 | Räume & Endpoints, Output Router | [ROOMS.md](ROOMS.md) |

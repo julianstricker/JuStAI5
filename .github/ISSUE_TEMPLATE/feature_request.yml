@@ -1,0 +1,22 @@
+name: Feature request
+description: Suggest an idea. English or German is fine. / Eine Idee vorschlagen.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like to do? / Was möchtest du tun?
+      description: Describe the situation, not only the solution. An example sentence you would say to the assistant helps.
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Could it be a plugin? / Könnte es ein Plugin sein?
+      options: ["I don't know", "Yes, a plugin", "No, it needs a change in the core"]
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Help / Mithilfe
+      options:
+        - label: I would like to build it myself (see docs/VIBE_CODING.md)

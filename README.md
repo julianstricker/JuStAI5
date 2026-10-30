@@ -86,6 +86,7 @@ LLM (e.g. Ollama through the *OpenAI-compatible* plugin) assigned to the roles u
 | Architecture, modules, data flows | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | Technology decisions | [docs/TECH_STACK.md](docs/TECH_STACK.md), [docs/adr/](docs/adr/) |
 | Development | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) |
+| **Build it further yourself (vibe coding)** | [docs/VIBE_CODING.md](docs/VIBE_CODING.md) |
 | Plugins & SDK, self-developed plugins | [docs/PLUGINS.md](docs/PLUGINS.md) |
 | Devices (Tapo, ONVIF, RTSP, simulated), voice control | [docs/DEVICES.md](docs/DEVICES.md) |
 | Rooms & endpoints, output router | [docs/ROOMS.md](docs/ROOMS.md) |

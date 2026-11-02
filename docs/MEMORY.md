@@ -5,6 +5,8 @@
 Code: `backend/src/justai/memory/`. Stored in PostgreSQL, semantic search with pgvector
 (embeddings 384 dim., local with fastembed `paraphrase-multilingual-MiniLM-L12-v2`).
 
+![The Memory page (demo data)](img/shots/memory.en.webp)
+
 ## Kinds of memory
 
 | Kind | Content | Where |

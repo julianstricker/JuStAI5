@@ -9,6 +9,10 @@ Output Router sorgt dafür, dass Antworten im Raum der Anfrage bleiben. Der Assi
 reagiert nie auf seine eigene Stimme. Er spricht und versteht Deutsch, Englisch und
 Italienisch, und die Oberfläche gibt es in allen drei Sprachen.
 
+![So funktioniert JuStAI5: Geräte in jedem Raum, dein Server zu Hause, ein KI-Modell, Antworten im selben Raum](../img/how.de.svg)
+
+![Das JuStAI5-Dashboard (Demo-Daten)](../img/shots/dashboard.de.webp)
+
 ```
 Kamera/Mikrofon ──► go2rtc ──► Audio-Engine (AEC, VAD, Wakeword, Arbitrierung)
                                    │

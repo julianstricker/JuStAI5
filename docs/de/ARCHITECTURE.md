@@ -7,6 +7,8 @@ JuStAI5 ist ein **modularer Monolith** mit klaren Ports & Adapters: ein Core-Pro
 Integrationen kommen ausschließlich über Plugins. Was nicht vertrauenswürdig ist,
 läuft in einem getrennten Sandbox-Container. Begründung: [ADR 0001](adr/0001-modular-monolith.md).
 
+![Docker-Container und Netzwerke](../img/arch.de.svg)
+
 ## Container (Docker Compose)
 
 | Dienst | Aufgabe | Netze |

@@ -6,6 +6,8 @@ A **device** is a physical or virtual device with capabilities. Devices are inde
 endpoints: a camera can supply image and microphone, the speaker can be another device
 ([ROOMS.md](ROOMS.md)).
 
+![The Devices page (demo data with simulated devices)](img/shots/devices.en.webp)
+
 ## Capabilities
 
 Defined in `justai_sdk/ports/devices.py` (`Capability`). They are **determined at

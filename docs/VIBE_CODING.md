@@ -8,6 +8,8 @@ yourself. The project is open source ([AGPL-3.0](../LICENSE)), so you can do the
 do not need to be a professional programmer. You need patience, curiosity and the habit of
 checking what the assistant produced.
 
+![Three ways to build JuStAI5 further](img/vibe.en.svg)
+
 There are three ways to take part, from "no code at all" to "change the core". Start at
 the first and go further only when you need to.
 

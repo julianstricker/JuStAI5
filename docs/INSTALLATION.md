@@ -6,6 +6,8 @@ This guide takes you from an empty computer to the first conversation with the a
 No programming knowledge is needed, only a few terminal commands you can copy. If you
 already have Docker, start at [step 2](#step-2-download-justai5).
 
+![Installation in four steps](img/inst.en.svg)
+
 ## The quickest way: one command
 
 In a terminal on a Linux computer (x86_64):

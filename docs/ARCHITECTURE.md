@@ -7,6 +7,8 @@ asyncio) contains the domain modules. Hardware, AI providers and integrations co
 exclusively through plugins. Whatever is not trusted runs in a separate sandbox container.
 Rationale: [ADR 0001](adr/0001-modular-monolith.md).
 
+![Docker containers and networks](img/arch.en.svg)
+
 ## Containers (Docker Compose)
 
 | Service | Task | Networks |

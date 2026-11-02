@@ -7,6 +7,8 @@ Ein **Gerät** ist ein physisches oder virtuelles Gerät mit Fähigkeiten
 Mikrofon liefern, der Lautsprecher kann ein anderes Gerät sein
 ([ROOMS.md](ROOMS.md)).
 
+![Die Seite Geräte (Demo-Daten mit simulierten Geräten)](../img/shots/devices.de.webp)
+
 ## Fähigkeiten
 
 Definiert in `justai_sdk/ports/devices.py` (`Capability`). Sie werden **zur

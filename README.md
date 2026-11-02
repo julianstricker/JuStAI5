@@ -8,6 +8,10 @@ where it answers; a deterministic output router keeps answers in the room of the
 The assistant never reacts to its own voice. It speaks and understands English, German
 and Italian, and its interface is available in all three languages.
 
+![How JuStAI5 works: devices in every room, your server at home, an AI model, answers back in the same room](docs/img/how.en.svg)
+
+![The JuStAI5 dashboard (demo data)](docs/img/shots/dashboard.en.webp)
+
 ```
 camera/microphone ──► go2rtc ──► audio engine (AEC, VAD, wakeword, arbitration)
                                     │

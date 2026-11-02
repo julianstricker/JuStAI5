@@ -7,6 +7,8 @@ Grundsätze: lokal zuerst, minimale Rechte, nichts Stilles (Cloud-Fallbacks und
 sicherheitsrelevante Aktionen werden protokolliert), deterministische Regeln statt
 Modellentscheidungen bei Ausgabe und Rechten.
 
+![Was auf deinem Server bleibt und was an eine Cloud-KI gehen darf](../img/priv.de.svg)
+
 ## Netzwerk und Container
 
 | Maßnahme | Umsetzung |

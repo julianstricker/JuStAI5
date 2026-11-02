@@ -8,6 +8,10 @@ the camera backchannel into the microphone with 1–2 s delay and fluctuating la
 That is why there are several independent protection layers, not just one echo canceller
 ([ADR 0005](adr/0005-echo-handling.md)).
 
+![From a spoken sentence to the answer](img/pipe.en.svg)
+
+![Live audio diagnostics per room (demo data)](img/shots/audio.en.webp)
+
 Code: `backend/src/justai/audio/`.
 
 ## Signal path

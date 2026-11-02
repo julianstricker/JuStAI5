@@ -8,6 +8,10 @@ Netzwerkkameras als Mikrofon und Lautsprecher machen das schwer: Die Ausgabe kom
 Latenz wieder im Mikrofon an. Deshalb gibt es mehrere unabhängige
 Schutzschichten, nicht nur einen Echo-Canceller ([ADR 0005](adr/0005-echo-handling.md)).
 
+![Vom gesprochenen Satz zur Antwort](../img/pipe.de.svg)
+
+![Live-Audiodiagnose pro Raum (Demo-Daten)](../img/shots/audio.de.webp)
+
 Code: `backend/src/justai/audio/`.
 
 ## Signalweg

@@ -2,6 +2,10 @@
 
 *Deutsch · [English](../ROOMS.md)*
 
+![Ein Raum enthält Geräte; ein Interaction Endpoint kombiniert sie; Raum-Richtlinien bestimmen, was erlaubt ist](../img/rooms.de.svg)
+
+![Die Seite Räume mit Geräten und Interaction Endpoints (Demo-Daten)](../img/shots/rooms.de.webp)
+
 ## Begriffe
 
 | Begriff | Bedeutung |

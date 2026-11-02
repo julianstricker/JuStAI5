@@ -7,6 +7,8 @@ Assistenten. Sie braucht keine Programmierkenntnisse, nur ein paar Befehle im
 Terminal, die man kopieren kann. Wer schon Docker hat, beginnt bei
 [Schritt 2](#schritt-2-justai5-herunterladen).
 
+![Installation in vier Schritten](../img/inst.de.svg)
+
 ## Der schnellste Weg: ein Befehl
 
 Auf einem Linux-Rechner (x86_64) im Terminal:

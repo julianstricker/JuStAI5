@@ -8,6 +8,8 @@ Zeile selbst zu tippen. Das Projekt ist Open Source ([AGPL-3.0](../../LICENSE)),
 das jeder genauso machen. Du musst kein Profi-Programmierer sein. Du brauchst Geduld,
 Neugier und die Gewohnheit, das Ergebnis des Assistenten zu prüfen.
 
+![Drei Wege, JuStAI5 weiterzubauen](../img/vibe.de.svg)
+
 Es gibt drei Wege mitzumachen, von „gar kein Code" bis „den Kern ändern". Fang beim ersten
 an und geh nur weiter, wenn du es brauchst.
 

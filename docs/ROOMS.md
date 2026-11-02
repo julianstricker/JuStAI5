@@ -2,6 +2,10 @@
 
 *[Deutsch](de/ROOMS.md) · English*
 
+![A room contains devices; an interaction endpoint combines them; room policies decide what is allowed](img/rooms.en.svg)
+
+![The Rooms page with devices and interaction endpoints (demo data)](img/shots/rooms.en.webp)
+
 ## Terms
 
 | Term | Meaning |

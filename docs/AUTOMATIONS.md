@@ -2,6 +2,8 @@
 
 *[Deutsch](de/AUTOMATIONS.md) · English*
 
+![The Automations page (demo data)](img/shots/automations.en.webp)
+
 ## Event system
 
 Code: `backend/src/justai/events/`.

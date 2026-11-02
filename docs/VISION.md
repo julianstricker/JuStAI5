@@ -5,6 +5,8 @@
 Code: `backend/src/justai/vision/`, `backend/src/justai/identity/`, models through the
 plugin `vision-opencv`.
 
+![People and pets (demo data)](img/shots/people.en.webp)
+
 ## Pipeline (resource-saving)
 
 ```

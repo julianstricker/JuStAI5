@@ -6,6 +6,8 @@ Code: `backend/src/justai/memory/`. Speicherung in PostgreSQL, semantische Suche
 über pgvector (Embeddings 384 Dim., lokal mit fastembed
 `paraphrase-multilingual-MiniLM-L12-v2`).
 
+![Die Seite Gedächtnis (Demo-Daten)](../img/shots/memory.de.webp)
+
 ## Gedächtnisarten
 
 | Art | Inhalt | Wo |

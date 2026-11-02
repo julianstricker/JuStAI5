@@ -7,6 +7,8 @@ local first, minimal permissions, nothing silent (cloud fallbacks and security-r
 actions are logged), deterministic rules instead of model decisions for output and
 permissions.
 
+![What stays on your server and what may go to a cloud AI](img/priv.en.svg)
+
 ## Network and containers
 
 | Measure | Implementation |

@@ -37,6 +37,53 @@ Zugangsdaten werden verschlüsselt gespeichert. go2rtc-Streams mit Zugangsdaten
 legt der Core nur im Speicher an (`PATCH /api/streams`), sie landen nie in
 `go2rtc.yaml` ([ADR 0004](adr/0004-go2rtc-media.md)).
 
+## Getestete Kameras und Mithilfe
+
+| Kamera | Stand | Was geprüft wurde |
+| --- | --- | --- |
+| **TP-Link Tapo C200** (Schwenk/Neigung, Netzbetrieb) | ✅ mit echter Hardware getestet | Video, Schnappschüsse, Mikrofon und Lautsprecher (Zwei-Wege-Audio), Wakeword → Antwort über den Kameralautsprecher, Echo-Kalibrierung, Schwenken/Neigen, Privatmodus |
+| **TP-Link Tapo C410** (Akku) | 🟡 kaum getestet | meist nicht erreichbar (schläft), kein RTSP: als Mikrofon ungeeignet |
+| **Andere Tapo-Modelle** | ⚪ ungetestet | der Treiber `tapo` sollte mit Modellen funktionieren, die den Tapo-Stream bieten, aber das hat noch niemand geprüft |
+| **Andere ONVIF-/RTSP-Kameras** (Reolink, Hikvision, Dahua, Amcrest, …) | ⚪ ungetestet | der Treiber `onvif` ist implementiert und durch Unit-Tests abgedeckt, lief aber noch nicht an echten Kameras außer einer Tapo. Video und Schnappschüsse funktionieren sehr wahrscheinlich; **Lautsprecher (Backchannel) und PTZ hängen vom Modell ab** |
+
+Auf echter Hardware wurde sonst nichts ausprobiert. Kauf bitte nicht allein wegen dieser
+Tabelle eine Kamera für JuStAI5: **Der Lautsprecher ist der kritische Teil.** Eine Kamera
+ohne funktionierenden Audio-Backchannel lässt sich trotzdem als Mikrofon und Auge nutzen.
+Die Antwort kommt dann von einem anderen Gerät (Tablet, Bildschirm, Smart Speaker).
+
+### Probier gern deine eigene Kamera aus
+
+Jede Kamera, die ONVIF oder RTSP spricht, ist einen Versuch wert (*Geräte* → **Suchen**
+oder **+ Gerät**, Treiber `onvif`). Rückmeldungen sind sehr willkommen, auch negative:
+
+* Eröffne ein Issue mit der Vorlage
+  [Kamera-Bericht](https://github.com/julianstricker/JuStAI5/issues/new?template=camera_report.yml):
+  Modell, Firmware, Treiber und was funktioniert hat (Video, Mikrofon, Lautsprecher, PTZ).
+* Nenne, welche Fähigkeiten der Gerätedialog nach dem Test anzeigt (Video, Mikrofon,
+  Lautsprecher, PTZ), und hänge passende Logzeilen an. **Entferne vorher Passwörter und
+  Adressen.**
+* Ein kurzer Hinweis, was nicht ging, ist nützlicher als Schweigen. Viele Modelle
+  unterscheiden sich nur in Kleinigkeiten (Stream-Pfad, Audio-Codec, ONVIF-Profil).
+
+### Hilf mit, weitere Kameras zu unterstützen
+
+Neue Kameras kommen über **Gerätetreiber-Plugins** dazu, kleine Python-Pakete, ohne dass
+der Core geändert werden muss. Die beiden vorhandenen, `tapo` und `onvif` (Ordner
+`plugins/`), dienen als Vorlage. Du musst nicht alles von Hand schreiben: Beschreibe die
+Kamera einem KI-Coding-Assistenten und folge [Vibe Coding](VIBE_CODING.md).
+Typische Beiträge:
+
+* ein **Modellprofil** für den ONVIF-Treiber (Stream-Pfad, Audio-Codec, Eigenheiten des
+  Backchannels),
+* ein **neuer Treiber** für einen Hersteller mit eigenem Protokoll (Reolink, Eufy,
+  Xiaomi, …),
+* ein **Fix oder Test** für eine Kamera, die fast funktioniert.
+
+Pull Requests und Plugins sind in [JuStAI5](https://github.com/julianstricker/JuStAI5)
+willkommen. Die Schnittstellen stehen unter [Plugins](PLUGINS.md), die Testumgebung unter
+[Entwicklung](DEVELOPMENT.md). Unsicher, wo du anfangen sollst? Eröffne eine
+[Discussion](https://github.com/julianstricker/JuStAI5/discussions) mit dem Kameramodell.
+
 ## Treiber
 
 ### TP-Link Tapo (`tapo`)

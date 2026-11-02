@@ -34,6 +34,49 @@ Credentials are stored encrypted. go2rtc streams with credentials are only creat
 memory by the core (`PATCH /api/streams`); they never end up in `go2rtc.yaml`
 ([ADR 0004](adr/0004-go2rtc-media.md)).
 
+## Tested cameras and help wanted
+
+| Camera | Status | What was verified |
+| --- | --- | --- |
+| **TP-Link Tapo C200** (pan/tilt, mains powered) | ✅ tested on real hardware | video, snapshots, microphone and speaker (two-way audio), wakeword → answer through the camera speaker, echo calibration, pan/tilt, privacy mode |
+| **TP-Link Tapo C410** (battery) | 🟡 barely tested | mostly unreachable (sleeps), no RTSP: not suitable as a microphone |
+| **Other Tapo models** | ⚪ untested | the `tapo` driver should work with models that offer the Tapo stream, but nobody has checked yet |
+| **Other ONVIF / RTSP cameras** (Reolink, Hikvision, Dahua, Amcrest, …) | ⚪ untested | the `onvif` driver is implemented and covered by unit tests, but has not been run against real cameras other than a Tapo. Video and snapshots will most likely work; **speaker (backchannel) and PTZ depend on the model** |
+
+Nothing else has been tried on real hardware. Please do not buy a camera for JuStAI5 because
+of this table alone: **the speaker is the critical part**. A camera without a working audio
+backchannel can still be used as microphone and eyes, with the answer coming from another
+device (a tablet, a display, a smart speaker).
+
+### Please try your own camera
+
+Every camera that speaks ONVIF or RTSP is worth a try (*Devices* → **Search** or
+**+ Device**, driver `onvif`). Reports are very welcome, also negative ones:
+
+* Open an issue with the template
+  [Camera report](https://github.com/julianstricker/JuStAI5/issues/new?template=camera_report.yml):
+  model, firmware, which driver, and what worked (video, microphone, speaker, PTZ).
+* Say which capabilities the device dialog shows after the test (video, microphone, speaker, PTZ)
+  and add relevant log lines. **Remove passwords and addresses before posting.**
+* A short note on what did not work is more useful than silence. Many models differ only in
+  small details (stream path, audio codec, ONVIF profile).
+
+### Help to support more cameras
+
+New cameras are added through **device driver plugins**, small Python packages without any
+change to the core. The two existing ones, `tapo` and `onvif` (folder `plugins/`), are the
+templates. You do not have to write everything by hand: describe the camera to an AI coding
+assistant and follow [Vibe coding](VIBE_CODING.md). Typical contributions:
+
+* a **model profile** for the ONVIF driver (stream path, audio codec, backchannel quirks),
+* a **new driver** for a vendor with its own protocol (Reolink, Eufy, Xiaomi, …),
+* a **fix or a test** for a camera that almost works.
+
+Pull requests and plugins are welcome in [JuStAI5](https://github.com/julianstricker/JuStAI5);
+see [Plugins](PLUGINS.md) for the interfaces and [Development](DEVELOPMENT.md) for the test
+setup. Not sure where to start? Open a
+[Discussion](https://github.com/julianstricker/JuStAI5/discussions) with the camera model.
+
 ## Drivers
 
 ### TP-Link Tapo (`tapo`)

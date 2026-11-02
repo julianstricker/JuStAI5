@@ -204,6 +204,11 @@ an den Assistenten …“).
 
 ## Schritt 7: Kameras hinzufügen
 
+Bisher getestet: die **Tapo C200**. Andere Kameras (ONVIF/RTSP) sind einen Versuch wert,
+aber noch nicht geprüft, siehe
+[getestete Kameras](DEVICES.md#getestete-kameras-und-mithilfe). Rückmeldungen und Mithilfe
+sind willkommen.
+
 **Tapo-Kameras vorbereiten** (in der Tapo-App, einmalig):
 
 * *Kamera → Einstellungen → Erweiterte Einstellungen → Kamerakonto*: Benutzername

@@ -1,0 +1,41 @@
+name: Camera report
+description: Tell us how your camera works with JuStAI5, also if it does not. English or German is fine. / Kamera-Bericht, auch wenn es nicht funktioniert.
+labels: [camera]
+body:
+  - type: input
+    id: model
+    attributes:
+      label: Camera model and firmware / Kameramodell und Firmware
+      placeholder: e.g. Reolink RLC-510A, firmware v3.1
+    validations:
+      required: true
+  - type: dropdown
+    id: driver
+    attributes:
+      label: Driver / Treiber
+      options: [tapo, "onvif (ONVIF)", "onvif (RTSP)", other / anderer]
+    validations:
+      required: true
+  - type: checkboxes
+    id: works
+    attributes:
+      label: What works? / Was funktioniert?
+      options:
+        - label: Found by the network search / von der Netzwerksuche gefunden
+        - label: Live video / Livebild
+        - label: Snapshots
+        - label: Microphone (wakeword is heard) / Mikrofon (Wakeword wird erkannt)
+        - label: Speaker (answer is audible) / Lautsprecher (Antwort hörbar)
+        - label: Pan / tilt (PTZ)
+  - type: textarea
+    id: details
+    attributes:
+      label: Details / Einzelheiten
+      description: What did not work, error messages, log lines. Please remove passwords and IP addresses. / Bitte Passwörter und IP-Adressen entfernen.
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Help / Mithilfe
+      options:
+        - label: I can test changes on this camera / Ich kann Änderungen mit dieser Kamera testen
+        - label: I would like to build the support myself (see docs/VIBE_CODING.md) / Ich möchte die Unterstützung selbst bauen

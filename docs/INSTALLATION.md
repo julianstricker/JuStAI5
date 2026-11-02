@@ -193,6 +193,10 @@ the assistant …").
 
 ## Step 7: Add cameras
 
+Tested so far: the **Tapo C200**. Other cameras (ONVIF/RTSP) are worth trying but not yet
+verified, see [tested cameras](DEVICES.md#tested-cameras-and-help-wanted). Reports and help
+are welcome.
+
 **Prepare Tapo cameras** (once, in the Tapo app):
 
 * *Camera → Settings → Advanced settings → Camera account*: create user name and password.

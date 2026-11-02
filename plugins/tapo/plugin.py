@@ -3,7 +3,7 @@
 Media: go2rtc ``tapo://`` (video, audio in, two-way audio backchannel) or RTSP.
 Control: pytapo (needs the Tapo cloud account password) or ONVIF (needs the
 "camera account" configured in the Tapo app; port 2020). Battery models such as
-the C410 offer neither RTSP nor ONVIF; only the Tapo protocol is used for them.
+the C410 are untested: RTSP/ONVIF support is unverified.
 """
 
 from __future__ import annotations

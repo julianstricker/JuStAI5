@@ -39,7 +39,7 @@ memory by the core (`PATCH /api/streams`); they never end up in `go2rtc.yaml`
 | Camera | Status | What was verified |
 | --- | --- | --- |
 | **TP-Link Tapo C200** (pan/tilt, mains powered) | ✅ tested on real hardware | video, snapshots, microphone and speaker (two-way audio), wakeword → answer through the camera speaker, echo calibration, pan/tilt, privacy mode |
-| **TP-Link Tapo C410** (battery) | 🟡 barely tested | mostly unreachable (sleeps), no RTSP: not suitable as a microphone |
+| **TP-Link Tapo C410** (battery, no pan/tilt) | ⚪ untested | was mostly asleep and unreachable during testing, so nothing could be verified. RTSP/ONVIF support and the speaker are unchecked; being a battery camera it may sleep between events, which matters for use as a microphone |
 | **Other Tapo models** | ⚪ untested | the `tapo` driver should work with models that offer the Tapo stream, but nobody has checked yet |
 | **Other ONVIF / RTSP cameras** (Reolink, Hikvision, Dahua, Amcrest, …) | ⚪ untested | the `onvif` driver is implemented and covered by unit tests, but has not been run against real cameras other than a Tapo. Video and snapshots will most likely work; **speaker (backchannel) and PTZ depend on the model** |
 
@@ -104,8 +104,10 @@ Tested with real hardware:
   Tested: pan right and back from the admin UI and the API.
 * **Privacy mode of the C200**: on and off by voice ("switch off the camera in the
   office"), state checked directly on the camera. Needs the cloud password.
-* **C410** (battery camera): was mostly unreachable during testing (sleeping) and offers
-  no RTSP. It is unsuitable for permanent use as a microphone.
+* **C410** (battery camera): was mostly unreachable during testing (sleeping), so it
+  could not be verified. Whether it offers RTSP/ONVIF and a usable speaker is open; as a
+  battery camera it may sleep between events, which limits its use as a permanent
+  microphone.
 
 ### ONVIF / RTSP (`onvif`)
 

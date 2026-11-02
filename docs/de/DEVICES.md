@@ -42,7 +42,7 @@ legt der Core nur im Speicher an (`PATCH /api/streams`), sie landen nie in
 | Kamera | Stand | Was geprüft wurde |
 | --- | --- | --- |
 | **TP-Link Tapo C200** (Schwenk/Neigung, Netzbetrieb) | ✅ mit echter Hardware getestet | Video, Schnappschüsse, Mikrofon und Lautsprecher (Zwei-Wege-Audio), Wakeword → Antwort über den Kameralautsprecher, Echo-Kalibrierung, Schwenken/Neigen, Privatmodus |
-| **TP-Link Tapo C410** (Akku) | 🟡 kaum getestet | meist nicht erreichbar (schläft), kein RTSP: als Mikrofon ungeeignet |
+| **TP-Link Tapo C410** (Akku, ohne Schwenk/Neigung) | ⚪ ungetestet | war beim Test meist im Schlaf und nicht erreichbar, daher ließ sich nichts prüfen. RTSP/ONVIF-Unterstützung und Lautsprecher sind ungeprüft; als Akkukamera schläft sie evtl. zwischen Ereignissen, was für den Einsatz als Mikrofon wichtig ist |
 | **Andere Tapo-Modelle** | ⚪ ungetestet | der Treiber `tapo` sollte mit Modellen funktionieren, die den Tapo-Stream bieten, aber das hat noch niemand geprüft |
 | **Andere ONVIF-/RTSP-Kameras** (Reolink, Hikvision, Dahua, Amcrest, …) | ⚪ ungetestet | der Treiber `onvif` ist implementiert und durch Unit-Tests abgedeckt, lief aber noch nicht an echten Kameras außer einer Tapo. Video und Schnappschüsse funktionieren sehr wahrscheinlich; **Lautsprecher (Backchannel) und PTZ hängen vom Modell ab** |
 
@@ -111,8 +111,10 @@ Getestet mit echter Hardware:
   Schwenkmodellen), ersatzweise über ONVIF. Die lokale API scheitert gelegentlich
   beim Verbindungsaufbau (`pake_share failed`); dann übernimmt ONVIF. Getestet:
   Schwenken rechts und zurück aus der Admin-UI bzw. API.
-* **C410** (Akku-Kamera): war beim Test meist nicht erreichbar (schläft) und bietet
-  kein RTSP. Für den Dauerbetrieb als Mikrofon ist sie ungeeignet.
+* **C410** (Akku-Kamera): war beim Test meist nicht erreichbar (schläft), daher nicht
+  geprüft. Ob sie RTSP/ONVIF und einen nutzbaren Lautsprecher bietet, ist offen; als
+  Akkukamera schläft sie evtl. zwischen Ereignissen, was den Dauerbetrieb als Mikrofon
+  einschränkt.
 
 ### ONVIF / RTSP (`onvif`)
 

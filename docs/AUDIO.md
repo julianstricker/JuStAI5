@@ -163,10 +163,12 @@ openWakeWord 0.6.0 (ONNX), threshold 0.5 per endpoint, refractory time 1.5 s. Se
 
 Included: **Hey Jarvis** (default), **Alexa**, **Hey Mycroft**, **Hey Rhasspy**, all
 trained on English. They work just as well when the rest of the conversation is German or
-Italian.
+Italian. **Hey Justy** (`hey_justi`) is also included: trained on synthetic English and
+German voices, it reacts to "Hey Justy" and "Hey Justi". Use a threshold of about 0.8 for
+it; at 0.5 it is more sensitive than the other models.
 
-**Own wakewords** (e.g. "Hey Justi"): train an openWakeWord model (the openWakeWord project
-provides a training notebook with synthetic speech data), then install the `.onnx` file
+**Own wakewords** (e.g. "Hey Justi"): train an openWakeWord model (guide and scripts:
+[tools/wakeword](../tools/wakeword/README.md), CPU only, no Colab needed), then install the `.onnx` file
 in the same tab with *Upload own wakeword*. The file name becomes the ID
 (`hey_justi.onnx` → `hey_justi`). The core checks that it really is an openWakeWord
 classifier (input `[1, n, 96]`, output `[1, 1]`) and stores it in the volume

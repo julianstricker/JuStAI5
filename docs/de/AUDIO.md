@@ -164,11 +164,13 @@ openWakeWord 0.6.0 (ONNX), Schwelle 0,5 pro Endpoint, Refraktärzeit 1,5 s.
 Auswahl: *Räume → Endpoint bearbeiten → Wakeword* (mehrere gleichzeitig möglich).
 
 Mitgeliefert: **Hey Jarvis** (Standard), **Alexa**, **Hey Mycroft**, **Hey Rhasspy**,
-alle auf Englisch trainiert.
+alle auf Englisch trainiert. Außerdem **Hey Justy** (`hey_justi`): mit synthetischen
+englischen und deutschen Stimmen trainiert, reagiert auf „Hey Justy“ und „Hey Justi“.
+Dafür eine Schwelle von etwa 0,8 verwenden; bei 0,5 ist es empfindlicher als die
+anderen Modelle.
 
-**Eigene Wakewords** (z. B. „Hey Justi“): Ein openWakeWord-Modell trainieren (das
-Projekt openWakeWord bietet dafür ein Trainings-Notebook mit synthetischen
-Sprachdaten), dann die `.onnx`-Datei im selben Tab mit *Eigenes Wakeword
+**Eigene Wakewords** (z. B. „Hey Justi“): Ein openWakeWord-Modell trainieren (Anleitung und
+Skripte: [tools/wakeword](../../tools/wakeword/README.de.md), nur CPU, kein Colab nötig), dann die `.onnx`-Datei im selben Tab mit *Eigenes Wakeword
 hochladen* installieren. Der Dateiname wird zur ID (`hey_justi.onnx` → `hey_justi`).
 Der Core prüft, ob es wirklich ein openWakeWord-Klassifikator ist (Eingang
 `[1, n, 96]`, Ausgang `[1, 1]`), und legt ihn im Volume `/data/wakewords` ab, sodass

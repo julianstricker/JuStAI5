@@ -18,7 +18,9 @@ PHRASES = {
     "hey_mycroft": "Hey Mycroft",
     "hey_rhasspy": "Hey Rhasspy",
     "ok_nabu": "Okay Nabu",
+    "hey_justi": "Hey Justy",
 }
+PLUGIN_MODELS_DIR = Path(__file__).parent / "models"  # models shipped with JuStAI5 itself
 
 
 def model_id(path: Path) -> str:
@@ -75,14 +77,17 @@ def validate_wakeword_model(data: bytes) -> None:
 class OpenWakeWordProvider:
     provider_id = "openwakeword"
 
-    def __init__(self, models_dir: Path, custom_dir: Path | None = None) -> None:
+    def __init__(self, models_dir: Path, custom_dir: Path | None = None,
+                 plugin_dir: Path | None = PLUGIN_MODELS_DIR) -> None:
         self.models_dir = models_dir  # bundled models + feature models (read-only image)
+        self.plugin_dir = plugin_dir  # models shipped with the plugin (e.g. hey_justi)
         self.custom_dir = custom_dir  # uploaded models (persistent volume)
         self._lock = threading.Lock()
 
     def _models(self) -> dict[str, Path]:
         found: dict[str, Path] = {}
-        dirs = [self.models_dir] + ([self.custom_dir] if self.custom_dir else [])
+        dirs = [self.models_dir] + ([self.plugin_dir] if self.plugin_dir else []) \
+            + ([self.custom_dir] if self.custom_dir else [])
         for d in dirs:
             for p in sorted(d.glob("*.onnx")) if d.exists() else []:
                 if p.name in FEATURE_MODELS:
@@ -93,7 +98,7 @@ class OpenWakeWordProvider:
     def list_models(self) -> list[WakewordModelInfo]:
         return [WakewordModelInfo(id=mid, name=mid + (" (eigenes)" if path.parent == self.custom_dir else ""),
                                   phrase=PHRASES.get(mid, mid.replace("_", " ").title()),
-                                  languages=["en"] if mid in PHRASES else [])
+                                  languages=["en", "de"] if mid == "hey_justi" else ["en"] if mid in PHRASES else [])
                 for mid, path in self._models().items()]
 
     def install_model(self, name: str, data: bytes) -> str:
@@ -103,7 +108,7 @@ class OpenWakeWordProvider:
         mid = name.lower().removesuffix(".onnx").replace("-", "_").replace(" ", "_")
         if not _CUSTOM_NAME_RE.match(mid):
             raise ValueError("name only of lower-case letters, digits and _ (e.g. hey_justi)")
-        if mid in self._models() and (self.models_dir / f"{mid}.onnx").exists():
+        if any((d / f"{mid}.onnx").exists() for d in (self.models_dir, self.plugin_dir) if d):
             raise ValueError(f"{mid} is a bundled model")
         validate_wakeword_model(data)
         self.custom_dir.mkdir(parents=True, exist_ok=True)

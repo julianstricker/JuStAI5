@@ -202,7 +202,7 @@ set_env() {  # set_env KEY VALUE - replaces "KEY=" or "# KEY=", otherwise append
 EXISTING=0
 [ -n "$($DOCKER compose ps -a -q core 2>/dev/null </dev/null)" ] && EXISTING=1
 published_port() {  # published_port 8080 -> host port of the running core, or empty
-  $DOCKER compose port core "$1" 2>/dev/null </dev/null | sed -n 's/.*:\([0-9][0-9]*\)$/\1/p' | head -n1
+  $DOCKER compose port core "$1" 2>/dev/null </dev/null | sed -n 's/.*:\([0-9][0-9]*\)$/\1/p' | head -n1 || true
 }
 
 if [ -f .env ]; then

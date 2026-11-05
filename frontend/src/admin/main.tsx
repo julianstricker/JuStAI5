@@ -1,5 +1,6 @@
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
+import "./glass.css";
 
 import { MantineProvider, createTheme } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
@@ -13,8 +14,10 @@ import { App } from "./App";
 
 const theme = createTheme({
   primaryColor: "indigo",
-  defaultRadius: "md",
-  fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+  defaultRadius: "lg",
+  fontFamily:
+    "Inter, -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, Segoe UI, Roboto, sans-serif",
+  headings: { fontWeight: "700" },
 });
 
 const queryClient = new QueryClient({

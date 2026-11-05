@@ -1,7 +1,6 @@
 import {
   Alert,
   Button,
-  Center,
   Paper,
   PasswordInput,
   Stack,
@@ -9,6 +8,7 @@ import {
   TextInput,
   Title,
 } from "@mantine/core";
+import { IconRobot } from "@tabler/icons-react";
 import { useState } from "react";
 
 import { api, ApiError } from "@/shared/api";
@@ -50,10 +50,13 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
   };
 
   return (
-    <Center h="100vh">
-      <Paper withBorder shadow="md" p="xl" w={360}>
+    <div className="g-login">
+      <Paper className="g-login-card g-glass">
         <form onSubmit={submit}>
           <Stack>
+            <div className="g-login-logo">
+              <IconRobot size={30} />
+            </div>
             <Title order={2}>JuStAI</Title>
             <Text c="dimmed" size="sm">
               {t("login.tagline")}
@@ -79,6 +82,6 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
           </Stack>
         </form>
       </Paper>
-    </Center>
+    </div>
   );
 }

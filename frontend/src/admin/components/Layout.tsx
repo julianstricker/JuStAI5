@@ -1,13 +1,16 @@
 import {
+  ActionIcon,
   AppShell,
   Burger,
   Group,
+  Menu,
   NavLink,
   ScrollArea,
   Select,
   Text,
   ThemeIcon,
   Tooltip,
+  useMantineColorScheme,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
@@ -18,7 +21,9 @@ import {
   IconDeviceTv,
   IconDoor,
   IconEye,
+  IconDeviceDesktop,
   IconLogout,
+  IconMoon,
   IconMessages,
   IconMicrophone,
   IconPlugConnected,
@@ -26,6 +31,7 @@ import {
   IconSettingsAutomation,
   IconStethoscope,
   IconTool,
+  IconSun,
   IconUsers,
 } from "@tabler/icons-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -59,6 +65,46 @@ const NAV: { to: string; label: Key; icon: typeof IconDashboard }[] = [
   { to: "/settings", label: "nav.settings", icon: IconAdjustments },
 ];
 
+function ThemeToggle() {
+  const { colorScheme, setColorScheme } = useMantineColorScheme();
+  const { t } = useI18n();
+  const Icon =
+    colorScheme === "dark"
+      ? IconMoon
+      : colorScheme === "light"
+        ? IconSun
+        : IconDeviceDesktop;
+  return (
+    <Menu position="bottom-end" withinPortal>
+      <Menu.Target>
+        <ActionIcon variant="default" size="lg" aria-label={t("shell.theme")}>
+          <Icon size={18} />
+        </ActionIcon>
+      </Menu.Target>
+      <Menu.Dropdown>
+        <Menu.Item
+          leftSection={<IconSun size={16} />}
+          onClick={() => setColorScheme("light")}
+        >
+          {t("shell.themeLight")}
+        </Menu.Item>
+        <Menu.Item
+          leftSection={<IconMoon size={16} />}
+          onClick={() => setColorScheme("dark")}
+        >
+          {t("shell.themeDark")}
+        </Menu.Item>
+        <Menu.Item
+          leftSection={<IconDeviceDesktop size={16} />}
+          onClick={() => setColorScheme("auto")}
+        >
+          {t("shell.themeAuto")}
+        </Menu.Item>
+      </Menu.Dropdown>
+    </Menu>
+  );
+}
+
 export function Layout() {
   const [opened, { toggle, close }] = useDisclosure();
   const location = useLocation();
@@ -74,12 +120,12 @@ export function Layout() {
 
   return (
     <AppShell
-      header={{ height: 56 }}
+      header={{ height: 72 }}
       navbar={{ width: 230, breakpoint: "sm", collapsed: { mobile: !opened } }}
       padding="md"
     >
-      <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between">
+      <AppShell.Header className="g-header">
+        <Group className="g-header-inner g-glass" justify="space-between">
           <Group gap="xs">
             <Burger
               opened={opened}
@@ -87,13 +133,14 @@ export function Layout() {
               hiddenFrom="sm"
               size="sm"
             />
-            <ThemeIcon variant="gradient" size="lg" radius="xl">
+            <ThemeIcon className="g-logo" size="lg" radius="xl">
               <IconRobot size={20} />
             </ThemeIcon>
-            <Text fw={700}>JuStAI</Text>
+            <Text className="g-brand">JuStAI</Text>
           </Group>
           <Group gap="md">
             <PrivacyIndicator />
+            <ThemeToggle />
             <Select
               aria-label={t("shell.language")}
               size="xs"
@@ -116,11 +163,12 @@ export function Layout() {
           </Group>
         </Group>
       </AppShell.Header>
-      <AppShell.Navbar p="xs">
-        <ScrollArea>
+      <AppShell.Navbar className="g-navbar">
+        <ScrollArea className="g-navbar-inner g-glass">
           {NAV.map((item) => (
             <NavLink
               key={item.to}
+              className="g-nav-link"
               component={Link}
               to={item.to}
               label={t(item.label)}

@@ -1,0 +1,430 @@
+/* JuStAI "liquid glass" design system for the admin UI.
+   Everything is driven by the tokens below; Mantine components are skinned
+   via their stable .mantine-* class names so pages need no changes. */
+
+:root {
+  --g-blur: 28px;
+  --g-sat: 180%;
+  --g-radius: 20px;
+  --g-radius-sm: 12px;
+  --g-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --g-accent: #6c63ff;
+  --g-accent-2: #00c2ff;
+  --g-accent-glow: rgba(108, 99, 255, 0.45);
+}
+
+:root[data-mantine-color-scheme="light"] {
+  --g-bg-a: #dfe6ff;
+  --g-bg-b: #f6e9ff;
+  --g-orb-1: rgba(108, 99, 255, 0.55);
+  --g-orb-2: rgba(0, 194, 255, 0.45);
+  --g-orb-3: rgba(255, 120, 200, 0.4);
+  --g-fill: rgba(255, 255, 255, 0.55);
+  --g-fill-strong: rgba(255, 255, 255, 0.78);
+  --g-fill-soft: rgba(255, 255, 255, 0.32);
+  --g-border: rgba(255, 255, 255, 0.75);
+  --g-edge: rgba(20, 20, 60, 0.07);
+  --g-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --g-shadow: 0 8px 32px rgba(40, 40, 110, 0.12), 0 1px 3px rgba(40, 40, 110, 0.06);
+  --g-shadow-hover: 0 18px 48px rgba(40, 40, 110, 0.2), 0 2px 6px rgba(40, 40, 110, 0.08);
+  --g-text: #1b1b33;
+}
+
+:root[data-mantine-color-scheme="dark"] {
+  --g-bg-a: #0b0b1a;
+  --g-bg-b: #130f26;
+  --g-orb-1: rgba(108, 99, 255, 0.5);
+  --g-orb-2: rgba(0, 150, 255, 0.35);
+  --g-orb-3: rgba(200, 60, 160, 0.3);
+  --g-fill: rgba(30, 30, 55, 0.5);
+  --g-fill-strong: rgba(28, 28, 52, 0.78);
+  --g-fill-soft: rgba(255, 255, 255, 0.05);
+  --g-border: rgba(255, 255, 255, 0.12);
+  --g-edge: rgba(0, 0, 0, 0.35);
+  --g-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  --g-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --g-shadow-hover: 0 18px 48px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.35);
+  --g-text: #ecedff;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--g-bg-a), var(--g-bg-b)) fixed;
+  letter-spacing: -0.006em;
+}
+
+/* ---- animated aurora background ---- */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 50%;
+  filter: blur(90px);
+  will-change: transform;
+}
+body::before {
+  width: 60vmax;
+  height: 60vmax;
+  top: -20vmax;
+  left: -12vmax;
+  background: radial-gradient(circle, var(--g-orb-1), transparent 65%);
+  animation: g-drift-a 28s ease-in-out infinite alternate;
+}
+body::after {
+  width: 55vmax;
+  height: 55vmax;
+  bottom: -22vmax;
+  right: -14vmax;
+  background:
+    radial-gradient(circle at 30% 30%, var(--g-orb-2), transparent 60%),
+    radial-gradient(circle at 75% 70%, var(--g-orb-3), transparent 60%);
+  animation: g-drift-b 34s ease-in-out infinite alternate;
+}
+@keyframes g-drift-a {
+  to { transform: translate(18vmax, 14vmax) scale(1.15); }
+}
+@keyframes g-drift-b {
+  to { transform: translate(-16vmax, -10vmax) scale(1.2) rotate(30deg); }
+}
+
+/* ---- the glass material ---- */
+.g-glass,
+.mantine-Card-root,
+.mantine-Paper-root:not(.mantine-Modal-content):not(.mantine-Popover-dropdown):not(.mantine-Menu-dropdown):not(.mantine-Notification-root),
+.mantine-Accordion-item,
+.mantine-Alert-root {
+  background: var(--g-fill);
+  -webkit-backdrop-filter: blur(var(--g-blur)) saturate(var(--g-sat));
+  backdrop-filter: blur(var(--g-blur)) saturate(var(--g-sat));
+  border: 1px solid var(--g-border);
+  border-radius: var(--g-radius);
+  box-shadow: var(--g-highlight), var(--g-shadow);
+}
+
+.mantine-Card-root {
+  transition:
+    transform 0.4s var(--g-ease),
+    box-shadow 0.4s var(--g-ease),
+    background 0.4s var(--g-ease);
+  animation: g-rise 0.6s var(--g-ease) both;
+}
+.mantine-Card-root:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--g-highlight), var(--g-shadow-hover);
+  background: var(--g-fill-strong);
+}
+@keyframes g-rise {
+  from { opacity: 0; transform: translateY(14px) scale(0.985); }
+}
+
+/* stagger the cards in a grid */
+.mantine-SimpleGrid-root > *:nth-child(2) { animation-delay: 0.05s; }
+.mantine-SimpleGrid-root > *:nth-child(3) { animation-delay: 0.1s; }
+.mantine-SimpleGrid-root > *:nth-child(4) { animation-delay: 0.15s; }
+.mantine-SimpleGrid-root > *:nth-child(5) { animation-delay: 0.2s; }
+.mantine-SimpleGrid-root > *:nth-child(n + 6) { animation-delay: 0.25s; }
+
+.mantine-Alert-root { border-left-width: 1px; }
+
+/* ---- app shell: floating glass header + sidebar ---- */
+.g-header,
+.g-navbar {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+.g-header { padding: 12px 16px 0; }
+.g-navbar { padding: 12px 0 12px 16px; }
+
+.g-header-inner {
+  height: 100%;
+  padding: 0 16px;
+  border-radius: 18px;
+}
+.g-navbar-inner {
+  height: 100%;
+  padding: 10px;
+  border-radius: var(--g-radius);
+}
+
+.g-brand {
+  font-weight: 700;
+  font-size: 1.15rem;
+  letter-spacing: -0.03em;
+  background: linear-gradient(90deg, var(--g-accent), var(--g-accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.g-logo {
+  background: linear-gradient(135deg, var(--g-accent), var(--g-accent-2)) !important;
+  box-shadow: 0 4px 16px var(--g-accent-glow);
+}
+
+.g-nav-link {
+  border-radius: 12px;
+  margin-bottom: 2px;
+  font-weight: 500;
+  transition:
+    background 0.25s var(--g-ease),
+    transform 0.25s var(--g-ease),
+    box-shadow 0.25s var(--g-ease);
+}
+.g-nav-link:hover {
+  background: var(--g-fill-soft);
+  transform: translateX(3px);
+}
+.g-nav-link[data-active] {
+  background: linear-gradient(135deg, var(--g-accent), #8a7dff) !important;
+  color: #fff !important;
+  box-shadow: 0 6px 20px var(--g-accent-glow), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.g-nav-link[data-active] .mantine-NavLink-label,
+.g-nav-link[data-active] .mantine-NavLink-section {
+  color: #fff;
+}
+
+.mantine-AppShell-main {
+  animation: g-rise 0.5s var(--g-ease) both;
+}
+
+/* ---- typography ---- */
+.mantine-Title-root {
+  letter-spacing: -0.03em;
+  font-weight: 700;
+}
+h2.mantine-Title-root {
+  background: linear-gradient(90deg, var(--g-text), color-mix(in srgb, var(--g-text) 55%, var(--g-accent)));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---- buttons ---- */
+.mantine-Button-root {
+  border-radius: 12px;
+  font-weight: 600;
+  transition:
+    transform 0.25s var(--g-ease),
+    box-shadow 0.25s var(--g-ease),
+    filter 0.25s var(--g-ease);
+}
+.mantine-Button-root:active { transform: scale(0.97); }
+.mantine-Button-root[data-variant="filled"]:not([data-disabled]),
+.mantine-Button-root[data-variant="gradient"]:not([data-disabled]) {
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--button-bg, var(--g-accent)) 45%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+.mantine-Button-root:hover:not([data-disabled]) {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+}
+.mantine-Button-root[data-variant="light"],
+.mantine-Button-root[data-variant="default"],
+.mantine-Button-root[data-variant="subtle"] {
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+.mantine-Button-root[data-variant="default"] {
+  background: var(--g-fill);
+  border-color: var(--g-border);
+  box-shadow: var(--g-highlight);
+}
+.mantine-ActionIcon-root {
+  border-radius: 10px;
+  transition: transform 0.25s var(--g-ease), background 0.25s var(--g-ease);
+}
+.mantine-ActionIcon-root:hover:not([data-disabled]) { transform: scale(1.08); }
+
+/* ---- inputs ---- */
+.mantine-Input-input,
+.mantine-PasswordInput-innerInput,
+.mantine-Textarea-input,
+.mantine-Select-input,
+.mantine-MultiSelect-input,
+.mantine-NumberInput-input,
+.mantine-TagsInput-input,
+.mantine-JsonInput-input {
+  background: var(--g-fill-soft);
+  border: 1px solid var(--g-border);
+  border-radius: var(--g-radius-sm);
+  box-shadow: inset 0 1px 2px var(--g-edge);
+  transition:
+    border-color 0.25s var(--g-ease),
+    box-shadow 0.25s var(--g-ease),
+    background 0.25s var(--g-ease);
+}
+.mantine-Input-input:focus,
+.mantine-Input-input:focus-within,
+.mantine-Textarea-input:focus,
+.mantine-PasswordInput-innerInput:focus {
+  background: var(--g-fill-strong);
+  border-color: var(--g-accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--g-accent) 22%, transparent);
+}
+.mantine-Input-label,
+.mantine-InputWrapper-label { font-weight: 600; }
+
+/* ---- tabs: segmented glass pill ---- */
+.mantine-Tabs-list {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+  background: var(--g-fill-soft);
+  border: 1px solid var(--g-border);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  box-shadow: inset 0 1px 2px var(--g-edge);
+  max-width: 100%;
+  overflow-x: auto;
+}
+.mantine-Tabs-list::before { display: none !important; }
+.mantine-Tabs-tab {
+  border: none !important;
+  border-radius: 10px;
+  font-weight: 600;
+  transition: background 0.3s var(--g-ease), box-shadow 0.3s var(--g-ease);
+}
+.mantine-Tabs-tab:hover { background: var(--g-fill-soft); }
+.mantine-Tabs-tab[data-active] {
+  background: var(--g-fill-strong);
+  box-shadow: var(--g-highlight), 0 2px 10px rgba(30, 30, 90, 0.15);
+}
+.mantine-Tabs-panel { padding-top: 16px; animation: g-rise 0.45s var(--g-ease) both; }
+
+.mantine-SegmentedControl-root {
+  background: var(--g-fill-soft);
+  border: 1px solid var(--g-border);
+  border-radius: 14px;
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+.mantine-SegmentedControl-indicator {
+  background: var(--g-fill-strong);
+  border-radius: 10px;
+  box-shadow: var(--g-highlight), 0 2px 10px rgba(30, 30, 90, 0.18);
+}
+
+/* ---- tables ---- */
+.mantine-Table-table { border-collapse: separate; border-spacing: 0; }
+.mantine-Table-thead { background: transparent; }
+.mantine-Table-th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.7;
+  border-bottom: 1px solid var(--g-edge) !important;
+}
+.mantine-Table-td { border-bottom: 1px solid var(--g-edge) !important; }
+.mantine-Table-tr { transition: background 0.2s var(--g-ease); }
+.mantine-Table-tbody .mantine-Table-tr:hover { background: var(--g-fill-soft) !important; }
+.mantine-Table-tr:last-child .mantine-Table-td { border-bottom: none !important; }
+.mantine-Table-root,
+.mantine-Table-scrollContainer { border-radius: var(--g-radius-sm); }
+
+/* ---- badges: soft pills ---- */
+.mantine-Badge-root {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.mantine-Progress-root { background: var(--g-fill-soft); box-shadow: inset 0 1px 2px var(--g-edge); }
+.mantine-Progress-section { transition: width 0.8s var(--g-ease); }
+
+/* ---- overlays ---- */
+.mantine-Modal-overlay,
+.mantine-Drawer-overlay {
+  background: rgba(10, 10, 30, 0.35) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  backdrop-filter: blur(10px) saturate(140%);
+}
+.mantine-Modal-content,
+.mantine-Drawer-content,
+.mantine-Popover-dropdown,
+.mantine-Menu-dropdown,
+.mantine-Select-dropdown,
+.mantine-MultiSelect-dropdown,
+.mantine-Combobox-dropdown,
+.mantine-Tooltip-tooltip,
+.mantine-HoverCard-dropdown {
+  background: var(--g-fill-strong) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  backdrop-filter: blur(40px) saturate(200%);
+  border: 1px solid var(--g-border) !important;
+  border-radius: var(--g-radius) !important;
+  box-shadow: var(--g-highlight), 0 30px 80px rgba(10, 10, 40, 0.35) !important;
+}
+.mantine-Modal-header,
+.mantine-Drawer-header { background: transparent; }
+.mantine-Modal-title { font-weight: 700; letter-spacing: -0.02em; }
+.mantine-Tooltip-tooltip { border-radius: 10px !important; }
+.mantine-Combobox-option,
+.mantine-Menu-item { border-radius: 10px; }
+
+.mantine-Notification-root {
+  background: var(--g-fill-strong);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid var(--g-border);
+  border-radius: 16px;
+  box-shadow: var(--g-highlight), var(--g-shadow-hover);
+}
+.mantine-Notification-root::before { display: none; }
+
+.mantine-Accordion-item { margin-bottom: 8px; overflow: hidden; }
+.mantine-Accordion-control:hover { background: var(--g-fill-soft); }
+
+.mantine-Loader-root { filter: drop-shadow(0 0 8px var(--g-accent-glow)); }
+
+/* ---- scrollbars ---- */
+* { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--g-text) 25%, transparent) transparent; }
+
+/* ---- login ---- */
+.g-login {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+.g-login-card {
+  width: 100%;
+  max-width: 400px;
+  padding: 36px 32px;
+  border-radius: 28px;
+  animation: g-rise 0.8s var(--g-ease) both;
+}
+.g-login-logo {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(135deg, var(--g-accent), var(--g-accent-2));
+  box-shadow: 0 10px 30px var(--g-accent-glow), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+/* ---- mobile: sidebar is a drawer, keep it solid-ish ---- */
+@media (max-width: 48em) {
+  .g-navbar { padding: 12px 16px; }
+  .g-header { padding: 8px 8px 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* browsers without backdrop-filter: fall back to near-opaque surfaces */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root[data-mantine-color-scheme="light"] { --g-fill: rgba(255, 255, 255, 0.92); }
+  :root[data-mantine-color-scheme="dark"] { --g-fill: rgba(28, 28, 52, 0.95); }
+}

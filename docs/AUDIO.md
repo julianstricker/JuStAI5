@@ -79,7 +79,7 @@ reference. If the path breaks, it is rebuilt.
 | --- | --- | --- | --- |
 | 1 | **AEC3 with bulk delay compensation** | `echo.py` `EchoCanceller` + `DelayEstimator` | echo in the signal (full duplex) |
 | 2 | **Echo window + half duplex gate**: while own output can be audible (output + latency + reverb), the microphone is dropped | `PlaybackTracker`, `processor.py` | all echo, deterministically |
-| 3 | **Wakeword suppression during playback**: half duplex: no wakewords in the echo window; full duplex: only above `threshold_during_playback` (0.85) | `processor._run_wakeword` | the assistant saying "Hey Jarvis" itself |
+| 3 | **Wakeword suppression during playback**: half duplex: no wakewords in the echo window; full duplex: only above `threshold_during_playback` (0.85) | `processor._run_wakeword` | the assistant saying "Hey Justy" itself |
 | 4 | **Echo transcript filter**: if a user transcript closely resembles what the assistant said in the last 25 s, it is dropped | `conversation/echo_filter.py` | residual echo that was transcribed anyway |
 | 5 | **Leaving out the wakeword tail**: after a pause the session starts behind the pause; utterances with less than 200 ms of speech do not start the pipeline at all ([speaking without a pause](#speaking-without-a-pause-after-the-wakeword)) | `conversation/session.py` | "Jarvis" remainder or reverb interpreted as a question or blocking the session |
 | 6 | **Inactivity timeout only starts after the echo window ends** | `conversation/state.py` | session ending during output |
@@ -158,14 +158,16 @@ sends non-gated frames.
 
 ## Wakeword
 
-openWakeWord 0.6.0 (ONNX), threshold 0.5 per endpoint, refractory time 1.5 s. Selection:
+openWakeWord 0.6.0 (ONNX), threshold 0.8 per endpoint (default), refractory time 1.5 s. Selection:
 *Rooms → edit endpoint → Wakeword* (several at the same time possible).
 
-Included: **Hey Jarvis** (default), **Alexa**, **Hey Mycroft**, **Hey Rhasspy**, all
-trained on English. They work just as well when the rest of the conversation is German or
-Italian. **Hey Justy** (`hey_justi`) is also included: trained on synthetic English and
-German voices, it reacts to "Hey Justy" and "Hey Justi". Use a threshold of about 0.8 for
-it; at 0.5 it is more sensitive than the other models.
+Included: **Hey Justy** (`hey_justi`, default), **Hey Jarvis**, **Alexa**, **Hey Mycroft**
+and **Hey Rhasspy**. "Hey Justy" is trained on synthetic English and German voices and
+reacts to "Hey Justy" and "Hey Justi". It is more sensitive than the other models, so the
+default threshold is 0.8 (lower it only if it does not react). The others are trained on
+English and work just as well when the rest of the conversation is German or Italian; for
+them a threshold of 0.5 is a good start. If you mix models in one endpoint, the threshold
+applies to all of them.
 
 **Own wakewords** (e.g. "Hey Justi"): train an openWakeWord model (guide and scripts:
 [tools/wakeword](../tools/wakeword/README.md), CPU only, no Colab needed), then install the `.onnx` file
@@ -206,7 +208,7 @@ scores of all candidates), `audio.wakeword.rejected`.
 
 ## Speaking without a pause after the wakeword
 
-"Hey Jarvis, what time is it?" in one breath works. Between detection and a ready session
+"Hey Justy, what time is it?" in one breath works. Between detection and a ready session
 1.4–1.7 s pass (measured: arbitration window 0.8 s, session setup 0.55–0.9 s incl.
 connection to Gemini Live). So these words are not lost:
 
@@ -217,7 +219,7 @@ connection to Gemini Live). So these words are not lost:
   * **Pause** (≥ 150 ms below the speech threshold within 0.8 s after detection): from
     the pause; the reverb of "Jarvis" stays out.
   * **No pause**: from 0.15 s **before** detection. openWakeWord reports 0.04–0.27 s
-    (measured) after the end of "Hey Jarvis", i.e. often already during the first word of
+    (measured) after the end of "Hey Justy", i.e. often already during the first word of
     the question; this way it is kept.
 * The pipeline does not start recognition for "utterances" with less than 200 ms of
   speech (clicks, reverb). Otherwise the session would be deaf to the actual question

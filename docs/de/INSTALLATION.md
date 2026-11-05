@@ -34,7 +34,7 @@ Danach weiter mit [Schritt 6](#schritt-6-ein-handy-oder-tablet-als-mikrofon-und-
 (erstes Gespräch). Wurde Docker eben erst installiert, einmal ab- und wieder
 anmelden. Wer lieber jeden Schritt selbst macht, folgt der Anleitung unten.
 
-Was am Ende läuft: ein Assistent, der auf „Hey Jarvis“ hört, über Kameras sieht,
+Was am Ende läuft: ein Assistent, der auf „Hey Justy“ hört, über Kameras sieht,
 sich Dinge merkt und im selben Raum antwortet, in dem er angesprochen wurde.
 Beispiele, was man ihn fragen kann: [BEISPIELE.md](BEISPIELE.md).
 
@@ -191,7 +191,7 @@ Der schnellste Weg zum ersten Gespräch, ganz ohne Kamera:
    Lautsprecher anlassen, Kamera nach Wunsch, **Starten**.
 4. Das Gerät zeigt einen 6-stelligen Code. In der Oberfläche unter *Displays &
    Geräte-App* den Code eingeben, einen Namen und den Raum wählen.
-5. „**Hey Jarvis**“ sagen, kurz warten, dann die Frage stellen, z. B. „Wie wird
+5. „**Hey Justy**“ sagen, kurz warten, dann die Frage stellen, z. B. „Wie wird
    das Wetter morgen?“.
 
 JuStAI5 legt dabei im Raum automatisch einen *Interaction Endpoint* an (die
@@ -244,10 +244,10 @@ Unter *Personen* Familienmitglieder und Haustiere anlegen. Bei Tieren als
 *Tierart* `dog` (Hund) oder `cat` (Katze) eintragen, so heißen die Klassen der
 lokalen Bilderkennung. Damit der Assistent jemanden erkennt:
 
-* **Gesicht**: Vor eine Kamera stellen und sagen „Hey Jarvis, ich bin Anna. Merk
+* **Gesicht**: Vor eine Kamera stellen und sagen „Hey Justy, ich bin Anna. Merk
   dir bitte mein Gesicht.“ Der Assistent fragt nach der Einwilligung.
 * **Stimme**: „Merk dir meine Stimme.“ (nach ein paar Sätzen im Gespräch). Dann
-  erkennt er schon am „Hey Jarvis“, wer spricht.
+  erkennt er schon am „Hey Justy“, wer spricht.
 
 Gesichter und Stimmen werden nur mit ausdrücklicher Einwilligung gespeichert und
 lassen sich jederzeit löschen ([VISION.md](VISION.md#personen-tiere-gesichter)).
@@ -300,7 +300,7 @@ Wiederherstellen und Deinstallieren: [DEPLOYMENT.md](DEPLOYMENT.md#backup-und-wi
 | Handy zeigt Zertifikatswarnung | Zertifikat aus *Einstellungen → Geräte-App* installieren; die verwendete Adresse muss dort unter „Zertifikat gilt für“ stehen. |
 | Kamera wird nicht gefunden | Netzbereich bei *Suchen* prüfen; manuell mit IP hinzufügen. |
 | Kamera `offline` | IP geändert? (Im Router eine feste IP vergeben.) Akku-Kameras schlafen und eignen sich nicht als Mikrofon. |
-| „Hey Jarvis“ wird nicht erkannt | *Audio*: bewegt sich der Pegel beim Sprechen? Deutlich und nicht zu weit weg sprechen. |
+| „Hey Justy“ wird nicht erkannt | *Audio*: bewegt sich der Pegel beim Sprechen? Deutlich und nicht zu weit weg sprechen. |
 | Assistent hört sich selbst | Beim Endpoint kalibrieren (Wellen-Symbol). |
 | Kein Ton von einer Kamera | „Verbinde die Kamera im Büro neu“ per Sprache oder *Geräte → Neu verbinden*; siehe [AUDIO.md](AUDIO.md). |
 

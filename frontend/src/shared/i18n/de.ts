@@ -183,7 +183,7 @@ export const de: Record<Key, string> = {
   "dc.device": "Gerät",
   "dc.httpsHint": "Browser erlauben Mikrofon und Kamera nur über HTTPS. Öffne {url}. Damit keine Warnung erscheint, einmal das {cert} auf diesem Gerät installieren (Anleitung in der Admin-Oberfläche unter Einstellungen).",
   "dc.httpsTitle": "HTTPS nötig",
-  "dc.mic": "Mikrofon – zuhören und auf „Hey Jarvis“ reagieren",
+  "dc.mic": "Mikrofon – zuhören und auf „Hey Justy“ reagieren",
   "dc.pairHint": "Code in der Admin-Oberfläche unter „Displays“ freigeben:",
   "dc.pairTitle": "Gerät koppeln",
   "dc.ready": "{name} bereit",

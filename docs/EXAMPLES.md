@@ -2,8 +2,8 @@
 
 *[Deutsch](de/BEISPIELE.md) · English*
 
-Every conversation starts with **"Hey Jarvis"**. Then just talk normally; follow-up
-questions need no new wakeword. Saying "Hey Jarvis" again within 5 minutes continues the
+Every conversation starts with **"Hey Justy"**. Then just talk normally; follow-up
+questions need no new wakeword. Saying "Hey Justy" again within 5 minutes continues the
 conversation ("And how many people live there?"). Everything also works typed:
 *Conversations* in the interface.
 
@@ -128,7 +128,7 @@ With a paired display, tablet or TV in the same room:
   location of the home under Settings)*
 * "What will the weather be like in Bolzano tomorrow?" ✔
 * "How is the Tesla share doing?"
-* "What is the capital of Australia?" … "Hey Jarvis, and how many people live there?" ✔
+* "What is the capital of Australia?" … "Hey Justy, and how many people live there?" ✔
   *(continuation within 5 minutes)*
 * "Briefly explain how a heat pump works."
 

@@ -183,7 +183,7 @@ export const it: Record<Key, string> = {
   "dc.device": "Dispositivo",
   "dc.httpsHint": "I browser consentono microfono e telecamera solo tramite HTTPS. Apri {url}. Per evitare un avviso, installa una volta il {cert} su questo dispositivo (istruzioni nell'interfaccia di amministrazione in Impostazioni).",
   "dc.httpsTitle": "HTTPS necessario",
-  "dc.mic": "Microfono – ascoltare e reagire a «Hey Jarvis»",
+  "dc.mic": "Microfono – ascoltare e reagire a «Hey Justy»",
   "dc.pairHint": "Approva il codice nell'interfaccia di amministrazione in «Display»:",
   "dc.pairTitle": "Associa dispositivo",
   "dc.ready": "{name} pronto",

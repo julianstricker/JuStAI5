@@ -66,8 +66,8 @@ const ROLE_CAP: Record<DeviceRole, string> = {
 const DEFAULT_CONFIG: EndpointConfig = {
   wakeword: {
     enabled: true,
-    models: ["hey_jarvis"],
-    threshold: 0.5,
+    models: ["hey_justi"],
+    threshold: 0.8,
     threshold_during_playback: 0.85,
   },
   audio: {

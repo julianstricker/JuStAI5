@@ -79,7 +79,7 @@ LLM (e.g. Ollama through the *OpenAI-compatible* plugin) assigned to the roles u
    driver **simulated** (simulated device with acoustic echo).
 3. *Endpoints*: combine microphone and speaker (optionally camera/display) of a room into
    an endpoint and run *Calibrate*.
-4. Say "Hey Jarvis". Answers come from the speaker of the same endpoint.
+4. Say "Hey Justy". Answers come from the speaker of the same endpoint.
 
 ## Documentation
 

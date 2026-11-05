@@ -123,7 +123,7 @@ room, the voice who is speaking.
   in this conversation (at least 4 s; otherwise it asks for a few more sentences) and
   stores several voice samples from it (embeddings, no recordings; max. 10 per person, the
   newest are kept). Consent "voice" is recorded with evidence.
-* **Recognition**: at the "Hey Jarvis" at the start of every conversation; if that is not
+* **Recognition**: at the "Hey Justy" at the start of every conversation; if that is not
   enough, once more after ~3 s of speech. A name is only given with similarity ≥ 0.55 and
   a margin ≥ 0.08 to the next best person. The voice has priority over the camera.
 * **Deleting**: "Forget my voice" (`identity.forget_voice`), *People → Delete voice

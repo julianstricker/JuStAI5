@@ -82,7 +82,7 @@ Rollen sofort belegt; oder ein lokales LLM (z. B. Ollama über das Plugin
    Hardware: Treiber **simulated** (simuliertes Gerät mit akustischem Echo).
 3. *Endpoints*: Mikrofon und Lautsprecher (optional Kamera/Display) eines Raums zu
    einem Endpoint kombinieren, *Kalibrieren* ausführen.
-4. „Hey Jarvis“ sagen. Antworten kommen über den Lautsprecher desselben Endpoints.
+4. „Hey Justy“ sagen. Antworten kommen über den Lautsprecher desselben Endpoints.
 
 ## Dokumentation
 

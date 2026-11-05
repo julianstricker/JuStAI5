@@ -182,7 +182,7 @@ export const en = {
   "dc.device": "Device",
   "dc.httpsHint": "Browsers allow microphone and camera only over HTTPS. Open {url}. To avoid a warning, install the {cert} on this device once (instructions in the admin interface under Settings).",
   "dc.httpsTitle": "HTTPS required",
-  "dc.mic": "Microphone – listen and react to “Hey Jarvis”",
+  "dc.mic": "Microphone – listen and react to “Hey Justy”",
   "dc.pairHint": "Approve the code in the admin interface under “Displays”:",
   "dc.pairTitle": "Pair device",
   "dc.ready": "{name} ready",

@@ -26,7 +26,7 @@ gepinnt. Entscheidungen mit Alternativen stehen in den [ADRs](adr/).
 | Audio-Ausgang | Live-WAV-Stream vom Core, go2rtc zieht ihn als `ffmpeg:`-Quelle in den Kamera-Backchannel | |
 | AEC/NS/HPF | WebRTC Audio Processing (AEC3) über `livekit` | zusätzlich eigene Bulk-Delay-Kompensation ([AUDIO.md](AUDIO.md), [ADR 0005](adr/0005-echo-handling.md)) |
 | VAD | Silero VAD (ONNX) | |
-| Wakeword | openWakeWord 0.6.0 (ONNX) | Modelle `hey_jarvis` u. a.; eigene Modelle als Datei |
+| Wakeword | openWakeWord 0.6.0 (ONNX) | Modelle `hey_justi` (Standard), `hey_jarvis` u. a.; eigene Modelle als Datei |
 | STT | faster-whisper (lokal) | Cloud-STT optional über KI-Provider |
 | TTS | Piper (lokal) | Stimmen pro Sprache konfigurierbar |
 

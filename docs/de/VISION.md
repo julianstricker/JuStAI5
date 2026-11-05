@@ -123,7 +123,7 @@ Gesicht zeigt, wer im Raum ist, die Stimme, wer gerade spricht.
   Gespräch Gesprochene (mindestens 4 s; sonst bittet er um ein paar Sätze mehr) und
   speichert daraus mehrere Stimmproben (Embeddings, keine Aufnahmen; max. 10 pro
   Person, die neuesten bleiben). Einwilligung „voice“ wird mit Nachweis erfasst.
-* **Erkennung**: am „Hey Jarvis“ zu Beginn jedes Gesprächs; reicht das nicht, noch
+* **Erkennung**: am „Hey Justy“ zu Beginn jedes Gesprächs; reicht das nicht, noch
   einmal nach ~3 s Sprache. Ein Name wird nur genannt bei Ähnlichkeit ≥ 0,55 und
   Abstand ≥ 0,08 zur nächstbesten Person. Die Stimme hat Vorrang vor der Kamera.
 * **Löschen**: „Vergiss meine Stimme“ (`identity.forget_voice`), *Personen →

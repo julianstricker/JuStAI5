@@ -39,8 +39,9 @@ class ConversationMode(StrEnum):
 
 class WakewordConfig(BaseModel):
     enabled: bool = True
-    models: list[str] = Field(default_factory=lambda: ["hey_jarvis"])
-    threshold: float = Field(0.5, ge=0.05, le=0.99)
+    models: list[str] = Field(default_factory=lambda: ["hey_justi"])
+    # hey_justi is more sensitive than the stock models: 0.8 instead of 0.5
+    threshold: float = Field(0.8, ge=0.05, le=0.99)
     # Score needed while the assistant itself is speaking (full duplex only).
     threshold_during_playback: float = Field(0.85, ge=0.05, le=0.999)
 

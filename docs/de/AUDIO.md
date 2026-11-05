@@ -78,7 +78,7 @@ Echo-Referenz. Bricht der Pfad ab, wird er neu aufgebaut.
 | --- | --- | --- | --- |
 | 1 | **AEC3 mit Bulk-Delay-Kompensation** | `echo.py` `EchoCanceller` + `DelayEstimator` | Echo im Signal (Full Duplex) |
 | 2 | **Echo-Fenster + Half-Duplex-Gate**: Solange eigene Ausgabe hörbar sein kann (Ausgabe + Latenz + Nachhall), wird das Mikrofon verworfen | `PlaybackTracker`, `processor.py` | alles Echo, deterministisch |
-| 3 | **Wakeword-Unterdrückung während der Wiedergabe**: Half Duplex: keine Wakewords im Echo-Fenster; Full Duplex: nur über `threshold_during_playback` (0,85) | `processor._run_wakeword` | Assistent sagt selbst „Hey Jarvis“ |
+| 3 | **Wakeword-Unterdrückung während der Wiedergabe**: Half Duplex: keine Wakewords im Echo-Fenster; Full Duplex: nur über `threshold_during_playback` (0,85) | `processor._run_wakeword` | Assistent sagt selbst „Hey Justy“ |
 | 4 | **Echo-Transkriptfilter**: Ähnelt ein Benutzertranskript stark dem, was der Assistent in den letzten 25 s gesagt hat, wird es verworfen | `conversation/echo_filter.py` | Restecho, das trotzdem transkribiert wurde |
 | 5 | **Wakeword-Nachlauf weglassen**: Nach einer Pause beginnt die Session hinter der Pause; Äußerungen mit weniger als 200 ms Sprache startet die Pipeline gar nicht erst ([Sprechen ohne Pause](#sprechen-ohne-pause-nach-dem-wakeword)) | `conversation/session.py` | „Jarvis“-Rest oder Hall wird als Frage interpretiert oder blockiert die Session |
 | 6 | **Inaktivitäts-Timeout startet erst nach Ende des Echo-Fensters** | `conversation/state.py` | Session endet nicht während der Ausgabe |
@@ -160,14 +160,16 @@ dabei nur nicht-gegatete Frames.
 
 ## Wakeword
 
-openWakeWord 0.6.0 (ONNX), Schwelle 0,5 pro Endpoint, Refraktärzeit 1,5 s.
+openWakeWord 0.6.0 (ONNX), Schwelle 0,8 pro Endpoint (Standard), Refraktärzeit 1,5 s.
 Auswahl: *Räume → Endpoint bearbeiten → Wakeword* (mehrere gleichzeitig möglich).
 
-Mitgeliefert: **Hey Jarvis** (Standard), **Alexa**, **Hey Mycroft**, **Hey Rhasspy**,
-alle auf Englisch trainiert. Außerdem **Hey Justy** (`hey_justi`): mit synthetischen
-englischen und deutschen Stimmen trainiert, reagiert auf „Hey Justy“ und „Hey Justi“.
-Dafür eine Schwelle von etwa 0,8 verwenden; bei 0,5 ist es empfindlicher als die
-anderen Modelle.
+Mitgeliefert: **Hey Justy** (`hey_justi`, Standard), **Hey Jarvis**, **Alexa**,
+**Hey Mycroft** und **Hey Rhasspy**. „Hey Justy“ ist mit synthetischen englischen und
+deutschen Stimmen trainiert und reagiert auf „Hey Justy“ und „Hey Justi“. Es ist
+empfindlicher als die anderen Modelle, deshalb ist die Standard-Schwelle 0,8 (nur senken,
+wenn es nicht reagiert). Die anderen sind auf Englisch trainiert und funktionieren genauso
+gut, wenn der Rest des Gesprächs Deutsch oder Italienisch ist; für sie ist 0,5 ein guter
+Start. Mischt man Modelle in einem Endpoint, gilt die Schwelle für alle.
 
 **Eigene Wakewords** (z. B. „Hey Justi“): Ein openWakeWord-Modell trainieren (Anleitung und
 Skripte: [tools/wakeword](../../tools/wakeword/README.de.md), nur CPU, kein Colab nötig), dann die `.onnx`-Datei im selben Tab mit *Eigenes Wakeword
@@ -212,7 +214,7 @@ Events: `audio.wakeword.detected` (jeder Kandidat), `audio.wakeword.accepted`
 
 ## Sprechen ohne Pause nach dem Wakeword
 
-„Hey Jarvis, wie spät ist es?“ in einem Atemzug funktioniert. Zwischen Erkennung
+„Hey Justy, wie spät ist es?“ in einem Atemzug funktioniert. Zwischen Erkennung
 und bereiter Session vergehen 1,4–1,7 s (gemessen: Arbitrierungsfenster 0,8 s,
 Sessionaufbau 0,55–0,9 s inkl. Verbindung zu Gemini Live). Damit diese Worte nicht
 verloren gehen:
@@ -224,7 +226,7 @@ verloren gehen:
   * **Pause** (≥ 150 ms unter der Sprachschwelle innerhalb von 0,8 s nach der
     Erkennung): ab der Pause; der Nachhall von „Jarvis“ bleibt draußen.
   * **Keine Pause**: ab 0,15 s **vor** der Erkennung. openWakeWord meldet
-    gemessen 0,04–0,27 s nach dem Ende von „Hey Jarvis“, also oft schon während
+    gemessen 0,04–0,27 s nach dem Ende von „Hey Justy“, also oft schon während
     des ersten Wortes der Frage; so bleibt es erhalten.
 * Die Pipeline startet keine Erkennung für „Äußerungen“ mit weniger als 200 ms
   Sprache (Klicks, Hall). Sonst wäre die Session während der unnötigen

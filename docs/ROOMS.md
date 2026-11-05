@@ -35,8 +35,8 @@ Model: `backend/src/justai/endpoints/service.py`.
 ```yaml
 wakeword:
   enabled: true           # false = do not listen (also by voice: "stop listening here for an hour")
-  models: [hey_jarvis]
-  threshold: 0.5
+  models: [hey_justi]
+  threshold: 0.8
   threshold_during_playback: 0.85   # full duplex only
 audio:
   duplex: auto            # auto | half | full

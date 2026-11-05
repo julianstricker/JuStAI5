@@ -33,7 +33,7 @@ Then continue with [step 6](#step-6-a-phone-or-tablet-as-microphone-and-speaker)
 conversation). If Docker was just installed, log out and in again once. If you prefer to
 do every step yourself, follow the guide below.
 
-What runs in the end: an assistant that listens for "Hey Jarvis", sees through cameras,
+What runs in the end: an assistant that listens for "Hey Justy", sees through cameras,
 remembers things and answers in the room where it was addressed, in English, German or
 Italian. Ideas what to ask: [EXAMPLES.md](EXAMPLES.md).
 
@@ -180,8 +180,8 @@ The quickest way to the first conversation, without any camera:
    microphone and speaker on, camera as you like, **Start**.
 4. The device shows a 6-digit code. In the interface under *Displays & device app* enter
    the code, choose a name and the room.
-5. Say "**Hey Jarvis**" and ask your question, e.g. "What will the weather be like
-   tomorrow?" – with or without a pause after "Hey Jarvis".
+5. Say "**Hey Justy**" and ask your question, e.g. "What will the weather be like
+   tomorrow?" – with or without a pause after "Hey Justy".
 
 JuStAI5 automatically creates an *interaction endpoint* in the room (the combination of
 microphone and speaker used for talking). To install it as an app: in Chrome/Edge menu →
@@ -229,10 +229,10 @@ Create family members and pets under *People*. For animals enter `dog` or `cat` 
 *species*, the class names of the local image recognition. So that the assistant
 recognises someone:
 
-* **Face**: stand in front of a camera and say "Hey Jarvis, I am Anna. Please remember my
+* **Face**: stand in front of a camera and say "Hey Justy, I am Anna. Please remember my
   face." The assistant asks for consent.
 * **Voice**: "Remember my voice." (after a few sentences in the conversation). Then it
-  recognises who speaks already by the "Hey Jarvis".
+  recognises who speaks already by the "Hey Justy".
 
 Faces and voices are only stored with explicit consent and can be deleted at any time
 ([VISION.md](VISION.md#people-pets-faces)). A pet that is the only one of its species is
@@ -282,7 +282,7 @@ Restore and uninstall: [DEPLOYMENT.md](DEPLOYMENT.md#backup-and-restore).
 | Phone shows a certificate warning | Install the certificate from *Settings → Device app*; the address used must be listed there under "Certificate valid for". |
 | Camera not found | Check the network range under *Search*; add it manually by IP. |
 | Camera `offline` | IP changed? (Give it a fixed IP in the router.) Battery cameras sleep and are not suitable as microphones. |
-| "Hey Jarvis" is not recognised | *Audio*: does the level move when you speak? Speak clearly and not too far away. |
+| "Hey Justy" is not recognised | *Audio*: does the level move when you speak? Speak clearly and not too far away. |
 | The assistant hears itself | Calibrate at the endpoint (wave symbol). |
 | No sound from a camera | "Reconnect the camera in the office" by voice or *Devices → Reconnect*; see [AUDIO.md](AUDIO.md). |
 

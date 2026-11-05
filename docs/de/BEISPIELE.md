@@ -2,9 +2,9 @@
 
 *Deutsch · [English](../EXAMPLES.md)*
 
-Jedes Gespräch beginnt mit **„Hey Jarvis“**. Danach einfach normal sprechen;
+Jedes Gespräch beginnt mit **„Hey Justy“**. Danach einfach normal sprechen;
 Rückfragen gehen ohne neues Wakeword. Wer innerhalb von 5 Minuten wieder
-„Hey Jarvis“ sagt, setzt das Gespräch fort („Und wie viele Einwohner hat sie?“).
+„Hey Justy“ sagt, setzt das Gespräch fort („Und wie viele Einwohner hat sie?“).
 Alles geht auch getippt: *Gespräche* in der Oberfläche.
 
 Antworten kommen immer im Raum, in dem gefragt wurde, nie woanders, außer man
@@ -83,7 +83,7 @@ hinzufügen und Zugangsdaten ändern bleibt in der Oberfläche.
 * „Schalte die Kamera im Schlafzimmer aus.“ ✔ · „Alle Kameras aus.“ · „Kamera wieder
   an.“ ✔ *(Privatsphäre-Modus: kein Bild, kein Ton; Tapo-Kameras)*
 * „Hör im Schlafzimmer eine Stunde nicht zu.“ ✔ Der Raum reagiert nicht mehr auf
-  „Hey Jarvis“ und hört nach der Pause von selbst wieder zu. „Hör im Schlafzimmer
+  „Hey Justy“ und hört nach der Pause von selbst wieder zu. „Hör im Schlafzimmer
   wieder zu“ beendet die Pause vorher (aus einem anderen Raum oder in der Oberfläche).
 * „Die Kamera im Büro hat keinen Ton, verbinde sie neu.“ *(dauert ein paar Sekunden)*
 * „Teste den Lautsprecher in der Küche.“ *(kurzer Ton)*
@@ -112,7 +112,7 @@ kennzeichnet Vermutungen als solche. Einsehen und löschen: *Gedächtnis*.
 
 * „Ich bin Anna.“
 * „Merk dir mein Gesicht.“ *(fragt nach der Einwilligung)*
-* „Merk dir meine Stimme.“ ✔ Danach erkennt er schon am „Hey Jarvis“, wer
+* „Merk dir meine Stimme.“ ✔ Danach erkennt er schon am „Hey Justy“, wer
   spricht, und Erinnerungen, Termine und Begrüßungen sind persönlich.
 * „Vergiss meine Stimme.“
 
@@ -132,7 +132,7 @@ Mit einem gekoppelten Display, Tablet oder Fernseher im selben Raum:
   auf den Standort des Hauses unter Einstellungen)*
 * „Wie wird das Wetter morgen in Bozen?“
 * „Wie steht die Tesla-Aktie?“
-* „Was ist die Hauptstadt von Australien?“ … „Hey Jarvis, und wie viele
+* „Was ist die Hauptstadt von Australien?“ … „Hey Justy, und wie viele
   Einwohner hat sie?“ ✔ *(Fortsetzung innerhalb von 5 Minuten)*
 * „Erklär mir kurz, wie eine Wärmepumpe funktioniert.“
 * Mehrsprachig: Fragen auf Deutsch, Italienisch oder Englisch werden in der

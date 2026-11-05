@@ -43,7 +43,7 @@ memory by the core (`PATCH /api/streams`); they never end up in `go2rtc.yaml`
 | **Other Tapo models** | ⚪ untested | the `tapo` driver should work with models that offer the Tapo stream, but nobody has checked yet |
 | **Other ONVIF / RTSP cameras** (Reolink, Hikvision, Dahua, Amcrest, …) | ⚪ untested | the `onvif` driver is implemented and covered by unit tests, but has not been run against real cameras other than a Tapo. Video and snapshots will most likely work; **speaker (backchannel) and PTZ depend on the model** |
 
-Nothing else has been tried on real hardware. Please do not buy a camera for JuStAI5 because
+Nothing else has been tried on real hardware. Please do not buy a camera for JuStAI because
 of this table alone: **the speaker is the critical part**. A camera without a working audio
 backchannel can still be used as microphone and eyes, with the answer coming from another
 device (a tablet, a display, a smart speaker).
@@ -54,7 +54,7 @@ Every camera that speaks ONVIF or RTSP is worth a try (*Devices* → **Search** 
 **+ Device**, driver `onvif`). Reports are very welcome, also negative ones:
 
 * Open an issue with the template
-  [Camera report](https://github.com/julianstricker/JuStAI5/issues/new?template=camera_report.yml):
+  [Camera report](https://github.com/naxeu/justai/issues/new?template=camera_report.yml):
   model, firmware, which driver, and what worked (video, microphone, speaker, PTZ).
 * Say which capabilities the device dialog shows after the test (video, microphone, speaker, PTZ)
   and add relevant log lines. **Remove passwords and addresses before posting.**
@@ -72,10 +72,10 @@ assistant and follow [Vibe coding](VIBE_CODING.md). Typical contributions:
 * a **new driver** for a vendor with its own protocol (Reolink, Eufy, Xiaomi, …),
 * a **fix or a test** for a camera that almost works.
 
-Pull requests and plugins are welcome in [JuStAI5](https://github.com/julianstricker/JuStAI5);
+Pull requests and plugins are welcome in [JuStAI](https://github.com/naxeu/justai);
 see [Plugins](PLUGINS.md) for the interfaces and [Development](DEVELOPMENT.md) for the test
 setup. Not sure where to start? Open a
-[Discussion](https://github.com/julianstricker/JuStAI5/discussions) with the camera model.
+[Discussion](https://github.com/naxeu/justai/discussions) with the camera model.
 
 ## Drivers
 
@@ -159,7 +159,7 @@ Drivers offer the privacy mode through `handle.privacy()` (protocol `PrivacyCont
 ## Disabling instead of deleting
 
 In the device dialog top right: switch **Enabled**. A disabled device keeps
-configuration, credentials, room and endpoint assignment, but JuStAI5 does not connect:
+configuration, credentials, room and endpoint assignment, but JuStAI does not connect:
 no stream in go2rtc, no microphone, no image analysis, no output to it. Endpoints show the
 device as "(disabled)", the audio diagnosis reports that the endpoint is not listening.
 After enabling, the device is online again within a few seconds (C200 tested: ~6 s).

@@ -2,7 +2,7 @@
 
 *[Deutsch](de/DISPLAYS.md) · English*
 
-Every browser can be a JuStAI5 display: TV with a browser, tablet, old laptop. Code:
+Every browser can be a JuStAI display: TV with a browser, tablet, old laptop. Code:
 `backend/src/justai/display/`, client: `frontend/src/display/`, renderer:
 `frontend/src/shared/render/`.
 
@@ -23,7 +23,7 @@ The display client and the device app show their texts in English, German or Ita
 ## Device app (phone, tablet, PC as microphone, speaker, camera)
 
 At `https://HOST:8443/app` the same client runs as an installable web app (PWA). It turns
-any device into a full JuStAI5 device:
+any device into a full JuStAI device:
 
 | Function | Path |
 | --- | --- |
@@ -37,7 +37,7 @@ any device into a full JuStAI5 device:
 1. Admin UI → *Settings* → *Device app*: if the admin UI is opened through an address that
    is not yet in the HTTPS certificate (e.g. the server's LAN IP), click **Add** there.
    The certificate is issued again and loaded without a restart.
-2. Install the **JuStAI5 certificate** (local certificate authority) on the device; the
+2. Install the **JuStAI certificate** (local certificate authority) on the device; the
    steps for Android, iPhone/iPad, Windows and macOS are in the same card. Without
    installing it, confirming the browser warning is usually enough; the page then cannot
    be installed as an app.
@@ -45,14 +45,14 @@ any device into a full JuStAI5 device:
    and camera (off/front/back), *Start*. Then use the browser menu "Install app" or "Add
    to Home Screen".
 4. Approve the code shown under *Displays & device app* and choose a room. With microphone
-   **and** speaker JuStAI5 automatically creates an endpoint in the room (roles
+   **and** speaker JuStAI automatically creates an endpoint in the room (roles
    microphone, speaker, camera and display if present, arbitration group of the room). If
    microphone and speaker are switched on only later, the endpoint is created on the next
    connection.
 
 The selection can be changed with the gear at the top right; the device then registers
 with the new capabilities. Once the selection is saved, the app starts microphone, speaker
-and camera by itself when opened, also after the automatic reload on a JuStAI5 update. If
+and camera by itself when opened, also after the automatic reload on a JuStAI update. If
 the browser does not allow sound without a touch, the camera runs anyway and the top right
 shows "Sound paused – tap once"; a touch anywhere is enough. Only if microphone or camera
 do not start (e.g. access not yet allowed) "Tap to start" appears. While the app is open,
@@ -107,7 +107,7 @@ name:
 
 Optionally `duration_s` closes the presentation automatically.
 
-**Updates:** the core sends a build identifier with `ready`. If JuStAI5 has changed since
+**Updates:** the core sends a build identifier with `ready`. If JuStAI has changed since
 the page was loaded, the client reloads automatically after reconnecting. Displays such as
 TVs therefore do not have to be refreshed by hand after an update. Reconnection with
 backoff up to 15 s.

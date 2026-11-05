@@ -40,7 +40,7 @@ class PluginType(StrEnum):
 
 
 class TrustLevel(StrEnum):
-    BUILTIN = "builtin"  # shipped with JuStAI5, runs in-process
+    BUILTIN = "builtin"  # shipped with JuStAI, runs in-process
     TRUSTED = "trusted"  # explicitly trusted by an admin, runs in-process
     UNTRUSTED = "untrusted"  # third-party / generated code, runs in the sandbox
 

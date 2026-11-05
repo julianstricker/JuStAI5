@@ -2,7 +2,7 @@
 # Prepare a work directory for training an openWakeWord model (CPU only, ~6 GB).
 #
 # Usage:  tools/wakeword/setup.sh /path/to/workdir
-# Needs:  python3 (3.10+), curl, and the running JuStAI5 core container (justai5-core-1),
+# Needs:  python3 (3.10+), curl, and the running JuStAI core container (justai5-core-1),
 #         from which the feature models and the openWakeWord package are copied so that the
 #         embeddings are identical to what the core computes at runtime.
 set -euo pipefail

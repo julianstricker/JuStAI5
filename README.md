@@ -1,16 +1,16 @@
-# JuStAI5
+# JuStAI
 
 *[Deutsch](docs/de/README.md) · English*
 
-JuStAI5 turns ordinary cameras, microphones, speakers and screens into one shared,
+JuStAI turns ordinary cameras, microphones, speakers and screens into one shared,
 locally run AI assistant. Rooms and *interaction endpoints* decide where it listens and
 where it answers; a deterministic output router keeps answers in the room of the request.
 The assistant never reacts to its own voice. It speaks and understands English, German
 and Italian, and its interface is available in all three languages.
 
-![How JuStAI5 works: devices in every room, your server at home, an AI model, answers back in the same room](docs/img/how.en.svg)
+![How JuStAI works: devices in every room, your server at home, an AI model, answers back in the same room](docs/img/how.en.svg)
 
-![The JuStAI5 dashboard (demo data)](docs/img/shots/dashboard.en.webp)
+![The JuStAI dashboard (demo data)](docs/img/shots/dashboard.en.webp)
 
 ```
 camera/microphone ──► go2rtc ──► audio engine (AEC, VAD, wakeword, arbitration)
@@ -36,7 +36,7 @@ One command on a Linux machine (x86_64) installs everything, Docker included, an
 asks for an API key and an admin password:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/julianstricker/JuStAI5/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/naxeu/justai/main/scripts/install.sh | bash
 ```
 
 **Step by step, no prior knowledge needed:** [docs/INSTALLATION.md](docs/INSTALLATION.md)
@@ -45,8 +45,8 @@ curl -fsSL https://raw.githubusercontent.com/julianstricker/JuStAI5/main/scripts
 By hand, when Docker is already there (Compose ≥ 2.24):
 
 ```bash
-git clone https://github.com/julianstricker/JuStAI5.git
-cd JuStAI5
+git clone https://github.com/naxeu/justai.git
+cd justai
 cp .env.example .env        # set GOOGLE_API_KEY=… (or later in the interface)
 docker compose up -d --build
 ```
@@ -131,7 +131,7 @@ What was checked with real hardware and what is only simulated is stated honestl
 
 Copyright (C) 2026 Julian Stricker
 
-JuStAI5 is licensed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0).
+JuStAI is licensed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0).
 You may use, change and distribute the code. Whoever offers a changed version as a network
 service must also publish the source code of their changes under the AGPL.
 

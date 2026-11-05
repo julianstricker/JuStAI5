@@ -1,5 +1,5 @@
 name: Camera report
-description: Tell us how your camera works with JuStAI5, also if it does not. English or German is fine. / Kamera-Bericht, auch wenn es nicht funktioniert.
+description: Tell us how your camera works with JuStAI, also if it does not. English or German is fine. / Kamera-Bericht, auch wenn es nicht funktioniert.
 labels: [camera]
 body:
   - type: input

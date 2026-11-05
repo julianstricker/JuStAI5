@@ -4,7 +4,7 @@
 
 This guide takes you from an empty computer to the first conversation with the assistant.
 No programming knowledge is needed, only a few terminal commands you can copy. If you
-already have Docker, start at [step 2](#step-2-download-justai5).
+already have Docker, start at [step 2](#step-2-download-justai).
 
 ![Installation in four steps](img/inst.en.svg)
 
@@ -13,12 +13,12 @@ already have Docker, start at [step 2](#step-2-download-justai5).
 In a terminal on a Linux computer (x86_64):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/julianstricker/JuStAI5/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/naxeu/justai/main/scripts/install.sh | bash
 ```
 
 The installer
 * checks the computer and installs Docker if it is missing (asks first),
-* downloads JuStAI5 into the folder `JuStAI5`,
+* downloads JuStAI into the folder `justai`,
 * asks for the Google API key ([step 3](#step-3-make-the-assistant-talk-google-api-key)
   explains where to get it; leaving it empty is fine) and an admin password,
 * detects the computer's address in the home network (for the HTTPS certificate and the
@@ -43,7 +43,7 @@ Italian. Ideas what to ask: [EXAMPLES.md](EXAMPLES.md).
 | --- | --- | --- |
 | Computer | PC, mini PC (e.g. Intel NUC) or server with an **x86_64** processor that runs permanently | 4 cores |
 | Operating system | Linux (tested: Ubuntu/Debian) | Ubuntu 24.04 LTS |
-| Memory | 4 GB (JuStAI5 uses about 1.7 GB, measured) | 8 GB |
+| Memory | 4 GB (JuStAI uses about 1.7 GB, measured) | 8 GB |
 | Disk | 15 GB free (program about 3 GB plus database) | 30 GB |
 | Network | in the same home network as cameras, phones and tablets | network cable |
 | Language model | a free Google API key ([step 3](#step-3-make-the-assistant-talk-google-api-key)) **or** a local model (Ollama) | |
@@ -58,7 +58,7 @@ turn whole rooms into places to talk.
 
 ## Step 1: Install Docker
 
-Docker is the program JuStAI5 runs in. In a terminal (Ubuntu/Debian):
+Docker is the program JuStAI runs in. In a terminal (Ubuntu/Debian):
 
 ```bash
 curl -fsSL https://get.docker.com | sudo sh
@@ -77,18 +77,18 @@ docker compose version
 
 The output must show `Docker Compose version v2.24` or newer.
 
-## Step 2: Download JuStAI5
+## Step 2: Download JuStAI
 
 ```bash
 sudo apt-get install -y git
 ```
 
 ```bash
-git clone https://github.com/julianstricker/JuStAI5.git
+git clone https://github.com/naxeu/justai.git
 ```
 
 ```bash
-cd JuStAI5
+cd justai
 ```
 
 All further commands run in this folder.
@@ -100,7 +100,7 @@ and answer, the assistant needs a language model. The easiest is Google Gemini:
 
 1. Open <https://aistudio.google.com> and sign in with a Google account.
 2. **Get API key** → **Create API key**. Copy the key (starts with `AIza…`).
-3. In the JuStAI5 folder create the settings file and enter the key:
+3. In the JuStAI folder create the settings file and enter the key:
 
 ```bash
 cp .env.example .env
@@ -134,9 +134,9 @@ Optional in the same file:
 docker compose up -d --build
 ```
 
-The first time Docker builds JuStAI5 and downloads about 3 GB (program and speech models).
+The first time Docker builds JuStAI and downloads about 3 GB (program and speech models).
 Depending on the internet connection this takes a few minutes to half an hour. Afterwards
-JuStAI5 starts in seconds, also automatically after a restart of the computer.
+JuStAI starts in seconds, also automatically after a restart of the computer.
 
 It is ready when this command prints `{"ok":true,…`:
 
@@ -173,7 +173,7 @@ The quickest way to the first conversation, without any camera:
 
 1. In the interface *Rooms* → **+ Room**, e.g. "Living room".
 2. *Settings → Device app*: if it says "This address is missing from the certificate",
-   click **Add**. Then **Download JuStAI5 certificate** and install it on the phone/tablet;
+   click **Add**. Then **Download JuStAI certificate** and install it on the phone/tablet;
    the steps for Android, iPhone/iPad, Windows and macOS are right below. (The certificate
    is needed because browsers allow microphone and camera only over a secure connection.)
 3. On the phone/tablet open `https://IP-ADDRESS:8443/app`, choose the language, leave
@@ -183,7 +183,7 @@ The quickest way to the first conversation, without any camera:
 5. Say "**Hey Justy**" and ask your question, e.g. "What will the weather be like
    tomorrow?" – with or without a pause after "Hey Justy".
 
-JuStAI5 automatically creates an *interaction endpoint* in the room (the combination of
+JuStAI automatically creates an *interaction endpoint* in the room (the combination of
 microphone and speaker used for talking). To install it as an app: in Chrome/Edge menu →
 "Install app", in Safari Share → "Add to Home Screen". Details:
 [DISPLAYS.md](DISPLAYS.md#device-app-phone-tablet-pc-as-microphone-speaker-camera).
@@ -200,10 +200,10 @@ are welcome.
 **Prepare Tapo cameras** (once, in the Tapo app):
 
 * *Camera → Settings → Advanced settings → Camera account*: create user name and password.
-* For speaker and panning JuStAI5 also needs the password of the TP-Link account (Tapo
+* For speaker and panning JuStAI also needs the password of the TP-Link account (Tapo
   cloud password). It is stored encrypted and only sent to the camera in the home network.
 
-**In JuStAI5:**
+**In JuStAI:**
 
 1. *Devices* → **Search**. Enter the home network under "Authorised network ranges",
    usually `192.168.0.0/24` or `192.168.1.0/24` (the first three numbers of your own IP
@@ -216,7 +216,7 @@ are welcome.
 
 **So the camera also listens and speaks:** *Rooms* → in the room **+ Endpoint**, choose the
 camera as microphone and speaker (and camera), save. Then click the wave symbol at the
-endpoint (**Calibrate echo latency**): the camera plays short tones and JuStAI5 measures
+endpoint (**Calibrate echo latency**): the camera plays short tones and JuStAI measures
 how long it takes to hear them itself. This way the assistant never reacts to its own
 voice.
 
@@ -249,7 +249,7 @@ assigned automatically when a camera sees a dog or cat.
 
 ## Update, back up, remove
 
-Install a new version (settings and data are kept), in the JuStAI5 folder:
+Install a new version (settings and data are kept), in the JuStAI folder:
 
 ```bash
 git pull

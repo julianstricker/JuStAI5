@@ -1,7 +1,7 @@
 [project]
 name = "justai-core"
 version = "0.1.0"
-description = "JuStAI5 core: turns ordinary cameras, microphones, speakers and screens into an AI assistant"
+description = "JuStAI core: turns ordinary cameras, microphones, speakers and screens into an AI assistant"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "justai-sdk",

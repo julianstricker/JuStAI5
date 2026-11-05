@@ -1,4 +1,4 @@
-# Was JuStAI5 kann – Beispiele zum Ausprobieren
+# Was JuStAI kann – Beispiele zum Ausprobieren
 
 *Deutsch · [English](../EXAMPLES.md)*
 
@@ -175,7 +175,7 @@ ein Admin unter *Tools*; danach benutzt der Assistent es sofort.
 * Suchen im ganzen Raum geht nur mit schwenkbaren Kameras; sonst sieht der
   Assistent nur den aktuellen Bildausschnitt.
 * Hinschauen und Suchen nach beliebigen Dingen (Schlüssel, Zettel, Licht) braucht
-  ein Bildmodell, im Standard Gemini. Lokal erkennt JuStAI5 Personen, Gesichter,
+  ein Bildmodell, im Standard Gemini. Lokal erkennt JuStAI Personen, Gesichter,
   Tiere und etwa 80 Alltagsgegenstände (Auto, Fahrrad, Flasche, Laptop, Handy …).
 * Kameras, die beim Abspielen ihr Mikrofon stummschalten (z. B. Tapo C200), lassen
   sich nicht unterbrechen, während der Assistent spricht.

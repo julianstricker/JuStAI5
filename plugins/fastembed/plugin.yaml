@@ -5,7 +5,7 @@ description: "Multilingual text embeddings computed locally (ONNX) for the long-
 i18n:
   de: {name: "fastembed (lokale Embeddings)", description: "Mehrsprachige Text-Embeddings lokal (ONNX) für das Langzeitgedächtnis."}
   it: {name: "fastembed (embedding locali)", description: "Embedding di testo multilingue calcolati in locale (ONNX) per la memoria a lungo termine."}
-author: JuStAI5
+author: JuStAI
 license: Apache-2.0 (fastembed)
 types: [embedding]
 trust: builtin

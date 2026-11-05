@@ -31,7 +31,7 @@ class AllowlistHttp(PluginHttp):
         self.allowlist = [h.lower() for h in allowlist]
         self.allow_lan = allow_lan
         self._client = httpx.AsyncClient(follow_redirects=False,
-                                         headers={"User-Agent": f"JuStAI5-plugin/{plugin_id}"})
+                                         headers={"User-Agent": f"JuStAI-plugin/{plugin_id}"})
 
     def _host_allowed(self, host: str) -> bool:
         host = host.lower()

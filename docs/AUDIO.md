@@ -104,7 +104,7 @@ reverb, no near-end speaker; ERLE = echo attenuation after convergence):
 | 1.80 s | **9.4 dB** | 40.5 dB |
 
 From about 0.5 s AEC3 alone fails; about 10 dB from the residual suppression remain.
-Network cameras are well above that (C200: ~1.8 s). JuStAI5 therefore shifts the
+Network cameras are well above that (C200: ~1.8 s). JuStAI therefore shifts the
 reference itself by the measured delay and leaves only the rest (10 ms) to AEC3. The
 delay is estimated continuously by `DelayEstimator` with GCC-PHAT from microphone and
 reference (only estimates with sufficient confidence, median of the last 7).
@@ -153,7 +153,7 @@ measured delay + 0.15 s.
 Silero VAD (ONNX) on the processed signal. Speech begins after 3 consecutive frames above
 `vad_threshold` (30 ms) and ends after 300 ms below it. In pipeline mode the end of an
 utterance is determined by `end_of_utterance_silence_ms` (default 700 ms), maximum length
-`max_utterance_s`. In realtime mode the provider takes over turn detection; JuStAI5 only
+`max_utterance_s`. In realtime mode the provider takes over turn detection; JuStAI only
 sends non-gated frames.
 
 ## Wakeword

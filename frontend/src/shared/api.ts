@@ -1,4 +1,4 @@
-// Minimal typed fetch wrapper for the JuStAI5 REST API.
+// Minimal typed fetch wrapper for the JuStAI REST API.
 // Auth uses an httpOnly session cookie; state-changing requests carry the
 // x-justai header (CSRF protection, see backend api/deps.py).
 

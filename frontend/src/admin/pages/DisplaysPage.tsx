@@ -56,7 +56,7 @@ interface Presentation {
 }
 
 const TEST_DOC = {
-  title: "JuStAI5 test display",
+  title: "JuStAI test display",
   layout: "dashboard",
   components: [
     { type: "heading", text: "Hello from the assistant" },

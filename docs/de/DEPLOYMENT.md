@@ -22,7 +22,7 @@
   dazu die Datenbank.
 * Netzwerk: Der Core-Container muss Kameras im LAN erreichen (Netz `media`, normales
   Bridge-Netz mit NAT). Für Multicast-Discovery (WS-Discovery, mDNS) ist ein
-  Bridge-Netz ungünstig; JuStAI5 sucht deshalb per Unicast in freigegebenen
+  Bridge-Netz ungünstig; JuStAI sucht deshalb per Unicast in freigegebenen
   Bereichen ([DEVICES.md](DEVICES.md#hinzufügen)).
 
 ## Installation
@@ -34,7 +34,7 @@ startet und wartet auf `/api/health`; erneuter Aufruf behält `.env` und baut ne
 Von Hand:
 
 ```bash
-git clone https://github.com/julianstricker/JuStAI5.git justai5 && cd justai5
+git clone https://github.com/naxeu/justai.git justai && cd justai
 cp .env.example .env        # optional: Port, Admin-Passwort, Google-API-Key, Netzbereiche
 docker compose up -d --build
 docker compose exec core cat /data/initial_admin_password.txt

@@ -22,7 +22,7 @@
   database.
 * Network: the core container must reach cameras in the LAN (network `media`, a normal
   bridge network with NAT). A bridge network is unfavourable for multicast discovery
-  (WS-Discovery, mDNS); JuStAI5 therefore searches by unicast in allowed ranges
+  (WS-Discovery, mDNS); JuStAI therefore searches by unicast in allowed ranges
   ([DEVICES.md](DEVICES.md#adding)).
 
 ## Installation
@@ -33,7 +33,7 @@ and Docker, creates `.env` with LAN address, network range and free ports, start
 waits for `/api/health`; running it again keeps `.env` and rebuilds). By hand:
 
 ```bash
-git clone https://github.com/julianstricker/JuStAI5.git justai5 && cd justai5
+git clone https://github.com/naxeu/justai.git justai && cd justai
 cp .env.example .env        # optional: port, admin password, Google API key, network ranges
 docker compose up -d --build
 docker compose exec core cat /data/initial_admin_password.txt

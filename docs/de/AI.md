@@ -29,7 +29,7 @@ aber nicht antworten.** Ein lokales LLM (z. B. Ollama, [DEPLOYMENT.md](DEPLOYMEN
 muss unter *KI-Provider → Modelle & Fallbacks* den Rollen zugeordnet werden. Das
 geschieht nicht automatisch, weil Größe und Qualität lokaler Modelle stark variieren.
 
-Sobald ein Google-Key eingetragen wird, füllt JuStAI5 **leere** Rollen mit den
+Sobald ein Google-Key eingetragen wird, füllt JuStAI **leere** Rollen mit den
 Gemini-Standards. Vom Admin konfigurierte Rollen bleiben unverändert.
 
 ## Sprachen
@@ -53,7 +53,7 @@ Der Assistent versteht und spricht **Deutsch, Englisch und Italienisch** (Einste
 ## Websuche und Standort
 
 Mit Gemini kann der Assistent im Internet nachschlagen (Google-Suche, von Gemini neben
-den eigenen Tools von JuStAI5 ausgeführt): Orte, Öffnungszeiten, Nachrichten, Preise. Das
+den eigenen Tools von JuStAI ausgeführt): Orte, Öffnungszeiten, Nachrichten, Preise. Das
 geht im Realtime- und im Pipeline-Modus. Schalter: *Plugins → Gemini → Google-Suche*
 (Standard an). Die Suchanfragen gehen an Google; über das kostenlose Kontingent hinaus
 kann Google die Suche berechnen.
@@ -69,7 +69,7 @@ darum bittet ([PLUGINS.md](PLUGINS.md#selbst-entwickelte-plugins)).
 
 * **Realtime** (Standard mit Google-Key): Audio geht direkt an Gemini Live,
   Antworten kommen als Audio zurück. Niedrigste Latenz, Unterbrechen im Modell.
-  JuStAI5 schickt nur Audio, das das Echo-Gate passiert hat.
+  JuStAI schickt nur Audio, das das Echo-Gate passiert hat.
 * **Pipeline**: lokale STT → LLM der Rolle `conversation` → lokale TTS. Jeder Schritt
   ist einzeln austauschbar und kann komplett lokal laufen. Sätze werden gestreamt
   (TTS beginnt mit dem ersten Satz).

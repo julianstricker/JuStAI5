@@ -1,17 +1,17 @@
-# JuStAI5
+# JuStAI
 
 *Deutsch · [English](../../README.md)*
 
-JuStAI5 macht aus gewöhnlichen Kameras, Mikrofonen, Lautsprechern und Bildschirmen
+JuStAI macht aus gewöhnlichen Kameras, Mikrofonen, Lautsprechern und Bildschirmen
 einen gemeinsamen, lokal betriebenen KI-Assistenten. Räume und *Interaction
 Endpoints* bestimmen, wo zugehört und wo geantwortet wird; ein deterministischer
 Output Router sorgt dafür, dass Antworten im Raum der Anfrage bleiben. Der Assistent
 reagiert nie auf seine eigene Stimme. Er spricht und versteht Deutsch, Englisch und
 Italienisch, und die Oberfläche gibt es in allen drei Sprachen.
 
-![So funktioniert JuStAI5: Geräte in jedem Raum, dein Server zu Hause, ein KI-Modell, Antworten im selben Raum](../img/how.de.svg)
+![So funktioniert JuStAI: Geräte in jedem Raum, dein Server zu Hause, ein KI-Modell, Antworten im selben Raum](../img/how.de.svg)
 
-![Das JuStAI5-Dashboard (Demo-Daten)](../img/shots/dashboard.de.webp)
+![Das JuStAI-Dashboard (Demo-Daten)](../img/shots/dashboard.de.webp)
 
 ```
 Kamera/Mikrofon ──► go2rtc ──► Audio-Engine (AEC, VAD, Wakeword, Arbitrierung)
@@ -38,7 +38,7 @@ Ein Befehl auf einem Linux-Rechner (x86_64) installiert alles, auch Docker, und
 fragt nur nach API-Key und Admin-Passwort:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/julianstricker/JuStAI5/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/naxeu/justai/main/scripts/install.sh | bash
 ```
 
 **Schritt für Schritt, ohne Vorkenntnisse:** [INSTALLATION.md](INSTALLATION.md)
@@ -47,8 +47,8 @@ curl -fsSL https://raw.githubusercontent.com/julianstricker/JuStAI5/main/scripts
 Von Hand, wenn Docker schon da ist (Compose ≥ 2.24):
 
 ```bash
-git clone https://github.com/julianstricker/JuStAI5.git
-cd JuStAI5
+git clone https://github.com/naxeu/justai.git
+cd justai
 cp .env.example .env        # GOOGLE_API_KEY=… eintragen (oder später in der Oberfläche)
 docker compose up -d --build
 ```
@@ -131,7 +131,7 @@ Was mit echter Hardware geprüft wurde und was nur simuliert ist, steht ehrlich 
 
 Copyright (C) 2026 Julian Stricker
 
-JuStAI5 steht unter der [GNU Affero General Public License v3.0](../../LICENSE) (AGPL-3.0). Du darfst
+JuStAI steht unter der [GNU Affero General Public License v3.0](../../LICENSE) (AGPL-3.0). Du darfst
 den Code nutzen, ändern und weitergeben. Wer eine geänderte Version als Dienst im Netzwerk
 anbietet, muss den Quelltext seiner Änderungen ebenfalls unter der AGPL bereitstellen.
 

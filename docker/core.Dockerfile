@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-# JuStAI5 core: API, admin UI, audio/vision/AI engines and builtin plugins.
+# JuStAI core: API, admin UI, audio/vision/AI engines and builtin plugins.
 
 # ---------------------------------------------------------------- frontend build
 FROM node:22.23.3-bookworm-slim AS frontend

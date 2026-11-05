@@ -5,7 +5,7 @@ description: "Fast local text-to-speech with Piper voices (German, Italian, Engl
 i18n:
   de: {name: "Piper (lokale Sprachausgabe)", description: "Schnelle lokale Text-to-Speech mit Piper-Stimmen (Deutsch, Italienisch, Englisch u. v. m.)."}
   it: {name: "Piper (sintesi vocale locale)", description: "Sintesi vocale locale veloce con le voci Piper (tedesco, italiano, inglese e molte altre)."}
-author: JuStAI5
+author: JuStAI
 license: MIT (Plugin), Piper GPL-3.0
 types: [tts]
 trust: builtin

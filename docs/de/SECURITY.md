@@ -2,7 +2,7 @@
 
 *Deutsch · [English](../SECURITY.md)*
 
-JuStAI5 hat Zugriff auf Kameras, Mikrofone und persönliche Informationen. Die
+JuStAI hat Zugriff auf Kameras, Mikrofone und persönliche Informationen. Die
 Grundsätze: lokal zuerst, minimale Rechte, nichts Stilles (Cloud-Fallbacks und
 sicherheitsrelevante Aktionen werden protokolliert), deterministische Regeln statt
 Modellentscheidungen bei Ausgabe und Rechten.
@@ -21,7 +21,7 @@ Modellentscheidungen bei Ausgabe und Rechten.
 | go2rtc ohne Zugangsdaten auf Platte | Streams werden zur Laufzeit im Speicher angelegt (`PATCH /api/streams`), `go2rtc.yaml` ist read-only gemountet und enthält keine Kameras |
 | Talkback-Endpunkt | `/internal/talkback/<zufälliges Token>.wav`, Token pro Lautsprecher, nur für go2rtc gedacht |
 
-Für den Zugriff aus dem Internet: JuStAI5 nicht direkt freigeben, sondern über VPN
+Für den Zugriff aus dem Internet: JuStAI nicht direkt freigeben, sondern über VPN
 (z. B. WireGuard) oder einen Reverse-Proxy mit TLS. Dann `JUSTAI_PUBLIC_URL` auf
 `https://…` setzen, damit Cookies als `Secure` markiert werden.
 

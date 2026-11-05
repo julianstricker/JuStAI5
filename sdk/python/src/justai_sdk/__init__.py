@@ -1,4 +1,4 @@
-"""JuStAI5 plugin SDK.
+"""JuStAI plugin SDK.
 
 Plugins depend only on this package. It contains the manifest model, the
 permission vocabulary, the event model, tool definitions and the capability ports

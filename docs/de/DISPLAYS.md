@@ -2,7 +2,7 @@
 
 *Deutsch · [English](../DISPLAYS.md)*
 
-Jeder Browser kann ein JuStAI5-Display sein: Fernseher mit Browser, Tablet, alter
+Jeder Browser kann ein JuStAI-Display sein: Fernseher mit Browser, Tablet, alter
 Laptop. Code: `backend/src/justai/display/`, Client: `frontend/src/display/`,
 Renderer: `frontend/src/shared/render/`.
 
@@ -24,7 +24,7 @@ Italienisch (Sprachauswahl auf dem Startbildschirm; Standard: Browsersprache).
 ## Geräte-App (Handy, Tablet, PC als Mikrofon, Lautsprecher, Kamera)
 
 Unter `https://HOST:8443/app` läuft derselbe Client als installierbare Web-App
-(PWA). Damit wird ein beliebiges Gerät zu einem vollwertigen JuStAI5-Gerät:
+(PWA). Damit wird ein beliebiges Gerät zu einem vollwertigen JuStAI-Gerät:
 
 | Funktion | Weg |
 | --- | --- |
@@ -39,7 +39,7 @@ Unter `https://HOST:8443/app` läuft derselbe Client als installierbare Web-App
    Adresse geöffnet, die noch nicht im HTTPS-Zertifikat steht (z. B. die
    LAN-IP des Servers), dort **Hinzufügen** klicken. Das Zertifikat wird neu
    ausgestellt und ohne Neustart geladen.
-2. Das **JuStAI5-Zertifikat** (lokale Zertifizierungsstelle) auf dem Gerät
+2. Das **JuStAI-Zertifikat** (lokale Zertifizierungsstelle) auf dem Gerät
    installieren; die Schritte für Android, iPhone/iPad, Windows und macOS stehen
    in derselben Karte. Ohne Installation genügt meist, die Browser-Warnung zu
    bestätigen; als App installieren lässt sich die Seite dann nicht.
@@ -47,7 +47,7 @@ Unter `https://HOST:8443/app` läuft derselbe Client als installierbare Web-App
    Kamera (aus/vorne/hinten) wählen, *Starten*. Danach über das Browser-Menü
    „App installieren“ bzw. „Zum Home-Bildschirm“.
 4. Den angezeigten Code unter *Displays & Geräte-App* freigeben und einen Raum
-   wählen. Mit Mikrofon **und** Lautsprecher legt JuStAI5 im Raum automatisch
+   wählen. Mit Mikrofon **und** Lautsprecher legt JuStAI im Raum automatisch
    einen Endpoint an (Rollen Mikrofon, Lautsprecher, ggf. Kamera und Display,
    Arbitrierungsgruppe des Raums). Werden Mikrofon und Lautsprecher erst später
    eingeschaltet, entsteht der Endpoint beim nächsten Verbinden.
@@ -55,7 +55,7 @@ Unter `https://HOST:8443/app` läuft derselbe Client als installierbare Web-App
 Die Auswahl lässt sich über das Zahnrad oben rechts ändern; das Gerät meldet sich
 dann mit den neuen Fähigkeiten an. Ist die Auswahl gespeichert, startet die App
 Mikrofon, Lautsprecher und Kamera beim Öffnen selbst, auch nach dem automatischen
-Neuladen bei einem JuStAI5-Update. Lässt der Browser den Ton ohne Berührung nicht
+Neuladen bei einem JuStAI-Update. Lässt der Browser den Ton ohne Berührung nicht
 zu, läuft die Kamera trotzdem, und oben rechts steht „Ton pausiert – einmal
 tippen“; eine Berührung irgendwo genügt. Nur wenn Mikrofon oder Kamera nicht
 starten (z. B. Zugriff noch nicht erlaubt), erscheint „Tippen zum Starten“. Solange die App
@@ -111,7 +111,7 @@ Fehlgründe, die der Assistent nennen kann:
 
 Optional schließt `duration_s` die Darstellung automatisch.
 
-**Updates:** Der Core schickt mit `ready` eine Build-Kennung. Hat sich JuStAI5
+**Updates:** Der Core schickt mit `ready` eine Build-Kennung. Hat sich JuStAI
 seit dem Laden der Seite geändert, lädt der Client nach dem Wiederverbinden
 automatisch neu. Displays wie Fernseher müssen also nach einem Update nicht von
 Hand aktualisiert werden. Wiederverbindung mit Backoff bis 15 s.

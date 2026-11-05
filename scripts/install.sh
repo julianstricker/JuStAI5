@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# JuStAI5 installer - one command from an empty Linux machine to a running assistant.
+# JuStAI installer - one command from an empty Linux machine to a running assistant.
 #
-#   curl -fsSL https://raw.githubusercontent.com/julianstricker/JuStAI5/main/scripts/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/naxeu/justai/main/scripts/install.sh | bash
 #
 # or, inside a checkout:  ./scripts/install.sh
 #
 # What it does: checks the platform, installs Docker if needed (asks first), downloads
-# JuStAI5 if it is not run from a checkout, creates .env (API key, admin password, LAN
+# JuStAI if it is not run from a checkout, creates .env (API key, admin password, LAN
 # address for the HTTPS certificate, network range for the camera search, free ports),
 # builds and starts everything and prints where to log in.
 # Running it again on an installed system keeps .env and only rebuilds/starts.
 #
 # Options:  -y, --yes       no questions (defaults; values from the environment)
-#           --dir DIR       where to download JuStAI5 (default: ./JuStAI5)
+#           --dir DIR       where to download JuStAI (default: ./justai)
 #           -h, --help
 # Environment (optional): GOOGLE_API_KEY, JUSTAI_ADMIN_PASSWORD, JUSTAI_HTTP_PORT,
 #           JUSTAI_HTTPS_PORT, JUSTAI_REPO_URL, COMPOSE_PROJECT_NAME,
@@ -23,8 +23,8 @@ set -euo pipefail
 # before the first command runs, otherwise e.g. docker or apt could swallow the rest of it.
 main() {
 
-REPO_URL="${JUSTAI_REPO_URL:-https://github.com/julianstricker/JuStAI5.git}"
-TARGET_DIR="$PWD/JuStAI5"
+REPO_URL="${JUSTAI_REPO_URL:-https://github.com/naxeu/justai.git}"
+TARGET_DIR="$PWD/justai"
 ASSUME_YES=0
 MIN_COMPOSE="2.24.0"
 HEALTH_TIMEOUT_S=300
@@ -41,7 +41,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     -y|--yes) ASSUME_YES=1 ;;
     --dir) TARGET_DIR="$2"; shift ;;
-    -h|--help) printf "%s\n" "$(L "Install JuStAI5" "JuStAI5 installieren" "Installare JuStAI5"): ./scripts/install.sh [-y|--yes] [--dir DIR]" \
+    -h|--help) printf "%s\n" "$(L "Install JuStAI" "JuStAI installieren" "Installare JuStAI"): ./scripts/install.sh [-y|--yes] [--dir DIR]" \
       "Details: $DOC_INSTALL"; exit 0 ;;
     *) echo "$(L "Unknown option" "Unbekannte Option" "Opzione sconosciuta"): $1 (--help)" >&2; exit 2 ;;
   esac
@@ -95,10 +95,10 @@ fi
 
 # ------------------------------------------------------------------ platform
 step "$(L "Checking the system" "System prüfen" "Controllo del sistema")"
-[ "$(uname -s)" = "Linux" ] || die "$(L "JuStAI5 runs on Linux" "JuStAI5 läuft auf Linux" "JuStAI5 funziona su Linux") ($(uname -s))."
+[ "$(uname -s)" = "Linux" ] || die "$(L "JuStAI runs on Linux" "JuStAI läuft auf Linux" "JuStAI funziona su Linux") ($(uname -s))."
 case "$(uname -m)" in
   x86_64|amd64) ok "Linux $(uname -m)" ;;
-  *) die "$(L "JuStAI5 needs an x86_64 processor" "JuStAI5 braucht einen x86_64-Prozessor" "JuStAI5 richiede un processore x86_64") ($(uname -m)). $(L "Raspberry Pi/ARM is not supported." "Raspberry Pi/ARM wird nicht unterstützt." "Raspberry Pi/ARM non è supportato.")" ;;
+  *) die "$(L "JuStAI needs an x86_64 processor" "JuStAI braucht einen x86_64-Prozessor" "JuStAI richiede un processore x86_64") ($(uname -m)). $(L "Raspberry Pi/ARM is not supported." "Raspberry Pi/ARM wird nicht unterstützt." "Raspberry Pi/ARM non è supportato.")" ;;
 esac
 mem_kb="$(awk '/MemTotal/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)"
 if [ "${mem_kb:-0}" -lt 3500000 ]; then
@@ -119,7 +119,7 @@ if ! command -v docker >/dev/null 2>&1; then
       NEED_RELOGIN=1
     fi
   else
-    die "$(L "JuStAI5 needs Docker. Guide" "Ohne Docker geht es nicht. Anleitung" "Senza Docker non funziona. Guida"): $DOC_INSTALL"
+    die "$(L "JuStAI needs Docker. Guide" "Ohne Docker geht es nicht. Anleitung" "Senza Docker non funziona. Guida"): $DOC_INSTALL"
   fi
 fi
 
@@ -143,7 +143,7 @@ version_ge "$compose_version" "$MIN_COMPOSE" \
 ok "Docker $($DOCKER version --format '{{.Server.Version}}' 2>/dev/null || echo '?'), Compose $compose_version"
 
 # ------------------------------------------------------------------ source
-step "$(L "Getting JuStAI5" "JuStAI5 bereitstellen" "Download di JuStAI5")"
+step "$(L "Getting JuStAI" "JuStAI bereitstellen" "Download di JuStAI")"
 is_checkout() { [ -f "$1/docker-compose.yml" ] && [ -f "$1/docker/core.Dockerfile" ]; }
 script_dir=""
 if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
@@ -269,17 +269,17 @@ HTTPS_PORT="$(sed -n 's/^JUSTAI_HTTPS_PORT=//p' .env | tail -n1)"; HTTPS_PORT="$
 step "$(L "Building and starting (a few minutes the first time, downloads about 3 GB)" "Bauen und starten (beim ersten Mal einige Minuten, lädt ca. 3 GB)" "Build e avvio (la prima volta alcuni minuti, scarica circa 3 GB)")"
 $DOCKER compose up -d --build </dev/null
 
-step "$(L "Waiting until JuStAI5 is ready" "Warten, bis JuStAI5 bereit ist" "Attesa che JuStAI5 sia pronto")"
+step "$(L "Waiting until JuStAI is ready" "Warten, bis JuStAI bereit ist" "Attesa che JuStAI sia pronto")"
 health() {
   if command -v curl >/dev/null 2>&1; then curl -fsS "http://127.0.0.1:$HTTP_PORT/api/health" 2>/dev/null
   else wget -qO- "http://127.0.0.1:$HTTP_PORT/api/health" 2>/dev/null; fi
 }
 waited=0
 until health | grep -q '"ok":true'; do
-  [ "$waited" -lt "$HEALTH_TIMEOUT_S" ] || die "$(L "JuStAI5 does not answer. Logs" "JuStAI5 antwortet nicht. Logs" "JuStAI5 non risponde. Log"): $DOCKER compose logs core"
+  [ "$waited" -lt "$HEALTH_TIMEOUT_S" ] || die "$(L "JuStAI does not answer. Logs" "JuStAI antwortet nicht. Logs" "JuStAI non risponde. Log"): $DOCKER compose logs core"
   sleep 3; waited=$((waited + 3))
 done
-ok "$(L "JuStAI5 is running" "JuStAI5 läuft" "JuStAI5 è in esecuzione")"
+ok "$(L "JuStAI is running" "JuStAI läuft" "JuStAI è in esecuzione")"
 
 # ------------------------------------------------------------------ summary
 IP="$(lan_ip)"
@@ -296,7 +296,7 @@ fi
 
 cat <<EOF
 
-${G}${B}$(L "JuStAI5 is installed." "JuStAI5 ist installiert." "JuStAI5 è installato.")${N}
+${G}${B}$(L "JuStAI is installed." "JuStAI ist installiert." "JuStAI è installato.")${N}
 
   $(L "Interface:    " "Oberfläche:   " "Interfaccia:  ") ${B}http://$IP:$HTTP_PORT${N}
   $(L "User:         " "Benutzer:     " "Utente:       ") admin

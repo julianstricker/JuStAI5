@@ -1,4 +1,4 @@
-# JuStAI5 - start everything with:  docker compose up -d --build
+# JuStAI - start everything with:  docker compose up -d --build
 name: justai5
 
 x-env-file: &env-file

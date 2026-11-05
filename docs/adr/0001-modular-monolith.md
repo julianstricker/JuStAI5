@@ -6,7 +6,7 @@
 
 ## Context
 
-JuStAI5 runs on a single home server. Audio needs low latency between microphone, echo
+JuStAI runs on a single home server. Audio needs low latency between microphone, echo
 handling, wakeword and conversation logic. The functional areas (audio, vision, memory,
 automations, displays) are closely coupled but should stay separately maintainable and
 movable later. The required models (openWakeWord, Silero, faster-whisper, Piper,

@@ -54,7 +54,7 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
       <Paper withBorder shadow="md" p="xl" w={360}>
         <form onSubmit={submit}>
           <Stack>
-            <Title order={2}>JuStAI5</Title>
+            <Title order={2}>JuStAI</Title>
             <Text c="dimmed" size="sm">
               {t("login.tagline")}
             </Text>

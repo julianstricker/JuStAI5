@@ -1,4 +1,4 @@
-"""HTTPS for the device app: CA download, status, adding the address JuStAI5 is used under."""
+"""HTTPS for the device app: CA download, status, adding the address JuStAI is used under."""
 
 from __future__ import annotations
 

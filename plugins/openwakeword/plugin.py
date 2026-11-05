@@ -20,7 +20,7 @@ PHRASES = {
     "ok_nabu": "Okay Nabu",
     "hey_justi": "Hey Justy",
 }
-PLUGIN_MODELS_DIR = Path(__file__).parent / "models"  # models shipped with JuStAI5 itself
+PLUGIN_MODELS_DIR = Path(__file__).parent / "models"  # models shipped with JuStAI itself
 
 
 def model_id(path: Path) -> str:

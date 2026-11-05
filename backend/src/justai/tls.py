@@ -1,11 +1,11 @@
 """Local HTTPS for the device app.
 
 Browsers only allow microphone and camera access (and app installation) on secure
-origins. JuStAI5 therefore runs its own small certificate authority:
+origins. JuStAI therefore runs its own small certificate authority:
 
 * the CA is created once in ``<data>/tls`` (10 years) and can be installed on phones,
   tablets and PCs (``/api/tls/ca.crt``) - then the HTTPS port works without warnings;
-* the server certificate lists all names/addresses JuStAI5 is reached under. An admin
+* the server certificate lists all names/addresses JuStAI is reached under. An admin
   adds the address they use in the UI; the certificate is re-issued and loaded into
   the running HTTPS server without restart.
 
@@ -121,8 +121,8 @@ class LocalTls:
 
     def _create_ca(self) -> None:
         key = ec.generate_private_key(ec.SECP256R1())
-        name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "JuStAI5 lokale Zertifizierungsstelle"),
-                          x509.NameAttribute(NameOID.ORGANIZATION_NAME, "JuStAI5")])
+        name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "JuStAI lokale Zertifizierungsstelle"),
+                          x509.NameAttribute(NameOID.ORGANIZATION_NAME, "JuStAI")])
         now = dt.datetime.now(dt.UTC)
         cert = (x509.CertificateBuilder().subject_name(name).issuer_name(name).public_key(key.public_key())
                 .serial_number(x509.random_serial_number())

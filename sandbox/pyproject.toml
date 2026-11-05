@@ -1,7 +1,7 @@
 [project]
 name = "justai-sandbox"
 version = "0.1.0"
-description = "Isolated runner for untrusted JuStAI5 plugins and generated tools"
+description = "Isolated runner for untrusted JuStAI plugins and generated tools"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "justai-sdk",

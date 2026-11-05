@@ -9,7 +9,7 @@ from justai_sdk import Plugin, ToolContext, ToolDefinition, ToolResult
 from pydantic import BaseModel, Field
 
 URL = "https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
-HEADERS = {"User-Agent": "Mozilla/5.0 (JuStAI5 home assistant)"}
+HEADERS = {"User-Agent": "Mozilla/5.0 (JuStAI home assistant)"}
 PERIODS = {"1d": ("1d", "5m"), "5d": ("5d", "30m"), "1mo": ("1mo", "1d"), "6mo": ("6mo", "1d"),
            "1y": ("1y", "1wk"), "5y": ("5y", "1mo")}
 

@@ -35,7 +35,7 @@ def create_app(settings: Settings | None = None, *, start_container: bool = True
         finally:
             await container.stop()
 
-    app = FastAPI(title="JuStAI5", version=__version__, lifespan=lifespan,
+    app = FastAPI(title="JuStAI", version=__version__, lifespan=lifespan,
                   docs_url="/api/docs", openapi_url="/api/openapi.json", redoc_url=None)
     app.state.tls = None
     if settings.tls_enabled:

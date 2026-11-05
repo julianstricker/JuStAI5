@@ -5,7 +5,7 @@ description: "Gemini models as LLM (text, images, tools) and as native real-time
 i18n:
   de: {name: "Google Gemini", description: "Gemini-Modelle als LLM (Text, Bilder, Tools) und als native Echtzeit-Sprachmodelle (Live API). Cloud-Dienst."}
   it: {name: "Google Gemini", description: "Modelli Gemini come LLM (testo, immagini, strumenti) e come modelli vocali nativi in tempo reale (Live API). Servizio cloud."}
-author: JuStAI5
+author: JuStAI
 license: MIT
 types: [ai_provider, realtime_ai]
 trust: builtin

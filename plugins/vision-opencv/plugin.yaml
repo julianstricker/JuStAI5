@@ -5,7 +5,7 @@ description: "Object detection with YOLOX (80 COCO classes, e.g. person, dog, ca
 i18n:
   de: {name: "Lokale Bildanalyse (OpenCV)", description: "Objekterkennung mit YOLOX (80 COCO-Klassen, u. a. Person, Hund, Katze, Auto), Gesichtserkennung mit YuNet und Gesichtsmerkmale mit SFace. Läuft lokal auf der CPU (ONNX Runtime / OpenCV). Modelle aus dem OpenCV Model Zoo (Apache-2.0/MIT)."}
   it: {name: "Analisi locale delle immagini (OpenCV)", description: "Rilevamento oggetti con YOLOX (80 classi COCO, ad es. persona, cane, gatto, auto), rilevamento volti con YuNet e caratteristiche del volto con SFace. Funziona in locale sulla CPU (ONNX Runtime / OpenCV). Modelli dall'OpenCV Model Zoo (Apache-2.0/MIT)."}
-author: JuStAI5
+author: JuStAI
 license: MIT (Plugin); Modelle Apache-2.0 / MIT
 types: [vision, recognition]
 trust: builtin

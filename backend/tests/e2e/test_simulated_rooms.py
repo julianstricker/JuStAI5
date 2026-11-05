@@ -1,4 +1,4 @@
-"""End-to-end tests against a running JuStAI5 instance with simulated devices.
+"""End-to-end tests against a running JuStAI instance with simulated devices.
 
 Covers acceptance criteria 2-8 without hardware: real wakeword model, real local
 STT/TTS, the configured LLM, simulated rooms with acoustic echo.

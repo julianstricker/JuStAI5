@@ -127,7 +127,7 @@ class SimCamera:
         image = cv2.imread(image_path) if image_path and Path(image_path).exists() else None
         if image is None:
             image = np.full((720, 1920, 3), (90, 110, 120), np.uint8)
-            cv2.putText(image, "JuStAI5 simulated camera", (60, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (240, 240, 240), 3)
+            cv2.putText(image, "JuStAI simulated camera", (60, 100), cv2.FONT_HERSHEY_SIMPLEX, 2, (240, 240, 240), 3)
         self.panorama = image
         self.ptz = ptz
         # Viewport centre in [-1, 1] of the free travel range.
@@ -211,7 +211,7 @@ class SimDriver:
                 caps |= {Capability.PTZ_PAN, Capability.PTZ_TILT, Capability.PTZ_PRESETS,
                          Capability.PTZ_ABSOLUTE}
         return ProbeResult(ok=True, capabilities=sorted(caps),
-                           info=DeviceInfo(manufacturer="JuStAI5", model="Simulator"))
+                           info=DeviceInfo(manufacturer="JuStAI", model="Simulator"))
 
     async def open(self, device_id: str, config: dict[str, Any], probe: ProbeResult) -> SimHandle:
         room = AcousticRoom(AcousticParams(

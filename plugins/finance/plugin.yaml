@@ -5,7 +5,7 @@ description: "Prices of stocks, ETFs, indices and crypto plus price histories. D
 i18n:
   de: {name: "Börsenkurse", description: "Aktien-, ETF-, Index- und Krypto-Kurse sowie Kursverläufe. Datenquelle: die inoffizielle Yahoo-Finance-Chart-Schnittstelle (ohne Schlüssel, ohne Garantie, leicht verzögert). Nicht für Handelsentscheidungen geeignet."}
   it: {name: "Quotazioni di borsa", description: "Quotazioni di azioni, ETF, indici e cripto e andamenti storici. Fonte: l'interfaccia non ufficiale dei grafici di Yahoo Finance (senza chiave, senza garanzia, leggermente ritardata). Non adatto a decisioni di trading."}
-author: JuStAI5
+author: JuStAI
 license: MIT
 types: [tool, integration]
 entrypoint: plugin:FinancePlugin

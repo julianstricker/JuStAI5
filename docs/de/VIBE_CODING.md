@@ -1,25 +1,25 @@
-# Vibe Coding: JuStAI5 selbst weiterentwickeln
+# Vibe Coding: JuStAI selbst weiterentwickeln
 
 *Deutsch · [English](../VIBE_CODING.md)*
 
-JuStAI5 wurde per Vibe Coding gebaut: Man beschreibt einem KI-Coding-Assistenten, was man
+JuStAI wurde per Vibe Coding gebaut: Man beschreibt einem KI-Coding-Assistenten, was man
 haben möchte, probiert das Ergebnis aus und steuert mit dem nächsten Satz nach, statt jede
 Zeile selbst zu tippen. Das Projekt ist Open Source ([AGPL-3.0](../../LICENSE)), also kann
 das jeder genauso machen. Du musst kein Profi-Programmierer sein. Du brauchst Geduld,
 Neugier und die Gewohnheit, das Ergebnis des Assistenten zu prüfen.
 
-![Drei Wege, JuStAI5 weiterzubauen](../img/vibe.de.svg)
+![Drei Wege, JuStAI weiterzubauen](../img/vibe.de.svg)
 
 Es gibt drei Wege mitzumachen, von „gar kein Code" bis „den Kern ändern". Fang beim ersten
 an und geh nur weiter, wenn du es brauchst.
 
 | Weg | Du brauchst | Ergebnis |
 | --- | --- | --- |
-| [1. JuStAI5 selbst fragen](#1-justai5-selbst-fragen) | eine laufende Installation | ein neues Tool oder Plugin, vom Assistenten geschrieben |
+| [1. JuStAI selbst fragen](#1-justai-selbst-fragen) | eine laufende Installation | ein neues Tool oder Plugin, vom Assistenten geschrieben |
 | [2. Plugin mit einem Coding-Assistenten bauen](#2-plugin-mit-einem-coding-assistenten-bauen) | einen Rechner mit Python-Werkzeugen und einen KI-Coding-Assistenten | ein Plugin, das du zippen und installieren kannst |
 | [3. Den Kern ändern](#3-den-kern-ändern) | die vollständige Entwicklungsumgebung | ein neues Feature oder ein Fix, auf Wunsch als Pull Request |
 
-## 1. JuStAI5 selbst fragen
+## 1. JuStAI selbst fragen
 
 Der einfachste Weg: Sag oder schreib, was dir fehlt. Wenn kein vorhandenes Tool es
 abdeckt, schreibt der Assistent selbst ein Plugin („Bau ein Plugin, das mir sagt, wenn
@@ -45,8 +45,8 @@ Dateien in einem Ordner lesen und ändern kann (zum Beispiel Claude Code, Cursor
 Copilot oder ein ähnliches Werkzeug).
 
 ```bash
-git clone https://github.com/julianstricker/JuStAI5.git
-cd JuStAI5
+git clone https://github.com/naxeu/justai.git
+cd justai
 uv sync --all-packages
 ```
 
@@ -57,7 +57,7 @@ Eine kurze Kontextdatei im Projektordner (viele Assistenten lesen `CLAUDE.md` od
 `AGENTS.md` automatisch) erspart dir Wiederholungen. Ein Startpunkt:
 
 ```markdown
-# JuStAI5 – Kontext für den Coding-Assistenten
+# JuStAI – Kontext für den Coding-Assistenten
 
 - Lies docs/PLUGINS.md und docs/DEVELOPMENT.md, bevor du etwas änderst.
 - Neue Funktionen sind ein Plugin unter plugins/<id>/ mit plugin.yaml, plugin.py, tests/.
@@ -177,16 +177,16 @@ Die Konventionen, an die sich der Assistent halten muss, stehen in
 
 ## Fragen, Fehler und Ideen
 
-Alles läuft auf GitHub im [JuStAI5-Repository](https://github.com/julianstricker/JuStAI5):
+Alles läuft auf GitHub im [JuStAI-Repository](https://github.com/naxeu/justai):
 
 | Ich möchte… | Wo |
 | --- | --- |
-| eine Frage stellen, zeigen was ich gebaut habe, über Ideen reden | [Discussions](https://github.com/julianstricker/JuStAI5/discussions) |
-| einen Fehler melden | [Issues → Bug report](https://github.com/julianstricker/JuStAI5/issues/new?template=bug_report.yml) |
-| ein Feature vorschlagen | [Issues → Feature request](https://github.com/julianstricker/JuStAI5/issues/new?template=feature_request.yml) |
-| selbst etwas beheben oder bauen | ein [Pull Request](https://github.com/julianstricker/JuStAI5/pulls) (siehe die drei Wege oben) |
+| eine Frage stellen, zeigen was ich gebaut habe, über Ideen reden | [Discussions](https://github.com/naxeu/justai/discussions) |
+| einen Fehler melden | [Issues → Bug report](https://github.com/naxeu/justai/issues/new?template=bug_report.yml) |
+| ein Feature vorschlagen | [Issues → Feature request](https://github.com/naxeu/justai/issues/new?template=feature_request.yml) |
+| selbst etwas beheben oder bauen | ein [Pull Request](https://github.com/naxeu/justai/pulls) (siehe die drei Wege oben) |
 
-Fehler und Feature-Wünsche werden als [Issues](https://github.com/julianstricker/JuStAI5/issues)
+Fehler und Feature-Wünsche werden als [Issues](https://github.com/naxeu/justai/issues)
 gesammelt. Bei einem Fehler bitte angeben, was du gemacht hast, was du erwartet hast, was
 passiert ist, deine Hardware (zum Beispiel das Kameramodell) und, wenn möglich, die
 Logzeilen. Poste nie Passwörter, API-Keys oder Kamera-Adressen mit Zugangsdaten. Englisch
@@ -194,7 +194,7 @@ und Deutsch sind beide willkommen.
 
 ## Lizenz
 
-JuStAI5 steht unter der [AGPL-3.0](../../LICENSE): Du darfst es nutzen, ändern und
+JuStAI steht unter der [AGPL-3.0](../../LICENSE): Du darfst es nutzen, ändern und
 weitergeben, und wer eine geänderte Version als Netzwerkdienst anbietet, muss den Quellcode
 der Änderungen unter derselben Lizenz veröffentlichen. Das Plugin-SDK (`sdk/python`) steht
 unter MIT, damit deine Plugins jede Lizenz haben können. Siehe den Lizenzabschnitt im

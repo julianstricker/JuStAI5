@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Download all models JuStAI5 needs for fully local operation.
+"""Download all models JuStAI needs for fully local operation.
 
 Used at image build time (``docker/core.Dockerfile``) so the running system needs no
 internet access for wakeword, VAD, STT, TTS, embeddings and vision. Files with a

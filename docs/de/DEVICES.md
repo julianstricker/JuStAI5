@@ -47,7 +47,7 @@ legt der Core nur im Speicher an (`PATCH /api/streams`), sie landen nie in
 | **Andere ONVIF-/RTSP-Kameras** (Reolink, Hikvision, Dahua, Amcrest, …) | ⚪ ungetestet | der Treiber `onvif` ist implementiert und durch Unit-Tests abgedeckt, lief aber noch nicht an echten Kameras außer einer Tapo. Video und Schnappschüsse funktionieren sehr wahrscheinlich; **Lautsprecher (Backchannel) und PTZ hängen vom Modell ab** |
 
 Auf echter Hardware wurde sonst nichts ausprobiert. Kauf bitte nicht allein wegen dieser
-Tabelle eine Kamera für JuStAI5: **Der Lautsprecher ist der kritische Teil.** Eine Kamera
+Tabelle eine Kamera für JuStAI: **Der Lautsprecher ist der kritische Teil.** Eine Kamera
 ohne funktionierenden Audio-Backchannel lässt sich trotzdem als Mikrofon und Auge nutzen.
 Die Antwort kommt dann von einem anderen Gerät (Tablet, Bildschirm, Smart Speaker).
 
@@ -57,7 +57,7 @@ Jede Kamera, die ONVIF oder RTSP spricht, ist einen Versuch wert (*Geräte* → 
 oder **+ Gerät**, Treiber `onvif`). Rückmeldungen sind sehr willkommen, auch negative:
 
 * Eröffne ein Issue mit der Vorlage
-  [Kamera-Bericht](https://github.com/julianstricker/JuStAI5/issues/new?template=camera_report.yml):
+  [Kamera-Bericht](https://github.com/naxeu/justai/issues/new?template=camera_report.yml):
   Modell, Firmware, Treiber und was funktioniert hat (Video, Mikrofon, Lautsprecher, PTZ).
 * Nenne, welche Fähigkeiten der Gerätedialog nach dem Test anzeigt (Video, Mikrofon,
   Lautsprecher, PTZ), und hänge passende Logzeilen an. **Entferne vorher Passwörter und
@@ -79,10 +79,10 @@ Typische Beiträge:
   Xiaomi, …),
 * ein **Fix oder Test** für eine Kamera, die fast funktioniert.
 
-Pull Requests und Plugins sind in [JuStAI5](https://github.com/julianstricker/JuStAI5)
+Pull Requests und Plugins sind in [JuStAI](https://github.com/naxeu/justai)
 willkommen. Die Schnittstellen stehen unter [Plugins](PLUGINS.md), die Testumgebung unter
 [Entwicklung](DEVELOPMENT.md). Unsicher, wo du anfangen sollst? Eröffne eine
-[Discussion](https://github.com/julianstricker/JuStAI5/discussions) mit dem Kameramodell.
+[Discussion](https://github.com/naxeu/justai/discussions) mit dem Kameramodell.
 
 ## Treiber
 
@@ -167,7 +167,7 @@ direkt an der Kamera kontrolliert.
 ## Deaktivieren statt Löschen
 
 Im Geräte-Dialog oben rechts: Schalter **Aktiviert**. Ein deaktiviertes Gerät
-behält Konfiguration, Zugangsdaten, Raum- und Endpoint-Zuordnung, aber JuStAI5
+behält Konfiguration, Zugangsdaten, Raum- und Endpoint-Zuordnung, aber JuStAI
 baut keine Verbindung auf: kein Stream in go2rtc, kein Mikrofon, keine Bildanalyse,
 keine Ausgabe dorthin. Endpoints zeigen das Gerät als „(deaktiviert)“, die
 Audio-Diagnose meldet, dass der Endpoint nicht zuhört. Nach dem Aktivieren ist das

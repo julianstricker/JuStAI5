@@ -29,7 +29,7 @@ answer.** A local LLM (e.g. Ollama, [DEPLOYMENT.md](DEPLOYMENT.md#local-ai-with-
 has to be assigned to the roles under *AI providers → Models & fallbacks*. This does not
 happen automatically because size and quality of local models vary a lot.
 
-As soon as a Google key is entered, JuStAI5 fills **empty** roles with the Gemini
+As soon as a Google key is entered, JuStAI fills **empty** roles with the Gemini
 defaults. Roles configured by the admin stay unchanged.
 
 ## Languages
@@ -55,7 +55,7 @@ The assistant understands and speaks **English, German and Italian** (setting
 ## Web search and location
 
 With Gemini the assistant can look things up on the web (Google Search, run by Gemini
-next to JuStAI5's own tools): places, opening hours, news, prices. It works in realtime
+next to JuStAI's own tools): places, opening hours, news, prices. It works in realtime
 and pipeline mode. Switch: *Plugins → Gemini → Google Search* (default on). The search
 queries go to Google; beyond the free quota Google may charge for search grounding.
 
@@ -69,7 +69,7 @@ for it ([PLUGINS.md](PLUGINS.md#self-developed-plugins)).
 ## Conversation mode
 
 * **Realtime** (default with Google key): audio goes directly to Gemini Live, answers come
-  back as audio. Lowest latency, interruption in the model. JuStAI5 only sends audio that
+  back as audio. Lowest latency, interruption in the model. JuStAI only sends audio that
   passed the echo gate.
 * **Pipeline**: local STT → LLM of the role `conversation` → local TTS. Every step can be
   replaced individually and can run completely locally. Sentences are streamed (TTS starts

@@ -6,7 +6,7 @@
 
 ## Kontext
 
-JuStAI5 läuft auf einem einzelnen Heimserver. Audio braucht niedrige Latenz zwischen
+JuStAI läuft auf einem einzelnen Heimserver. Audio braucht niedrige Latenz zwischen
 Mikrofon, Echo-Behandlung, Wakeword und Gesprächslogik. Die Funktionsbereiche
 (Audio, Vision, Gedächtnis, Automationen, Displays) sind eng gekoppelt, sollen aber
 getrennt wartbar und später auslagerbar bleiben. Die benötigten Modelle (openWakeWord,

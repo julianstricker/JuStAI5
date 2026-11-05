@@ -207,7 +207,7 @@ class Container:
             await self.topology.refresh()
 
         self.bus.subscribe("device.status.changed", on_device_event, name="topology-refresh")
-        log.info("JuStAI5 core started")
+        log.info("JuStAI core started")
 
     async def _build_extensions(self) -> None:
         """Optional feature modules (memory, vision, automation, display, ...)."""
@@ -217,7 +217,7 @@ class Container:
         self.memory = self.extensions.get("memory")
 
     async def stop(self) -> None:
-        log.info("JuStAI5 core stopping")
+        log.info("JuStAI core stopping")
         with contextlib.suppress(Exception):
             await self.conversations.end_all()
         for ext in reversed(list(self.extensions.values())):

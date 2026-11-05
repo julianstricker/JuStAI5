@@ -2,7 +2,7 @@
 
 *[Deutsch](de/ARCHITECTURE.md) · English*
 
-JuStAI5 is a **modular monolith** with clear ports & adapters: one core process (FastAPI,
+JuStAI is a **modular monolith** with clear ports & adapters: one core process (FastAPI,
 asyncio) contains the domain modules. Hardware, AI providers and integrations come
 exclusively through plugins. Whatever is not trusted runs in a separate sandbox container.
 Rationale: [ADR 0001](adr/0001-modular-monolith.md).

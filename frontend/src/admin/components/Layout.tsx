@@ -90,7 +90,7 @@ export function Layout() {
             <ThemeIcon variant="gradient" size="lg" radius="xl">
               <IconRobot size={20} />
             </ThemeIcon>
-            <Text fw={700}>JuStAI5</Text>
+            <Text fw={700}>JuStAI</Text>
           </Group>
           <Group gap="md">
             <PrivacyIndicator />

@@ -2,7 +2,7 @@
 
 *[Deutsch](de/SECURITY.md) · English*
 
-JuStAI5 has access to cameras, microphones and personal information. The principles:
+JuStAI has access to cameras, microphones and personal information. The principles:
 local first, minimal permissions, nothing silent (cloud fallbacks and security-relevant
 actions are logged), deterministic rules instead of model decisions for output and
 permissions.
@@ -21,7 +21,7 @@ permissions.
 | go2rtc without credentials on disk | streams are created in memory at runtime (`PATCH /api/streams`), `go2rtc.yaml` is mounted read-only and contains no cameras |
 | Talkback endpoint | `/internal/talkback/<random token>.wav`, token per speaker, only meant for go2rtc |
 
-For access from the internet: do not expose JuStAI5 directly, but use a VPN (e.g.
+For access from the internet: do not expose JuStAI directly, but use a VPN (e.g.
 WireGuard) or a reverse proxy with TLS. Then set `JUSTAI_PUBLIC_URL` to `https://…` so
 cookies are marked `Secure`.
 

@@ -97,7 +97,7 @@ def _example() -> str:
     return "\n\n".join(parts)
 
 
-GEN_PROMPT = """You develop a plugin for the home assistant platform JuStAI5 (Python 3.12, SDK
+GEN_PROMPT = """You develop a plugin for the home assistant platform JuStAI (Python 3.12, SDK
 `justai_sdk`). The plugin runs isolated in a sandbox: no file system, no direct network.
 Network access ONLY via `await self.ctx.http.get/post(...)` to hosts of the network_allowlist.
 Persistence ONLY via `self.ctx.store`. Camera images via `await self.ctx.services.snapshot(device_id)`

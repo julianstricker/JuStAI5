@@ -1,4 +1,4 @@
-// AudioWorklet processors of the JuStAI5 device app.
+// AudioWorklet processors of the JuStAI device app.
 // "justai-capture": microphone -> 20 ms frames of 16 kHz PCM16 (posted to the main thread)
 // "justai-playback": 16 kHz PCM16 from the core -> speaker, with a small jitter buffer
 

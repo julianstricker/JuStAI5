@@ -1,4 +1,4 @@
-# What JuStAI5 can do – examples to try
+# What JuStAI can do – examples to try
 
 *[Deutsch](de/BEISPIELE.md) · English*
 
@@ -166,7 +166,7 @@ afterwards the assistant uses it right away.
 * Searching a whole room only works with pan/tilt cameras; otherwise the assistant only
   sees the current image.
 * Looking at and searching for arbitrary things (keys, notes, light) needs an image model,
-  by default Gemini. Locally JuStAI5 recognises people, faces, animals and about 80
+  by default Gemini. Locally JuStAI recognises people, faces, animals and about 80
   everyday objects (car, bicycle, bottle, laptop, phone …).
 * Cameras that mute their microphone while playing (e.g. Tapo C200) cannot be interrupted
   while the assistant speaks.

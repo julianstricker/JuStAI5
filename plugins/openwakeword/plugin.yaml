@@ -5,7 +5,7 @@ description: "Local wakeword detection with openWakeWord (ONNX). Runs completely
 i18n:
   de: {name: "openWakeWord", description: "Lokale Wakeword-Erkennung mit openWakeWord (ONNX). Läuft vollständig offline."}
   it: {name: "openWakeWord", description: "Rilevamento locale della parola di attivazione con openWakeWord (ONNX). Funziona completamente offline."}
-author: JuStAI5
+author: JuStAI
 license: Apache-2.0 (openWakeWord)
 types: [wakeword]
 trust: builtin

@@ -1,4 +1,4 @@
-// JuStAI5 app for phones, tablets and PCs (also the plain browser display).
+// JuStAI app for phones, tablets and PCs (also the plain browser display).
 // Pairs with the core via a short code. Depending on the chosen features the device
 // is a screen and/or microphone, speaker and camera of the assistant. Presentations
 // are acknowledged only after they are on screen.
@@ -159,7 +159,7 @@ function useConnection(
           }));
         }
         if (msg.type === "ready") {
-          // A different build after reconnecting means JuStAI5 was updated: load the new client.
+          // A different build after reconnecting means JuStAI was updated: load the new client.
           if (msg.build && loadedBuild && msg.build !== loadedBuild)
             window.location.reload();
           loadedBuild = msg.build ?? loadedBuild;

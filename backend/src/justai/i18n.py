@@ -1,4 +1,4 @@
-"""Texts JuStAI5 speaks or shows directly, in the user's language (de, it, en).
+"""Texts JuStAI speaks or shows directly, in the user's language (de, it, en).
 
 Everything that goes to a language model (system prompt, tool descriptions, tool results)
 is English: models follow English instructions best and answer in the user's language

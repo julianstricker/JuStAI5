@@ -5,7 +5,7 @@ description: "Generic IP cameras via ONVIF (stream URIs, PTZ, presets) or a dire
 i18n:
   de: {name: "ONVIF- und RTSP-Kameras, mDNS-Suche", description: "Generische IP-Kameras über ONVIF (Stream-URIs, PTZ, Presets) oder eine direkte RTSP-URL. Gerätesuche per WS-Discovery (Unicast-Probe in autorisierten Bereichen) und mDNS (Chromecast/Google TV, AirPlay, Home Assistant)."}
   it: {name: "Telecamere ONVIF e RTSP, ricerca mDNS", description: "Telecamere IP generiche tramite ONVIF (URI degli stream, PTZ, preset) o un URL RTSP diretto. Ricerca dispositivi tramite WS-Discovery (probe unicast negli intervalli autorizzati) e mDNS (Chromecast/Google TV, AirPlay, Home Assistant)."}
-author: JuStAI5
+author: JuStAI
 license: MIT
 types: [device, discovery, ptz]
 trust: builtin

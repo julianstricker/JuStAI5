@@ -24,7 +24,7 @@ position relative to the home position.
 * **Home position**: Tapo cameras have no built-in home position. *Save as home* in the
   PTZ panel stores the current view as the camera preset "home" (an existing one is
   replaced); *Home* moves there (checked live: back to < 1 pixel). Without a saved home
-  position *Home* undoes the movements JuStAI5 has made since the start (approximately,
+  position *Home* undoes the movements JuStAI has made since the start (approximately,
   since Tapo only moves relatively); if there are none, a hint appears instead of an
   error.
 * **Manual control has priority**: every manual command pauses a running tracking for

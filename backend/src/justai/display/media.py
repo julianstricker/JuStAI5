@@ -6,7 +6,7 @@ Binary messages carry one type byte followed by the payload:
 * ``0x02`` client -> core: camera frame, JPEG
 * ``0x11`` core -> client: speaker, PCM16 little-endian, mono, 16 kHz
 
-The device then is an ordinary JuStAI5 device: its microphone feeds wakeword and
+The device then is an ordinary JuStAI device: its microphone feeds wakeword and
 conversations, its camera vision and face recognition, its speaker the Output Router.
 """
 

@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Question or idea / Frage oder Idee
-    url: https://github.com/julianstricker/JuStAI5/discussions
+    url: https://github.com/naxeu/justai/discussions
     about: Ask questions and share what you built in Discussions.
   - name: Documentation / Dokumentation
-    url: https://julianstricker.github.io/JuStAI-Web/docs/overview/
+    url: https://justai.naxeu.com/docs/overview/
     about: Installation, devices, plugins and more.

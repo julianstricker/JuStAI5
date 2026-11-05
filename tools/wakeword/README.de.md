@@ -5,7 +5,7 @@
 Diese Skripte trainieren ein openWakeWord-Modell (`<name>.onnx`) für eine beliebige Phrase,
 auf einer normalen CPU und ohne Google Colab. Damit wurde das mitgelieferte Modell
 **Hey Justy** erzeugt. Das Ergebnis ist ein gewöhnlicher openWakeWord-Klassifikator (Eingang
-`[1, 16, 96]`, Ausgang `[1, 1]`), den JuStAI5 unter *Räume → Endpoint bearbeiten → Wakeword
+`[1, 16, 96]`, Ausgang `[1, 1]`), den JuStAI unter *Räume → Endpoint bearbeiten → Wakeword
 → Eigenes Wakeword hochladen* annimmt.
 
 So funktioniert es: [Piper](https://github.com/OHF-Voice/piper1-gpl)-Stimmen sprechen die
@@ -14,7 +14,7 @@ Namen, andere Wakewords). Die Clips werden mit Rauschen, Hall und anderer Sprach
 in openWakeWord-Embeddings umgerechnet, und ein kleiner Klassifikator wird gegen diese und
 echte Hintergrundaufnahmen des openWakeWord-Projekts trainiert und als ONNX exportiert.
 
-Voraussetzungen: Linux, Python 3.10+, `curl`, Docker mit laufendem JuStAI5-Core-Container
+Voraussetzungen: Linux, Python 3.10+, `curl`, Docker mit laufendem JuStAI-Core-Container
 (`justai5-core-1`; Feature-Modelle und openWakeWord-Paket werden von dort kopiert, damit die
 Embeddings denen im Betrieb entsprechen), etwa 6 GB Platz, 8 CPU-Kerne und rund 1,5
 Stunden. Keine GPU nötig.
@@ -49,10 +49,10 @@ Alltag ein anderes Wort fälschlich aus, trage es in `ADVERSARIAL2` ein und trai
 
 ```bash
 python=venv/bin/python
-$python ../pfad/zu/JuStAI5/tools/wakeword/generate_clips.py pos 6000
-$python ../pfad/zu/JuStAI5/tools/wakeword/generate_clips.py adv 2500
-$python ../pfad/zu/JuStAI5/tools/wakeword/generate_clips.py adv2 3500
-$python ../pfad/zu/JuStAI5/tools/wakeword/generate_clips.py neg 3500
+$python ../pfad/zu/justai/tools/wakeword/generate_clips.py pos 6000
+$python ../pfad/zu/justai/tools/wakeword/generate_clips.py adv 2500
+$python ../pfad/zu/justai/tools/wakeword/generate_clips.py adv2 3500
+$python ../pfad/zu/justai/tools/wakeword/generate_clips.py neg 3500
 ```
 
 (Warnungen wie „Missing phoneme from id map“ sind harmlos.) Wenn du bei der Aussprache
@@ -62,7 +62,7 @@ Float-Arrays), `clips/pos.json` Stimme und Text je Clip.
 ## 4. Trainieren und exportieren (etwa 1 Stunde, der erste Lauf berechnet alle Embeddings)
 
 ```bash
-MODEL_NAME=hey_justi $python ../pfad/zu/JuStAI5/tools/wakeword/train.py
+MODEL_NAME=hey_justi $python ../pfad/zu/justai/tools/wakeword/train.py
 ```
 
 Alle 750 Schritte zeigt das Skript die Erkennungsrate auf zurückgehaltenen synthetischen
@@ -81,7 +81,7 @@ synthetischen Stimmen sind optimistisch: Teste mit deiner eigenen Stimme, in dei
 und mit Hintergrundgeräuschen. Verpasst es dich oder löst es bei anderen Wörtern aus,
 ergänze die Listen aus Schritt 2 und trainiere neu.
 
-Um das Modell fest in JuStAI5 aufzunehmen, lege es in `plugins/openwakeword/models/` ab und
+Um das Modell fest in JuStAI aufzunehmen, lege es in `plugins/openwakeword/models/` ab und
 trage die Phrase in `PHRASES` in `plugins/openwakeword/plugin.py` ein.
 
 ## Dateien

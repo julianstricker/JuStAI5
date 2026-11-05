@@ -105,7 +105,7 @@ Echos nach Konvergenz):
 
 Ab etwa 0,5 s versagt AEC3 allein; übrig bleiben ca. 10 dB aus der
 Nachunterdrückung. Netzwerkkameras liegen deutlich darüber (C200: ~1,8 s).
-JuStAI5 verschiebt die Referenz deshalb selbst um die gemessene Verzögerung und
+JuStAI verschiebt die Referenz deshalb selbst um die gemessene Verzögerung und
 überlässt AEC3 nur noch den Rest (10 ms). Die Verzögerung schätzt
 `DelayEstimator` laufend per GCC-PHAT aus Mikrofon und Referenz (nur Schätzungen
 mit ausreichender Konfidenz, Median der letzten 7).
@@ -155,7 +155,7 @@ Silero-VAD (ONNX) auf dem verarbeiteten Signal. Sprache beginnt nach 3
 aufeinanderfolgenden Frames über `vad_threshold` (30 ms) und endet nach 300 ms
 darunter. Das Ende einer Äußerung im Pipeline-Modus bestimmt
 `end_of_utterance_silence_ms` (Standard 700 ms), Höchstlänge `max_utterance_s`.
-Im Realtime-Modus übernimmt der Provider die Turn-Erkennung; JuStAI5 schickt
+Im Realtime-Modus übernimmt der Provider die Turn-Erkennung; JuStAI schickt
 dabei nur nicht-gegatete Frames.
 
 ## Wakeword

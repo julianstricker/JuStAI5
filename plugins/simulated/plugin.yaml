@@ -5,7 +5,7 @@ description: "Virtual cameras, microphones and speakers for tests and demos with
 i18n:
   de: {name: "Simulierte Geräte", description: "Virtuelle Kameras, Mikrofone und Lautsprecher für Tests und Demos ohne Hardware: akustischer Raum mit Echo des eigenen Lautsprechers (Verzögerung, Hall, optional Mikrofon-Ducking wie bei Tapo-Kameras), einspielbare Benutzersprache, Kamerabilder aus Bilddateien und virtuelles PTZ über einem Panoramabild."}
   it: {name: "Dispositivi simulati", description: "Telecamere, microfoni e altoparlanti virtuali per test e demo senza hardware: stanza acustica con eco del proprio altoparlante (ritardo, riverbero, ducking opzionale del microfono come nelle telecamere Tapo), parlato utente simulato, immagini da file e PTZ virtuale su un'immagine panoramica."}
-author: JuStAI5
+author: JuStAI
 license: MIT
 types: [device, tool]
 trust: builtin

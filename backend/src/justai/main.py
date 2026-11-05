@@ -1,7 +1,7 @@
 """Process entry point: ``python -m justai.main``.
 
 Serves HTTP (admin UI, API) and - unless disabled - HTTPS with a certificate of the
-local JuStAI5 CA (device app: browsers allow microphone/camera only on secure origins).
+local JuStAI CA (device app: browsers allow microphone/camera only on secure origins).
 Both servers share one application; only the HTTP server runs the lifespan.
 """
 

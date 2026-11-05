@@ -1,4 +1,4 @@
-"""Audio primitives. All audio inside JuStAI5 is mono signed 16-bit PCM."""
+"""Audio primitives. All audio inside JuStAI is mono signed 16-bit PCM."""
 
 from __future__ import annotations
 

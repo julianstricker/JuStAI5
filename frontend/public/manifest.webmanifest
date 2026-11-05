@@ -1,6 +1,6 @@
 {
-  "name": "JuStAI5",
-  "short_name": "JuStAI5",
+  "name": "JuStAI",
+  "short_name": "JuStAI",
   "description": "Dieses Gerät als Mikrofon, Lautsprecher, Kamera und Bildschirm des Assistenten",
   "start_url": "/app",
   "scope": "/",

@@ -25,7 +25,7 @@ schätzt dann die Position relativ zur Home-Position mit.
   speichern* im PTZ-Feld legt die aktuelle Ansicht als Kamera-Preset „home“ an
   (ein vorhandenes wird ersetzt); *Home* fährt es an (live geprüft: zurück auf
   < 1 Pixel). Ohne gespeicherte Home-Position macht *Home* die Bewegungen rückgängig,
-  die JuStAI5 seit dem Start ausgeführt hat (ungefähr, da Tapo nur relativ fährt);
+  die JuStAI seit dem Start ausgeführt hat (ungefähr, da Tapo nur relativ fährt);
   gibt es keine, kommt ein Hinweis statt eines Fehlers.
 * **Manuelle Steuerung hat Vorrang**: Jeder manuelle Befehl pausiert ein laufendes
   Tracking für 20 s.
